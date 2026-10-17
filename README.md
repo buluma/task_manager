@@ -17,6 +17,7 @@ npm install
 npm run dev       # http://localhost:5173 with hot reload
 npm run build     # production build in dist/
 npm run preview   # serve the production build locally
+npm test          # server, CLI and core unit tests (node --test)
 npm run lint      # ESLint
 npm run format    # Prettier
 ```
@@ -76,7 +77,7 @@ Dependencies point downward:
 
 ## Personal server and CLI
 
-The app works on its own from browser storage. To keep one copy of your data across browsers and devices, run the sync server, which also serves the built app and a small task API. It has no authentication, so bind it to a private interface such as your Tailscale address and never to 0.0.0.0.
+The app works on its own from browser storage. To keep one copy of your data across browsers and devices, run the sync server, which also serves the built app and a small task API. Set `GR8R_TOKEN` to require a token on the task, project and priority APIs; `/api/state` and the app pages stay open, so bind it to a private interface such as your Tailscale address and never to 0.0.0.0.
 
 ```bash
 npm run build
@@ -101,7 +102,7 @@ GR8R_HOST=$(tailscale ip -4) npm start     # http://<tailnet-ip>:8787, data in ~
 | `GET /api/projects?archived=1`                                   | list projects (archived ones only with the flag)                                                                                                                                                                                                |
 | `POST /api/projects`                                             | create a project: `name` plus optional `key`, `desc`, `color`, `icon`, `status`, `due`, `lead`                                                                                                                                                  |
 | `GET/PATCH /api/projects/GR`                                     | one project; change `name`, `desc`, `color`, `icon`, `status`, `due`, `lead`, `archived` (the key never changes)                                                                                                                                |
-| `DELETE /api/projects/GR`                                        | archive the project, keeping its tasks (`PATCH` `archived: false` restores it); with `?purge=1`, delete an already archived project and all its tasks for good                                                                                  |
+| `DELETE /api/projects/GR`                                        | archive the project, keeping its tasks (`PATCH` `archived: false` restores it); with `?purge=1`, delete an already archived project with its tasks, comments, files and activity for good                                                       |
 | `GET /api/priorities`                                            | the priority scale, highest weight first, with how many tasks use each level                                                                                                                                                                    |
 | `POST /api/priorities`                                           | add a level: `name`, `w` (1-99) and optionally `id`                                                                                                                                                                                             |
 | `PATCH /api/priorities/high`                                     | rename or reweight a level (`none` always weighs 0)                                                                                                                                                                                             |
@@ -130,7 +131,7 @@ gr8r help
 
 ## Continuous integration
 
-Every push and pull request runs lint, the format check and a production build
+Every push and pull request runs lint, the format check, the tests and a production build
 (`.github/workflows/ci.yml`).
 
 ## Deploy
