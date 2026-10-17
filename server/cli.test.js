@@ -37,7 +37,7 @@ afterEach(async () => {
 
 const run = (args, env = { GR8R_URL: url }) =>
   new Promise(resolve =>
-    execFile(process.execPath, [BIN, ...args], { env: { PATH: process.env.PATH, ...env } }, (err, stdout, stderr) =>
+    execFile(process.execPath, [BIN, ...args], { env: { PATH: process.env.PATH, GR8R_ENV_FILE: '', ...env } }, (err, stdout, stderr) =>
       resolve({ code: err?.code ?? 0, stdout, stderr }),
     ),
   );

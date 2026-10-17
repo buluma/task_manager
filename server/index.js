@@ -2,6 +2,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from './app.js';
+import { loadRepoEnv } from './env.js';
+
+loadRepoEnv();
 
 /* Defaults to loopback. For tailnet-only access set GR8R_HOST to this machine's Tailscale IP
    (`tailscale ip -4`); never 0.0.0.0, which would also expose it on the local network. */

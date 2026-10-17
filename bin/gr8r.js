@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /* gr8r: manage tasks on the sync server from the shell. See `gr8r help`. */
 import { parseArgs } from 'node:util';
+import { loadRepoEnv } from '../server/env.js';
+
+loadRepoEnv();
 
 const TOKEN = process.env.GR8R_TOKEN;
 const BASE = (process.env.GR8R_URL || 'http://127.0.0.1:8787').replace(/\/$/, '');
