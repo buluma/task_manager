@@ -169,7 +169,18 @@ export function settingsBody(sec, title) {
         srow(
           'Time zone',
           'Used for due dates and reminders.',
-          sel('tz', ['(GMT-08:00) Pacific Time', '(GMT-05:00) Eastern Time', '(GMT+00:00) London', '(GMT+01:00) Berlin', '(GMT+08:00) Singapore'], P.tz),
+          sel(
+            'tz',
+            [
+              '(GMT-08:00) Pacific Time',
+              '(GMT-05:00) Eastern Time',
+              '(GMT+00:00) London',
+              '(GMT+01:00) Berlin',
+              '(GMT+03:00) Nairobi',
+              '(GMT+08:00) Singapore',
+            ],
+            P.tz,
+          ),
         ) +
         srow(
           'Date format',
