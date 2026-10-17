@@ -25,6 +25,8 @@ export function commands() {
         render();
       },
     },
+    { id: 'c-quick', name: 'Quick add task', icon: 'zap', kbd: 'Q', run: () => A.quickAdd() },
+    { id: 'c-cyc', name: 'Go to Cycles', icon: 'refresh-cw', run: () => go('cycles') },
     { id: 'c-home', name: 'Go to Home', icon: 'house', kbd: 'G H', run: () => go('home') },
     { id: 'c-inbox', name: 'Go to Inbox', icon: 'inbox', kbd: 'G I', run: () => go('inbox') },
     { id: 'c-my', name: 'Go to My Tasks', icon: 'circle-check', kbd: 'G T', run: () => go('mytasks') },

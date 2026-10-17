@@ -54,9 +54,11 @@ import './features/archive.js';
 import './actions/teams.js';
 import './actions/subtasks.js';
 import './actions/archive.js';
+import { rollNow } from './actions/cycles.js';
 import { S, D } from './core/store.js';
 import { A } from './actions/actions.js';
 import { ROUTE_NAMES, render, go } from './shell/render.js';
+import { toast } from './ui/toast.js';
 
 (function init() {
   document.documentElement.lang = 'en';
@@ -72,8 +74,19 @@ import { ROUTE_NAMES, render, go } from './shell/render.js';
   if (authRoutes.includes(h)) S.ui.auth = h;
   else if (h && ROUTE_NAMES[h]) S.ui.route = h;
   else S.ui.route = S.prefs.home || 'home';
+  rollNow();
   render();
 })();
+
+// Leave the app open past midnight Sunday and the new cycle still starts: re-check when the tab regains focus and hourly.
+const rollIfNewCycle = () => rollNow() && render();
+document.addEventListener('visibilitychange', () => !document.hidden && rollIfNewCycle());
+setInterval(rollIfNewCycle, 36e5);
+
+// Another device saved first; sync is paused so its changes aren't overwritten.
+window.addEventListener('gr8r:conflict', () =>
+  toast('Changed on another device. Reload to get the latest.', { kind: 'err', action: 'Reload', onAction: () => location.reload(), ms: 600000 }),
+);
 
 // Dev-only handle for debugging and screenshot tooling; stripped from production builds.
 if (import.meta.env.DEV) window.__gr8r = { S, D, A, go, render };

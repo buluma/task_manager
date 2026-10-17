@@ -205,6 +205,11 @@ document.addEventListener('keydown', e => {
     A.newTask();
     return;
   }
+  if (k === 'q' || k === 'Q') {
+    e.preventDefault();
+    A.quickAdd();
+    return;
+  }
   if (k === 'p' || k === 'P') {
     e.preventDefault();
     A.newProject();

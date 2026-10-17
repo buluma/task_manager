@@ -49,5 +49,7 @@ function lucideSubset() {
 
 export default defineConfig({
   plugins: [lucideSubset()],
-  server: { port: 5173 },
+  // Top-level await in core/store.js (initial server pull) needs an ES2022 target.
+  build: { target: 'es2022' },
+  server: { port: 5173, proxy: { '/api': 'http://127.0.0.1:8787' } },
 });

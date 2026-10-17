@@ -8,6 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "node server/index.js",
+    "test": "node --test server/ src/",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

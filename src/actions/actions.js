@@ -22,7 +22,7 @@ export const A = {},
 
 /* ---------- task mutations ---------- */
 export function nextKey(p) {
-  p.seq = (p.seq || 200) + 1;
+  p.seq = (p.seq ?? 200) + 1;
   return p.key + '-' + p.seq;
 }
 export function createTask(f) {
@@ -103,6 +103,7 @@ export function applyPatch(t, patch) {
     else if (k === 'recur') logAct('set repeat on', t, nv ? nv.toLowerCase() : 'off');
     else if (k === 'estimate') logAct('estimated', t, nv || 'none');
     else if (k === 'deps') logAct('updated dependencies of', t);
+    else if (k === 'cycle') logAct(nv ? 'added to this cycle' : 'removed from its cycle', t);
     t.updated = Date.now();
   }
   return msgs;
@@ -1798,7 +1799,7 @@ A.resetDemo = () => {
     run: () => {
       S.data = seed();
       S.views = {};
-      S.prefs = { ...DEFAULT_PREFS, theme: S.prefs.theme };
+      S.prefs = { ...DEFAULT_PREFS, name: 'Tanjim Islam', title: 'Head of Product', theme: S.prefs.theme };
       S.ui.drawer = null;
       save();
       go('home');

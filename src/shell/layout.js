@@ -9,6 +9,7 @@ import { skeleton } from './skeletons.js';
 import { pageHome } from '../pages/home.js';
 import { pageOverview } from '../pages/overview.js';
 import { pageMyTasks } from '../pages/my-tasks.js';
+import { pageCycles } from '../pages/cycles.js';
 import { pageTasks } from '../pages/tasks.js';
 import { pageInbox } from '../pages/inbox.js';
 import { pageNotifications } from '../pages/notifications.js';
@@ -45,6 +46,7 @@ export function renderPage() {
       home: pageHome,
       inbox: pageInbox,
       mytasks: pageMyTasks,
+      cycles: pageCycles,
       favorites: pageFavorites,
       notifications: pageNotifications,
       search: pageSearch,
@@ -99,6 +101,7 @@ export function renderSidebar() {
       ${sItem('home', 'Home', 'house')}
       ${sItem('inbox', 'Inbox', 'inbox', { ct: unreadInbox || '', dot: true })}
       ${sItem('mytasks', 'My Tasks', 'circle-check', { ct: myOpen || '' })}
+      ${sItem('cycles', 'Cycles', 'refresh-cw')}
       ${sItem('favorites', 'Favorites', 'star')}
       ${sItem('notifications', 'Notifications', 'bell', { ct: unreadAll || '' })}
       <div class="sgroup">

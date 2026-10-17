@@ -32,6 +32,11 @@ export function modalHtml(m) {
   switch (m.type) {
     case 'task':
       return wrap('', taskModal(m, H));
+    case 'quick':
+      return wrap(
+        'sm',
+        `${H('Quick add', 'Goes straight to the backlog. Plan it into a cycle later.')}<form class="modal-b" data-submit="quickSubmit"><div class="field"><label class="label" for="quick-in">Task name</label><input class="input" id="quick-in" placeholder="What needs doing?" autocomplete="off" autofocus></div></form><div class="modal-f"><span class="sp"></span><button class="btn btn-secondary" data-a="closeModal">Cancel</button><button class="btn btn-primary" data-a="quickSubmit">Add to backlog</button></div>`,
+      );
     case 'project':
       return wrap('', projectModal(m, H));
     case 'share':
@@ -252,6 +257,7 @@ export const SHORTCUTS = [
     'Create',
     [
       ['New task', ['N']],
+      ['Quick add to backlog', ['Q']],
       ['New project', ['P']],
       ['Submit form', [MOD, '↵']],
       ['Send comment', [MOD, '↵']],

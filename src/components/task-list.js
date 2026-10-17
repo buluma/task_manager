@@ -1,10 +1,10 @@
 /* =====================================================================
    PAGES
    ===================================================================== */
-import { ago, esc, relDate } from '../core/utils.js';
+import { ago, esc, fmtDate, relDate } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { PR, ST } from '../core/constants.js';
-import { D, S, commentsOf, isOver, mem, pColor, proj, task } from '../core/store.js';
+import { D, S, commentsOf, currentCycle, isOver, mem, pColor, proj, task } from '../core/store.js';
 import { av, dueHtml, empty, lbl, prIcon, prPill, stIcon, stPill } from '../ui/helpers.js';
 import { fxc } from '../shell/render.js';
 
@@ -16,6 +16,7 @@ export const LCOLS = {
   due: ['Due date', '104px'],
   labels: ['Labels', '168px'],
   project: ['Project', '160px'],
+  cycle: ['Cycle', '124px'],
 };
 export function cellStatus(t) {
   return `<button class="pillbtn" data-a="pop" data-pop="status" data-id="${t.id}" aria-label="Status: ${ST[t.status].name}">${stPill(t.status)}</button>`;
@@ -37,7 +38,20 @@ export function cellProject(t) {
   const p = proj(t.project);
   return `<button class="pillbtn" data-a="pop" data-pop="project" data-id="${t.id}" aria-label="Project"><span class="pdot" style="--c:${pColor(p)}"></span><span class="trunc">${esc(p?.name)}</span></button>`;
 }
-export const CELL = { status: cellStatus, assignee: cellAssignee, priority: cellPrio, due: cellDue, labels: cellLabels, project: cellProject };
+export function cellCycle(t) {
+  const cur = t.cycle === currentCycle();
+  const label = cur ? 'This cycle' : t.cycle ? `Week of ${fmtDate(t.cycle)}` : 'Add to cycle';
+  return `<button class="pillbtn ${t.cycle ? '' : 'empty'}" data-a="toggleCycle" data-id="${t.id}" aria-label="${cur ? 'Remove from this cycle' : 'Add to this cycle'}">${ic('refresh-cw', 13)}<span class="trunc">${label}</span>${t.carried ? `<span class="faint num" data-tip="Carried over ${t.carried} time${t.carried > 1 ? 's' : ''}">↻${t.carried}</span>` : ''}</button>`;
+}
+export const CELL = {
+  status: cellStatus,
+  assignee: cellAssignee,
+  priority: cellPrio,
+  due: cellDue,
+  labels: cellLabels,
+  project: cellProject,
+  cycle: cellCycle,
+};
 
 export function taskRow(t, cols, tpl, opt = {}) {
   const sel = S.ui.sel.has(t.id);

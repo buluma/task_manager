@@ -1,7 +1,9 @@
 /* ---------- store ---------- */
 import { TODAY, diffD, iso, parse, uid } from './utils.js';
 import { PCOLORS, TEAMS_SEED } from './constants.js';
-import { seed } from '../data/seed.js';
+import { emptyWorkspace } from '../data/seed.js';
+import { pull, push, syncing } from './sync.js';
+import { cycleStart } from './cycles.js';
 
 export const STORE_KEY = 'gr8r.v2';
 export const DEFAULT_PREFS = {
@@ -16,8 +18,8 @@ export const DEFAULT_PREFS = {
   motion: 'system',
   home: 'home',
   openTasks: 'drawer',
-  name: 'Tanjim Islam',
-  title: 'Head of Product',
+  name: 'Me',
+  title: '',
 };
 export function load() {
   try {
@@ -31,9 +33,11 @@ export function load() {
   }
   return null;
 }
-export const saved = load();
+/* The server copy wins when there is one; localStorage is the cache and the offline fallback. */
+const remote = await pull();
+export const saved = remote || load();
 export const S = {
-  data: saved?.data || seed(),
+  data: saved?.data || emptyWorkspace(),
   prefs: Object.assign({}, DEFAULT_PREFS, saved?.prefs || {}),
   views: saved?.views || {},
   ui: {
@@ -86,15 +90,21 @@ export let _saveT;
 export function save() {
   clearTimeout(_saveT);
   _saveT = setTimeout(() => {
+    const snapshot = { data: S.data, prefs: S.prefs, views: S.views, collapsed: S.ui.collapsed };
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ data: S.data, prefs: S.prefs, views: S.views, collapsed: S.ui.collapsed }));
+      localStorage.setItem(STORE_KEY, JSON.stringify(snapshot));
     } catch {
       /* storage full or blocked: keep working in memory */
     }
+    push(JSON.parse(JSON.stringify(snapshot)));
   }, 150);
 }
 
+// First run against a server with nothing saved: seed it with what this browser already has.
+if (syncing() && !remote) save();
+
 /* ---------- lookups ---------- */
+export const currentCycle = () => cycleStart(iso(new Date()), +S.prefs.weekStart);
 export const D = () => S.data;
 export const me = () => D().members.find(m => m.id === D().me);
 export const mem = id => D().members.find(m => m.id === id);

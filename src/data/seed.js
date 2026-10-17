@@ -542,3 +542,48 @@ export function seed() {
     },
   };
 }
+
+/* A real, empty workspace for personal use: one member and one starter project to hold new tasks.
+   Its id stays 'p1' because task creation falls back to that id when no project is in context. */
+export function emptyWorkspace() {
+  const base = seed();
+  return {
+    ws: { name: 'My Workspace', url: 'my-workspace', c: '#1D1C1A', brand: true },
+    workspaces: [{ id: 'w1', name: 'My Workspace', c: '#1D1C1A', plan: 'Free' }],
+    me: 'm1',
+    members: [{ id: 'm1', name: 'Me', email: '', role: 'Owner', team: 'product', title: '', c: '#5A67D8', status: 'active', last: 0, tz: '' }],
+    projects: [
+      {
+        id: 'p1',
+        key: 'GR',
+        seq: 0,
+        name: 'Tasks',
+        icon: 'check-square',
+        color: 'indigo',
+        status: 'active',
+        team: 'product',
+        lead: 'm1',
+        due: null,
+        start: null,
+        fav: false,
+        members: ['m1'],
+        desc: '',
+        milestones: [],
+        last: 0,
+      },
+    ],
+    tasks: [],
+    comments: [],
+    activity: [],
+    notifs: [],
+    files: [],
+    events: [],
+    projOrder: ['p1'],
+    savedViews: [],
+    recentSearches: [],
+    sessions: [],
+    invoices: [],
+    tfa: false,
+    notifPrefs: base.notifPrefs,
+  };
+}
