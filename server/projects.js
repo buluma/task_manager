@@ -163,5 +163,6 @@ export function purgeProject(data, ref) {
   data.projects = data.projects.filter(x => x !== p);
   if (data.projOrder) data.projOrder = data.projOrder.filter(id => id !== p.id);
   if (data.files) data.files = data.files.filter(f => f.project !== p.id);
+  if (data.activity) data.activity = data.activity.filter(a => a.project !== p.id);
   return { project: p, tasks: ids.length };
 }

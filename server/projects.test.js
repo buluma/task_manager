@@ -200,6 +200,15 @@ test('DELETE ?purge=1 permanently removes an archived project with its tasks, co
     d.files.map(f => f.id),
     ['f2'],
   );
+  assert.equal(
+    d.activity.some(a => a.project === doomed.id),
+    false,
+    'activity rows for the project go too: the Activity page crashes on a project that no longer exists',
+  );
+  assert.ok(
+    d.activity.some(a => a.project === 'p1'),
+    'activity of other projects stays',
+  );
   assert.equal((await call('GET', '/api/projects/DM')).status, 404);
   assert.equal((await call('DELETE', '/api/projects/GR?purge=1')).status, 409, 'an active project cannot be purged');
 });
