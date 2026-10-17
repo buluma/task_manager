@@ -112,3 +112,43 @@ test('a server that never answers times out instead of hanging', async () => {
     await new Promise(r => silent.close(r));
   }
 });
+
+test('project add, set and rm manage projects; --archived lists the removed ones', async () => {
+  const add = await run(['project', 'add', 'Website Launch', '--key', 'web', '--color', 'teal', '--desc', 'ship it']);
+  assert.equal(add.code, 0, add.stderr);
+  assert.match(add.stdout, /created WEB\s+Website Launch/);
+  assert.match((await run(['projects'])).stdout, /WEB\s+Website Launch/);
+  assert.equal((await run(['project', 'set', 'WEB', '--name', 'Site', '--status', 'active', '--due', '2026-12-01'])).code, 0);
+  let p = JSON.parse((await run(['project', 'show', 'web', '--json'])).stdout);
+  assert.deepEqual([p.name, p.status, p.due, p.color], ['Site', 'active', '2026-12-01', 'teal']);
+  assert.equal((await run(['project', 'set', 'WEB', '--due', 'none'])).code, 0);
+  p = JSON.parse((await run(['project', 'show', 'web', '--json'])).stdout);
+  assert.equal(p.due, null);
+  assert.equal((await run(['project', 'rm', 'WEB'])).code, 0);
+  assert.doesNotMatch((await run(['projects'])).stdout, /WEB/);
+  assert.match((await run(['projects', '--archived'])).stdout, /WEB\s+Site\s+\[archived\]/);
+  assert.equal((await run(['project', 'restore', 'WEB'])).code, 0);
+  assert.match((await run(['projects'])).stdout, /WEB/);
+  const bad = await run(['project', 'set', 'WEB', '--key', 'ZZ']);
+  assert.notEqual(bad.code, 0);
+  assert.match(bad.stderr, /key cannot be changed/);
+  assert.notEqual((await run(['project', 'add'])).code, 0);
+  assert.notEqual((await run(['project', 'frob', 'WEB'])).code, 0);
+});
+
+test('priority add, set and rm edit the scale, and tasks can use new levels', async () => {
+  assert.match((await run(['priorities'])).stdout, /urgent\s+4\s+Urgent/);
+  const add = await run(['priority', 'add', 'Blocker', '--weight', '5']);
+  assert.equal(add.code, 0, add.stderr);
+  assert.match(add.stdout, /created blocker\s+5\s+Blocker/);
+  assert.match((await run(['priorities'])).stdout.split('\n')[0], /^blocker\s+5\s+Blocker/);
+  assert.equal((await run(['add', 'x', '--priority', 'blocker'])).code, 0);
+  assert.equal((await run(['priority', 'set', 'blocker', '--name', 'Showstopper', '--weight', '6'])).code, 0);
+  assert.match((await run(['priorities'])).stdout, /blocker\s+6\s+Showstopper\s+1 task/);
+  const rm = await run(['priority', 'rm', 'blocker', '--replace', 'high']);
+  assert.equal(rm.code, 0, rm.stderr);
+  assert.match(rm.stdout, /deleted blocker, moved 1 task to high/);
+  assert.equal(JSON.parse((await run(['show', 'GR-1', '--json'])).stdout).priority, 'high');
+  assert.notEqual((await run(['priority', 'add', 'No weight'])).code, 0);
+  assert.notEqual((await run(['priority', 'rm', 'none'])).code, 0);
+});

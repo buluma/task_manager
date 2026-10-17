@@ -2,6 +2,7 @@
    (createTask, applyPatch, archive) so API-made changes look the same as UI-made ones.
    Every function validates before it mutates, so a rejected request leaves the state untouched. */
 import { cycleStart } from '../src/core/cycles.js';
+import { scaleOf } from '../src/core/priorities.js';
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -9,17 +10,17 @@ export class ApiError extends Error {
     this.status = status;
   }
 }
-const bad = msg => new ApiError(400, msg);
+export const bad = msg => new ApiError(400, msg);
 
 const STATUS_NAMES = { backlog: 'Backlog', todo: 'To Do', progress: 'In Progress', review: 'Review', done: 'Done' };
-const PRIO_NAMES = { urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low', none: 'No priority' };
+const prioName = (data, id) => scaleOf(data).find(p => p.id === id)?.name;
 const EDITABLE = ['title', 'desc', 'status', 'priority', 'due', 'start', 'labels', 'assignee', 'cycle', 'estimate'];
 
-const rand = () => Math.random().toString(36).slice(2, 8);
+export const rand = () => Math.random().toString(36).slice(2, 8);
 const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 export const localIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-const isDate = s => {
+export const isDate = s => {
   if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const [y, m, d] = s.split('-').map(Number);
   const t = new Date(Date.UTC(y, m - 1, d));
@@ -47,11 +48,16 @@ function clean(data, prefs, today, input, allowed) {
         out.desc = v.trim() ? `<p>${esc(v.trim())}</p>` : '';
         break;
       case 'status':
-        if (!(v in STATUS_NAMES)) throw bad(`status must be one of: ${Object.keys(STATUS_NAMES).join(', ')}`);
+        if (!Object.hasOwn(STATUS_NAMES, v)) throw bad(`status must be one of: ${Object.keys(STATUS_NAMES).join(', ')}`);
         out.status = v;
         break;
       case 'priority':
-        if (!(v in PRIO_NAMES)) throw bad(`priority must be one of: ${Object.keys(PRIO_NAMES).join(', ')}`);
+        if (!prioName(data, v))
+          throw bad(
+            `priority must be one of: ${scaleOf(data)
+              .map(p => p.id)
+              .join(', ')}`,
+          );
         out.priority = v;
         break;
       case 'due':
@@ -102,8 +108,8 @@ export function findTask(data, key) {
 
 export function listTasks(data, prefs, query, today) {
   const q = Object.fromEntries(query);
-  if (q.status && !(q.status in STATUS_NAMES)) throw bad('unknown status');
-  if (q.priority && !(q.priority in PRIO_NAMES)) throw bad('unknown priority');
+  if (q.status && !Object.hasOwn(STATUS_NAMES, q.status)) throw bad('unknown status');
+  if (q.priority && !prioName(data, q.priority)) throw bad('unknown priority');
   const proj = q.project ? projectOf(data, q.project) : null;
   if (q.project && !proj) throw bad(`unknown project: ${q.project}`);
   let cycle = q.cycle;
@@ -172,7 +178,7 @@ export function patchTask(data, prefs, today, key, input, now) {
         log(data, 'completed', t, '', now);
       } else log(data, 'moved', t, `from ${STATUS_NAMES[old]} to ${STATUS_NAMES[nv]}`, now);
     } else if (k === 'assignee') log(data, 'assigned', t, nv ? `to ${data.members.find(m => m.id === nv).name}` : '(unassigned)', now);
-    else if (k === 'priority') log(data, 'changed priority of', t, `to ${PRIO_NAMES[nv]}`, now);
+    else if (k === 'priority') log(data, 'changed priority of', t, `to ${prioName(data, nv)}`, now);
     else if (k === 'due') log(data, 'changed due date of', t, nv ? `to ${nv}` : '(cleared)', now);
     else if (k === 'start') log(data, 'changed start date of', t, nv ? `to ${nv}` : '(cleared)', now);
     else if (k === 'labels') log(data, 'updated labels on', t, '', now);
@@ -193,5 +199,3 @@ export function archiveTask(data, key, now) {
   }
   return t;
 }
-
-export const listProjects = data => data.projects.filter(p => !p.archived).map(({ id, key, name, status }) => ({ id, key, name, status }));

@@ -1,7 +1,7 @@
 /* ---------- small render helpers ---------- */
 import { TODAY, diffD, esc, parse, relDate } from '../core/utils.js';
 import { ic } from '../core/icons.js';
-import { LB, PR, PSTAT, ST } from '../core/constants.js';
+import { LB, PR, PSTAT, ST, prBars } from '../core/constants.js';
 import { D, mem, pColor } from '../core/store.js';
 
 export function av(id, cls = '', tip = true) {
@@ -37,9 +37,9 @@ export function prIcon(p, s = 14) {
     return `<svg width="${s}" height="${s}" viewBox="0 0 14 14" aria-hidden="true" style="flex-shrink:0"><rect x="1" y="1" width="12" height="12" rx="3" fill="var(--red)"/><path d="M7 3.8v4" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/><circle cx="7" cy="10.1" r=".95" fill="#fff"/></svg>`;
   if (!p || p === 'none')
     return `<svg width="${s}" height="${s}" viewBox="0 0 14 14" aria-hidden="true" style="flex-shrink:0"><path d="M2.5 7h2M6 7h2M9.5 7h2" stroke="var(--text-3)" stroke-width="1.5" stroke-linecap="round"/></svg>`;
-  const w = PR[p].w;
+  const n = prBars(p);
   const bar = (x, h, on) => `<rect x="${x}" y="${12 - h}" width="2.6" height="${h}" rx="1" fill="${on ? 'var(--text-2)' : 'var(--border-strong)'}"/>`;
-  return `<svg width="${s}" height="${s}" viewBox="0 0 14 14" aria-hidden="true" style="flex-shrink:0">${bar(1.8, 4.5, w >= 1)}${bar(5.7, 7.5, w >= 2)}${bar(9.6, 10.5, w >= 3)}</svg>`;
+  return `<svg width="${s}" height="${s}" viewBox="0 0 14 14" aria-hidden="true" style="flex-shrink:0">${bar(1.8, 4.5, n >= 1)}${bar(5.7, 7.5, n >= 2)}${bar(9.6, 10.5, n >= 3)}</svg>`;
 }
 export const stPill = st => `${stIcon(st)}<span>${ST[st].name}</span>`;
 export const prPill = p => `${prIcon(p)}<span>${PR[p || 'none'].name}</span>`;

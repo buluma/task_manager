@@ -2,7 +2,7 @@
    ACTIONS · INPUT HANDLERS · DRAG & DROP · KEYBOARD · INIT
    ===================================================================== */
 import { $, $$, TODAY, addD, dOff, esc, fmtDate, iso, parse, uid } from '../core/utils.js';
-import { PR, PSTAT, ST } from '../core/constants.js';
+import { PR, PSTAT, ST, applyPriorities } from '../core/constants.js';
 import { seed } from '../data/seed.js';
 import { D, DEFAULT_PREFS, S, allTasks, canSee, commentsOf, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
 import { fileType, fsize } from '../ui/helpers.js';
@@ -133,6 +133,7 @@ export function snapshot() {
 }
 export function restore(snap) {
   S.data = JSON.parse(snap);
+  applyPriorities(S.data.priorities);
   save();
   render();
 }
@@ -1798,6 +1799,7 @@ A.resetDemo = () => {
     icon: 'rotate-ccw',
     run: () => {
       S.data = seed();
+      applyPriorities(S.data.priorities);
       S.views = {};
       S.prefs = { ...DEFAULT_PREFS, name: 'Tanjim Islam', title: 'Head of Product', theme: S.prefs.theme };
       S.ui.drawer = null;
@@ -1922,6 +1924,7 @@ A.delWorkspace = () =>
     typeName: D().ws.name,
     run: () => {
       S.data = seed();
+      applyPriorities(S.data.priorities);
       S.views = {};
       save();
       S.ui.auth = 'login';

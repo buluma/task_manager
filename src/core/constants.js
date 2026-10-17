@@ -7,14 +7,33 @@ export const STATUSES = [
   { id: 'done', name: 'Done' },
 ];
 export const ST = Object.fromEntries(STATUSES.map(s => [s.id, s]));
-export const PRIOS = [
+export const DEFAULT_PRIOS = [
   { id: 'urgent', name: 'Urgent', w: 4 },
   { id: 'high', name: 'High', w: 3 },
   { id: 'medium', name: 'Medium', w: 2 },
   { id: 'low', name: 'Low', w: 1 },
   { id: 'none', name: 'No priority', w: 0 },
 ];
+/* The live scale. Both are filled in place by applyPriorities so every importer sees the current levels. */
+export const PRIOS = DEFAULT_PRIOS.map(p => ({ ...p }));
 export const PR = Object.fromEntries(PRIOS.map(p => [p.id, p]));
+/* `list` is the workspace's own scale (data.priorities) or nothing for the defaults; "none" always exists. */
+export function applyPriorities(list) {
+  const levels = (list?.length ? list : DEFAULT_PRIOS).map(p => ({ id: p.id, name: p.name, w: p.w }));
+  if (!levels.some(p => p.id === 'none')) levels.push({ id: 'none', name: 'No priority', w: 0 });
+  levels.sort((a, b) => b.w - a.w);
+  PRIOS.splice(0, PRIOS.length, ...levels);
+  for (const k of Object.keys(PR)) delete PR[k];
+  for (const p of PRIOS) PR[p.id] = p;
+}
+/* Bars drawn for a level: the levels between "none" and "urgent" spread over 1 to 3 bars, so a custom scale
+   stays distinguishable. The default low/medium/high get 1/2/3. */
+export function prBars(id) {
+  const mid = PRIOS.filter(p => p.id !== 'none' && p.id !== 'urgent').sort((a, b) => a.w - b.w);
+  const i = mid.findIndex(p => p.id === id);
+  if (i < 0) return 3;
+  return mid.length === 1 ? 2 : 1 + Math.round((i * 2) / (mid.length - 1));
+}
 export const LABELS = [
   { id: 'design', name: 'Design', c: 'var(--violet)' },
   { id: 'frontend', name: 'Frontend', c: 'var(--blue)' },

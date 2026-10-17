@@ -4,7 +4,9 @@
 import { dOff, esc, fmtDate } from '../core/utils.js';
 import { ic, wsLogo } from '../core/icons.js';
 import { D, S, me } from '../core/store.js';
-import { av, pIcon } from '../ui/helpers.js';
+import { av, pIcon, prIcon } from '../ui/helpers.js';
+import { PRIOS } from '../core/constants.js';
+import { MAX_WEIGHT } from '../core/priorities.js';
 import { permsTable, teamsGrid } from './members.js';
 import { page404 } from './errors.js';
 import { SHORTCUTS } from '../overlays/modals.js';
@@ -25,6 +27,7 @@ export const SET_NAV = [
       ['members', 'Members', 'users'],
       ['teams', 'Teams', 'users-round'],
       ['projects', 'Projects', 'folder-kanban'],
+      ['priorities', 'Priorities', 'signal-high'],
       ['permissions', 'Permissions', 'shield'],
     ],
   ],
@@ -237,6 +240,26 @@ export function settingsBody(sec, title) {
         ) +
         srow('Show completed tasks on boards', '', tog('showDoneBoard', P.showDoneBoard !== false)) +
         `<div class="sblock"><h2>Archived projects</h2>${arch.length ? arch.map(p => `<div class="srow"><div class="row">${pIcon(p, '', 14)}<b style="font-weight:500">${esc(p.name)}</b></div><div class="row"><button class="btn btn-secondary btn-sm" data-a="restoreProject" data-id="${p.id}">Restore</button><button class="btn btn-danger-ghost btn-sm" data-a="delProject" data-id="${p.id}">Delete</button></div></div>`).join('') : `<p class="faint" style="padding:12px 0">No archived projects. Archived projects are hidden from the sidebar but keep all their tasks.</p>`}<div style="margin-top:12px"><button class="btn btn-secondary btn-sm" data-a="go" data-r="archive">${ic('archive', 13)}Open archive</button></div></div>`
+      );
+    }
+    case 'priorities': {
+      const used = id => d.tasks.filter(t => (t.priority || 'none') === id).length;
+      const weights = cur => {
+        const ws = [...new Set([...Array.from({ length: 9 }, (_, i) => i + 1), cur])].filter(Boolean).sort((a, b) => a - b);
+        return ws.map(w => `<option value="${w}" ${w === cur ? 'selected' : ''}>Weight ${w}</option>`).join('');
+      };
+      return (
+        H('Rank how pressing work is. Levels sort by weight, highest first, and draw more bars as they rank higher.') +
+        `<div class="panel" style="overflow:hidden">${PRIOS.map(p => {
+          const n = used(p.id);
+          const name = esc(p.name);
+          return `<div class="mini" style="min-height:52px;cursor:default;gap:12px"><span style="width:20px;display:flex;justify-content:center">${prIcon(p.id)}</span>
+          <input class="input grow" value="${name}" maxlength="40" aria-label="Name of ${name}" data-blur="prioName" data-id="${p.id}" data-orig="${name}">
+          ${p.id === 'none' ? `<span class="faint" style="min-width:104px;font-size:13px">Always weight 0</span>` : `<select class="select" style="width:auto;min-width:104px" aria-label="Weight of ${name}" data-in="prioWeight" data-id="${p.id}">${weights(p.w)}</select>`}
+          <span class="faint" style="min-width:64px;text-align:right;font-size:12px">${n} task${n === 1 ? '' : 's'}</span>
+          ${p.id === 'none' ? `<span style="width:30px"></span>` : `<button class="ibtn ibtn-sm" data-a="delPriority" data-id="${p.id}" aria-label="Delete ${name}">${ic('trash-2', 14)}</button>`}</div>`;
+        }).join('')}</div>
+      <form data-submit="addPriority" class="sblock"><h2>Add a level</h2><div class="row" style="gap:10px;margin-top:12px"><input class="input grow" id="prio-name" placeholder="Name, e.g. Blocker" maxlength="40" aria-label="New level name"><select class="select" id="prio-w" style="width:auto;min-width:104px" aria-label="New level weight">${weights(3)}</select><button class="btn btn-primary">Add level</button></div><p class="hint" style="margin-top:8px">Weights go up to ${MAX_WEIGHT}. Deleting a level moves its tasks to No priority.</p></form>`
       );
     }
     case 'permissions':

@@ -5,7 +5,7 @@
 import './styles/index.css';
 import './core/utils.js';
 import './core/icons.js';
-import './core/constants.js';
+import { applyPriorities } from './core/constants.js';
 import './data/seed.js';
 import './core/store.js';
 import './ui/helpers.js';
@@ -54,6 +54,7 @@ import './features/archive.js';
 import './actions/teams.js';
 import './actions/subtasks.js';
 import './actions/archive.js';
+import './actions/priorities.js';
 import { rollNow } from './actions/cycles.js';
 import { S, D, cache } from './core/store.js';
 import { watchRemote } from './core/sync.js';
@@ -93,6 +94,7 @@ window.addEventListener('gr8r:conflict', () =>
 watchRemote(
   state => {
     S.data = state.data;
+    applyPriorities(S.data.priorities);
     cache();
     render();
   },
