@@ -152,3 +152,12 @@ test('priority add, set and rm edit the scale, and tasks can use new levels', as
   assert.notEqual((await run(['priority', 'add', 'No weight'])).code, 0);
   assert.notEqual((await run(['priority', 'rm', 'none'])).code, 0);
 });
+
+test('set --project moves a task to another project under a new key', async () => {
+  await run(['project', 'add', 'Website', '--key', 'WEB']);
+  await run(['add', 'wander']);
+  const r = await run(['set', 'GR-1', '--project', 'web']);
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /updated WEB-1/);
+  assert.match((await run(['show', 'GR-1'])).stderr, /no task GR-1/);
+});

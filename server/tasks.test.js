@@ -140,7 +140,7 @@ test('PATCH updates fields, validates them, and logs activity', async () => {
   assert.ok(stored().state.data.activity.some(a => a.verb === 'moved'));
   assert.equal((await call('PATCH', '/api/tasks/GR-1', { due: null })).body.task.due, null);
   const rev = stored().rev;
-  for (const b of [{ status: 'wat' }, { project: 'p2' }, { key: 'X-1' }, { id: 'z' }, { title: '' }, {}])
+  for (const b of [{ status: 'wat' }, { project: 'nope' }, { key: 'X-1' }, { id: 'z' }, { title: '' }, {}])
     assert.equal((await call('PATCH', '/api/tasks/GR-1', b)).status, 400, JSON.stringify(b));
   assert.equal(stored().rev, rev);
   assert.equal((await call('PATCH', '/api/tasks/GR-9', { title: 'x' })).status, 404);
@@ -212,4 +212,27 @@ test('inherited object keys are not valid statuses or priorities', async () => {
     assert.equal((await call('GET', `/api/tasks?priority=${bad}`)).status, 400, bad);
   }
   assert.equal(stored().rev, 1);
+});
+
+test('PATCH project moves a task: new key from the target counter, logged, old key gone', async () => {
+  await post({ title: 'wander' });
+  const r = await call('PATCH', '/api/tasks/GR-1', { project: 'web' });
+  assert.equal(r.status, 200);
+  assert.deepEqual([r.body.task.key, r.body.task.project], ['WEB-201', 'p2']);
+  const s = stored().state.data;
+  assert.equal(s.projects[1].seq, 201);
+  assert.deepEqual([s.activity[0].verb, s.activity[0].extra], ['moved', 'to Website']);
+  assert.equal((await call('GET', '/api/tasks/GR-1')).status, 404);
+  assert.equal((await call('GET', '/api/tasks/web-201')).body.task.title, 'wander');
+  assert.equal((await call('GET', '/api/tasks?project=GR')).body.tasks.length, 0);
+});
+
+test('PATCH project to the same project changes nothing; unknown or archived targets are 400', async () => {
+  await post({ title: 'stay' });
+  const same = await call('PATCH', '/api/tasks/GR-1', { project: 'GR' });
+  assert.equal(same.body.task.key, 'GR-1');
+  assert.equal(stored().state.data.projects[0].seq, 1);
+  assert.equal((await call('PATCH', '/api/tasks/GR-1', { project: 'NOPE' })).status, 400);
+  await call('DELETE', '/api/projects/WEB');
+  assert.equal((await call('PATCH', '/api/tasks/GR-1', { project: 'WEB' })).status, 400);
 });
