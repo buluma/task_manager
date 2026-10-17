@@ -161,3 +161,9 @@ test('set --project moves a task to another project under a new key', async () =
   assert.match(r.stdout, /updated WEB-1/);
   assert.match((await run(['show', 'GR-1'])).stderr, /no task GR-1/);
 });
+
+test('show prints each description paragraph and line on its own line', async () => {
+  await run(['add', 'notes', '--desc', 'line one\nline two\n\nsecond paragraph']);
+  const out = (await run(['show', 'GR-1'])).stdout;
+  assert.match(out, /line one\nline two\n+second paragraph/);
+});

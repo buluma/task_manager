@@ -84,10 +84,19 @@ function fields(v, keys) {
   return out;
 }
 
+/* Descriptions are small HTML: keep paragraph and line breaks, drop the tags, decode the entities the server writes. */
 const strip = html =>
   (html || '')
+    .replace(/<\/p>\s*<p>/g, '\n\n')
+    .replace(/<br\s*\/?>/g, '\n')
     .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ ?\n ?/g, '\n')
     .trim();
 const projectRow = p => `${p.key.padEnd(8)} ${p.name}${p.archived ? '  [archived]' : ''}`;
 const prioRow = p => `${p.id.padEnd(10)} ${String(p.w).padEnd(3)} ${p.name.padEnd(12)} ${p.tasks} task${p.tasks === 1 ? '' : 's'}`;

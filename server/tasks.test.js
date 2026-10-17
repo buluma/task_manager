@@ -236,3 +236,13 @@ test('PATCH project to the same project changes nothing; unknown or archived tar
   await call('DELETE', '/api/projects/WEB');
   assert.equal((await call('PATCH', '/api/tasks/GR-1', { project: 'WEB' })).status, 400);
 });
+
+test('desc is plain text: escaped, blank lines split paragraphs, single newlines break lines', async () => {
+  const one = await post({ title: 'a', desc: '  fish & <chips>  ' });
+  assert.equal(one.body.task.desc, '<p>fish &amp; &lt;chips&gt;</p>');
+  const many = await post({ title: 'b', desc: 'first line\nsecond line\n\n\nnext paragraph' });
+  assert.equal(many.body.task.desc, '<p>first line<br>second line</p><p>next paragraph</p>');
+  const crlf = await call('PATCH', '/api/tasks/GR-2', { desc: 'a\r\n\r\nb' });
+  assert.equal(crlf.body.task.desc, '<p>a</p><p>b</p>');
+  assert.equal((await call('PATCH', '/api/tasks/GR-2', { desc: '   ' })).body.task.desc, '');
+});
