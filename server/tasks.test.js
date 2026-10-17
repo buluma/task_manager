@@ -356,3 +356,17 @@ test("each repeat length moves the due date by the app's number of days", async 
     n++;
   }
 });
+
+test('descFormat "markdown" renders the description as safe HTML; the default stays plain text', async () => {
+  const md = await post({ title: 'md', desc: '## Plan\n\n* **one**\n* `two`\n\n<script>x</script>', descFormat: 'markdown' });
+  assert.equal(md.status, 201);
+  assert.equal(md.body.task.desc, '<h4>Plan</h4><ul><li><b>one</b></li><li><code>two</code></li></ul><p>&lt;script&gt;x&lt;/script&gt;</p>');
+  assert.equal(md.body.task.descFormat, undefined, 'the format is an input, not stored');
+  const plain = await post({ title: 'plain', desc: '## Plan\n* not a list' });
+  assert.equal(plain.body.task.desc, '<p>## Plan<br>* not a list</p>');
+  const patched = await call('PATCH', '/api/tasks/GR-2', { desc: '**now bold**', descFormat: 'markdown' });
+  assert.equal(patched.body.task.desc, '<p><b>now bold</b></p>');
+  assert.equal((await call('PATCH', '/api/tasks/GR-2', { desc: '   ', descFormat: 'markdown' })).body.task.desc, '');
+  assert.equal((await post({ title: 'x', desc: 'a', descFormat: 'html' })).status, 400);
+  assert.equal((await post({ title: 'x', descFormat: 'markdown' })).status, 400, 'a format without a description');
+});

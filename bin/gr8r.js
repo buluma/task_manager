@@ -14,10 +14,10 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   list [--status S] [--priority P] [--project KEY] [--cycle current|none|DATE] [--query TEXT] [--archived]
   show KEY
   add TITLE [--project KEY] [--status S] [--priority P] [--due DATE] [--start DATE] [--cycle current|DATE]
-            [--label L ...] [--desc TEXT] [--estimate E] [--completed DATE (done tasks)]
+            [--label L ...] [--desc TEXT [--markdown]] [--estimate E] [--completed DATE (done tasks)]
             [--recur Daily|Weekly|"Every 2 weeks"|Monthly]
   set KEY [--title T] [--project KEY] [--status S] [--priority P] [--due DATE|none] [--start DATE|none] [--cycle current|DATE|none]
-          [--label L ... | --label none] [--desc TEXT] [--estimate E|none] [--completed DATE|none] [--recur ...|none]
+          [--label L ... | --label none] [--desc TEXT [--markdown]] [--estimate E|none] [--completed DATE|none] [--recur ...|none]
   done KEY            mark complete
   rm KEY              archive (restore it from the app's Archive page)
   rm KEY --purge      delete an archived task for good
@@ -47,6 +47,7 @@ const OPTIONS = {
   query: { type: 'string', short: 'q' },
   archived: { type: 'boolean' },
   purge: { type: 'boolean' },
+  markdown: { type: 'boolean' },
   title: { type: 'string' },
   due: { type: 'string' },
   start: { type: 'string' },
@@ -93,6 +94,7 @@ const CLEARABLE = ['due', 'start', 'cycle', 'estimate', 'completed', 'recur'];
 function fields(v, keys) {
   const out = {};
   for (const k of keys) if (v[k] !== undefined) out[k] = CLEARABLE.includes(k) && v[k] === 'none' ? null : v[k];
+  if (v.markdown && out.desc !== undefined) out.descFormat = 'markdown';
   if (v.label) out.labels = v.label.length === 1 && v.label[0] === 'none' ? [] : v.label;
   return out;
 }
@@ -100,7 +102,9 @@ function fields(v, keys) {
 /* Descriptions are small HTML: keep paragraph and line breaks, drop the tags, decode the entities the server writes. */
 const strip = html =>
   (html || '')
-    .replace(/<\/p>\s*<p>/g, '\n\n')
+    .replace(/<li>/g, '\n• ')
+    .replace(/<\/(?:p|h[1-6]|pre|blockquote|ul|ol)>/g, '\n\n')
+    .replace(/<hr>/g, '\n---\n')
     .replace(/<br\s*\/?>/g, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&lt;/g, '<')
@@ -110,6 +114,7 @@ const strip = html =>
     .replace(/&amp;/g, '&')
     .replace(/[ \t]+/g, ' ')
     .replace(/ ?\n ?/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 const projectRow = p => `${p.key.padEnd(8)} ${p.name}${p.archived ? '  [archived]' : ''}`;
 const prioRow = p => `${p.id.padEnd(10)} ${String(p.w).padEnd(3)} ${p.name.padEnd(12)} ${p.tasks} task${p.tasks === 1 ? '' : 's'}`;

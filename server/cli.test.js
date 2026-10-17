@@ -221,3 +221,11 @@ test('--recur sets the repeat and completing a due task prints the next one', as
   assert.equal((await run(['set', 'GR-2', '--recur', 'none'])).code, 0);
   assert.equal(JSON.parse((await run(['show', 'GR-2', '--json'])).stdout).recur, null);
 });
+
+test('--markdown renders the description, and show prints headings and lists on their own lines', async () => {
+  await run(['add', 'notes', '--markdown', '--desc', '## Plan\n\n* first\n* second **bold**\n\nclosing line']);
+  const raw = JSON.parse((await run(['show', 'GR-1', '--json'])).stdout).desc;
+  assert.match(raw, /<h4>Plan<\/h4><ul><li>first<\/li>/);
+  const out = (await run(['show', 'GR-1'])).stdout;
+  assert.match(out, /Plan\n+• first\n• second bold\n+closing line/);
+});

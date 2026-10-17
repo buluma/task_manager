@@ -3,6 +3,7 @@
    Every function validates before it mutates, so a rejected request leaves the state untouched. */
 import { cycleStart } from '../src/core/cycles.js';
 import { scaleOf } from '../src/core/priorities.js';
+import { markdownToHtml } from './markdown.js';
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -16,7 +17,22 @@ const STATUS_NAMES = { backlog: 'Backlog', todo: 'To Do', progress: 'In Progress
 const prioName = (data, id) => scaleOf(data).find(p => p.id === id)?.name;
 /* Days between occurrences of a repeating task, as in the app (actions.js). */
 const RECUR_DAYS = { Daily: 1, Weekly: 7, 'Every 2 weeks': 14, Monthly: 30 };
-const EDITABLE = ['title', 'desc', 'status', 'priority', 'due', 'start', 'labels', 'assignee', 'cycle', 'estimate', 'project', 'completed', 'recur'];
+const EDITABLE = [
+  'title',
+  'desc',
+  'status',
+  'priority',
+  'due',
+  'start',
+  'labels',
+  'assignee',
+  'cycle',
+  'estimate',
+  'project',
+  'completed',
+  'recur',
+  'descFormat',
+];
 
 export const rand = () => Math.random().toString(36).slice(2, 8);
 const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -34,6 +50,18 @@ function projectOf(data, ref) {
   return data.projects.find(p => !p.archived && (p.id.toLowerCase() === r || p.key.toLowerCase() === r));
 }
 
+/* Descriptions are stored as small HTML, which the app shows as is. Plain text (the default) is escaped, blank
+   lines start paragraphs and single newlines break lines; "markdown" goes through markdown.js. */
+function renderDesc(text, format) {
+  if (!text.trim()) return '';
+  if (format === 'markdown') return markdownToHtml(text);
+  return text
+    .trim()
+    .split(/\r?\n(?:[ \t]*\r?\n)+/)
+    .map(para => `<p>${esc(para).replace(/\r?\n/g, '<br>')}</p>`)
+    .join('');
+}
+
 /* Checks the fields a caller may set and returns them in stored form. */
 function clean(data, prefs, today, input, allowed) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw bad('body must be a JSON object');
@@ -47,13 +75,11 @@ function clean(data, prefs, today, input, allowed) {
         break;
       case 'desc':
         if (typeof v !== 'string') throw bad('desc must be a string');
-        out.desc = !v.trim()
-          ? ''
-          : v
-              .trim()
-              .split(/\r?\n(?:[ \t]*\r?\n)+/)
-              .map(para => `<p>${esc(para).replace(/\r?\n/g, '<br>')}</p>`)
-              .join('');
+        out.desc = v; // rendered after the loop, once descFormat is known
+        break;
+      case 'descFormat':
+        if (v !== 'plain' && v !== 'markdown') throw bad('descFormat must be "plain" or "markdown"');
+        out.descFormat = v;
         break;
       case 'status':
         if (!Object.hasOwn(STATUS_NAMES, v)) throw bad(`status must be one of: ${Object.keys(STATUS_NAMES).join(', ')}`);
@@ -107,6 +133,9 @@ function clean(data, prefs, today, input, allowed) {
       }
     }
   }
+  if (out.descFormat && !('desc' in out)) throw bad('descFormat needs a desc to format');
+  if ('desc' in out) out.desc = renderDesc(out.desc, out.descFormat);
+  delete out.descFormat;
   return out;
 }
 
