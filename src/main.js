@@ -5,7 +5,7 @@
 import './styles/index.css';
 import './core/utils.js';
 import './core/icons.js';
-import { applyPriorities } from './core/constants.js';
+import { adoptPriorities } from './core/priorities.js';
 import './data/seed.js';
 import './core/store.js';
 import './ui/helpers.js';
@@ -94,7 +94,7 @@ window.addEventListener('gr8r:conflict', () =>
 watchRemote(
   state => {
     S.data = state.data;
-    applyPriorities(S.data.priorities);
+    adoptPriorities(S.data);
     cache();
     render();
   },

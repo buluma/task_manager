@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ScaleError, addLevel, patchLevel, removeLevel, scaleOf } from './priorities.js';
+import { ScaleError, addLevel, normalizePriorities, patchLevel, removeLevel, scaleOf } from './priorities.js';
 import { applyPriorities, prBars } from './constants.js';
 
 const data = () => ({ tasks: [], priorities: undefined });
@@ -74,4 +74,50 @@ test('bars scale to the levels in use: defaults keep 1, 2 and 3 bars', () => {
   applyPriorities([{ id: 'only', name: 'Only', w: 9 }]);
   assert.equal(prBars('only'), 2);
   applyPriorities(undefined);
+});
+
+test('removeLevel also drops the level from saved-view priority filters, and a filter left empty goes away', () => {
+  const d = data();
+  d.savedViews = [
+    {
+      id: 'v1',
+      filters: [
+        { f: 'priority', op: 'is', v: ['urgent', 'low'] },
+        { f: 'status', op: 'is', v: ['todo'] },
+      ],
+    },
+    { id: 'v2', filters: [{ f: 'priority', op: 'is', v: ['low'] }] },
+    { id: 'v3' },
+  ];
+  removeLevel(d, 'low', 'none', 1);
+  assert.deepEqual(d.savedViews[0].filters, [
+    { f: 'priority', op: 'is', v: ['urgent'] },
+    { f: 'status', op: 'is', v: ['todo'] },
+  ]);
+  assert.deepEqual(d.savedViews[1].filters, []);
+  assert.equal(d.savedViews[2].filters, undefined);
+});
+
+test('normalizePriorities puts tasks with an unknown level on none and prunes stale filter ids', () => {
+  const d = data();
+  d.priorities = [
+    { id: 'high', name: 'High', w: 3 },
+    { id: 'none', name: 'No priority', w: 0 },
+  ];
+  d.tasks = [{ priority: 'high' }, { priority: 'gone' }, { priority: undefined }, {}];
+  d.savedViews = [
+    {
+      filters: [
+        { f: 'priority', op: 'is', v: ['high', 'gone'] },
+        { f: 'priority', op: 'is', v: ['gone'] },
+      ],
+    },
+  ];
+  assert.equal(normalizePriorities(d), 3);
+  assert.deepEqual(
+    d.tasks.map(t => t.priority),
+    ['high', 'none', 'none', 'none'],
+  );
+  assert.deepEqual(d.savedViews[0].filters, [{ f: 'priority', op: 'is', v: ['high'] }]);
+  assert.equal(normalizePriorities(d), 0, 'idempotent');
 });
