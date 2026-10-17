@@ -21,6 +21,8 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   done KEY            mark complete
   rm KEY              archive (restore it from the app's Archive page)
   rm KEY --purge      delete an archived task for good
+  subtask add KEY TITLE        subtask done|reopen|rm KEY SUBTASK_ID
+  deps KEY                     dep add|rm KEY OTHER_KEY   (KEY waits for OTHER_KEY)
   comments KEY
   comment KEY TEXT [--at DATE]   add a comment (--at backdates it)
   comment rm KEY COMMENT_ID
@@ -130,6 +132,7 @@ function detail(t) {
     `labels    ${t.labels.length ? t.labels.join(', ') : '-'}`,
   ];
   if (strip(t.desc)) lines.push('', strip(t.desc));
+  if (t.subtasks?.length) lines.push('', 'subtasks', ...t.subtasks.map(s => `${s.done ? '[x]' : '[ ]'} ${s.title}  (${s.id})`));
   return lines.join('\n');
 }
 
@@ -184,6 +187,38 @@ async function main(argv) {
     case 'rm': {
       const { task } = await api('DELETE', `/api/tasks/${key()}${v.purge ? '?purge=1' : ''}`);
       return out(task, `${v.purge ? 'deleted' : 'archived'} ${task.key}  ${task.title}`);
+    }
+    case 'subtask': {
+      const [sub, taskKey, ...tail] = rest;
+      const enc = encodeURIComponent;
+      if (sub === 'add') {
+        if (!taskKey || !tail.length) throw new CliError('subtask add needs a task key and a title');
+        const { subtask } = await api('POST', `/api/tasks/${enc(taskKey)}/subtasks`, { title: tail.join(' ') });
+        return out(subtask, `added subtask ${subtask.id} to ${taskKey.toUpperCase()}  ${subtask.title}`);
+      }
+      if (!['done', 'reopen', 'rm'].includes(sub)) throw new CliError(`unknown subtask command: ${sub ?? '(none)'}\n\n${HELP}`);
+      if (!taskKey || tail.length !== 1) throw new CliError(`subtask ${sub} needs a task key and a subtask id`);
+      const route = `/api/tasks/${enc(taskKey)}/subtasks/${enc(tail[0])}`;
+      const { subtask } = sub === 'rm' ? await api('DELETE', route) : await api('PATCH', route, { done: sub === 'done' });
+      return out(subtask, `${sub === 'rm' ? 'removed' : sub === 'done' ? 'completed' : 'reopened'} subtask ${subtask.id}  ${subtask.title}`);
+    }
+    case 'deps': {
+      const { deps } = await api('GET', `/api/tasks/${key()}/deps`);
+      return out(deps, deps.length ? deps.map(d => `${d.key.padEnd(8)} ${d.status.padEnd(9)} ${d.title}`).join('\n') : 'no dependencies');
+    }
+    case 'dep': {
+      const [sub, taskKey, otherKey] = rest;
+      if (!['add', 'rm'].includes(sub)) throw new CliError(`unknown dep command: ${sub ?? '(none)'}\n\n${HELP}`);
+      if (!taskKey || !otherKey || rest.length !== 3) throw new CliError(`dep ${sub} needs two task keys`);
+      const enc = encodeURIComponent;
+      const { deps } =
+        sub === 'add'
+          ? await api('POST', `/api/tasks/${enc(taskKey)}/deps`, { on: otherKey })
+          : await api('DELETE', `/api/tasks/${enc(taskKey)}/deps/${enc(otherKey)}`);
+      return out(
+        deps,
+        `${taskKey.toUpperCase()} ${sub === 'add' ? 'now waits for' : 'no longer waits for'} ${otherKey.toUpperCase()} (${deps.length} dependenc${deps.length === 1 ? 'y' : 'ies'})`,
+      );
     }
     case 'comments': {
       const { comments } = await api('GET', `/api/tasks/${key()}/comments`);

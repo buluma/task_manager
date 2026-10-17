@@ -229,3 +229,26 @@ test('--markdown renders the description, and show prints headings and lists on 
   const out = (await run(['show', 'GR-1'])).stdout;
   assert.match(out, /Plan\n+• first\n• second bold\n+closing line/);
 });
+
+test('subtask add, done, reopen, rm and dep add, deps, dep rm work from the shell', async () => {
+  await run(['add', 'parent']);
+  await run(['add', 'blocker']);
+  const add = await run(['subtask', 'add', 'GR-1', 'write', 'tests']);
+  assert.equal(add.code, 0, add.stderr);
+  const id = JSON.parse((await run(['show', 'GR-1', '--json'])).stdout).subtasks[0].id;
+  assert.match((await run(['show', 'GR-1'])).stdout, /\[ \] write tests/);
+  assert.equal((await run(['subtask', 'done', 'GR-1', id])).code, 0);
+  assert.match((await run(['show', 'GR-1'])).stdout, /\[x\] write tests/);
+  assert.equal((await run(['subtask', 'reopen', 'GR-1', id])).code, 0);
+  assert.equal((await run(['subtask', 'rm', 'GR-1', id])).code, 0);
+  assert.doesNotMatch((await run(['show', 'GR-1'])).stdout, /write tests/);
+
+  assert.equal((await run(['dep', 'add', 'GR-1', 'GR-2'])).code, 0);
+  assert.match((await run(['deps', 'GR-1'])).stdout, /GR-2\s+backlog\s+blocker/);
+  const self = await run(['dep', 'add', 'GR-1', 'GR-1']);
+  assert.notEqual(self.code, 0);
+  assert.equal((await run(['dep', 'rm', 'GR-1', 'GR-2'])).code, 0);
+  assert.match((await run(['deps', 'GR-1'])).stdout, /no dependencies/);
+  assert.notEqual((await run(['subtask', 'add', 'GR-1'])).code, 0);
+  assert.notEqual((await run(['subtask', 'frob', 'GR-1'])).code, 0);
+});

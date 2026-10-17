@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patchTask, purgeTask } from './tasks.js';
 import { archiveProject, createProject, findProject, listProjects, patchProject, purgeProject } from './projects.js';
+import { addDep, addSubtask, deleteSubtask, listDeps, patchSubtask, removeDep } from './relations.js';
 import { addComment, deleteComment, listComments } from './comments.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
 
@@ -157,6 +158,27 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
       }
       const body = await readJson(req, 'task');
       return json(res, 201, { task: mutate((d, p, today, t) => createTask(d, p, today, body, t)) });
+    }
+    if (what === 'tasks' && parts[2] === 'subtasks' && parts.length === 3) {
+      allow('POST');
+      const body = await readJson(req, 'subtask');
+      return json(res, 201, { subtask: mutate((d, p, today, t) => addSubtask(d, key, body, t)) });
+    }
+    if (what === 'tasks' && parts[2] === 'subtasks' && parts.length === 4) {
+      allow('PATCH', 'DELETE');
+      if (method === 'DELETE') return json(res, 200, { subtask: mutate((d, p, today, t) => deleteSubtask(d, key, parts[3], t)) });
+      const body = await readJson(req, 'subtask');
+      return json(res, 200, { subtask: mutate((d, p, today, t) => patchSubtask(d, key, parts[3], body, t)) });
+    }
+    if (what === 'tasks' && parts[2] === 'deps' && parts.length === 3) {
+      allow('GET', 'POST');
+      if (method === 'GET') return json(res, 200, { deps: listDeps(needState().data, key) });
+      const body = await readJson(req, 'dependency');
+      return json(res, 201, { deps: mutate((d, p, today, t) => addDep(d, key, body, t)) });
+    }
+    if (what === 'tasks' && parts[2] === 'deps' && parts.length === 4) {
+      allow('DELETE');
+      return json(res, 200, { deps: mutate((d, p, today, t) => removeDep(d, key, parts[3], t)) });
     }
     if (what === 'tasks' && parts[2] === 'comments' && parts.length === 3) {
       allow('GET', 'POST');
