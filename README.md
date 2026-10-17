@@ -83,7 +83,7 @@ npm run build
 GR8R_HOST=$(tailscale ip -4) npm start     # http://<tailnet-ip>:8787, data in ~/.gr8r/state.json
 ```
 
-`GR8R_HOST` (default 127.0.0.1), `GR8R_PORT` (default 8787) and `GR8R_DATA` (state file) configure it. Open the app once so it saves its starting state, then the API accepts writes. Open tabs pick up changes made through the API within a few seconds.
+`GR8R_HOST` (default 127.0.0.1), `GR8R_PORT` (default 8787) and `GR8R_DATA` (state file) configure it, and `GR8R_TOKEN` makes the task, project and priority APIs require `Authorization: Bearer <token>` (the CLI sends `GR8R_TOKEN` from its own environment). The token does not cover `/api/rev` and `/api/state`, which the browser app uses without credentials, so it stops casual API use but not a deliberate write of the whole state; keep the server on a private interface. Open the app once so it saves its starting state, then the API accepts writes. Open tabs pick up changes made through the API within a few seconds.
 
 | Request                                                          | Does                                                                                                                                                                              |
 | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

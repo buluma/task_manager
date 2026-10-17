@@ -10,4 +10,8 @@ const port = Number(process.env.GR8R_PORT) || 8787;
 const dataFile = process.env.GR8R_DATA || path.join(os.homedir(), '.gr8r', 'state.json');
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 
-createApp({ dataFile, distDir }).listen(port, host, () => console.log(`gr8r listening on http://${host}:${port}, data in ${dataFile}`));
+const token = process.env.GR8R_TOKEN || undefined;
+
+createApp({ dataFile, distDir, token }).listen(port, host, () =>
+  console.log(`gr8r listening on http://${host}:${port}, data in ${dataFile}${token ? ', API token required' : ''}`),
+);
