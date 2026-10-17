@@ -257,6 +257,60 @@
   font-size: var(--fs-md);
   margin: 10px 0 4px;
 }
+/* Descriptions can hold imported or API-written markup (headings, code, quotes). Wide content has to scroll
+   inside its own block, or it stretches the whole drawer past the screen. */
+.rte-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rte-body h3,
+.rte-body h5,
+.rte-body h6 {
+  font-size: var(--fs);
+  margin: 10px 0 4px;
+}
+.rte-body h3 {
+  font-size: var(--fs-lg, var(--fs-md));
+}
+.rte-body pre {
+  margin: 6px 0;
+  padding: 8px 10px;
+  max-width: 100%;
+  overflow-x: auto;
+  background: var(--surface-2);
+  border-radius: var(--r);
+  font-family: var(--mono);
+  font-size: 0.9em;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+.rte-body code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--surface-2);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.rte-body pre code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+}
+.rte-body blockquote {
+  margin: 6px 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--border-strong);
+  color: var(--text-2);
+}
+.rte-body hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 10px 0;
+}
+.rte-body a {
+  color: var(--accent);
+}
 .subt {
   display: flex;
   align-items: center;
