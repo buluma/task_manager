@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patchTask, purgeTask } from './tasks.js';
 import { archiveProject, createProject, findProject, listProjects, patchProject, purgeProject } from './projects.js';
+import { addComment, deleteComment, listComments } from './comments.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
 
 const MAX_BODY = 10 * 1024 * 1024;
@@ -156,6 +157,16 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
       }
       const body = await readJson(req, 'task');
       return json(res, 201, { task: mutate((d, p, today, t) => createTask(d, p, today, body, t)) });
+    }
+    if (what === 'tasks' && parts[2] === 'comments' && parts.length === 3) {
+      allow('GET', 'POST');
+      if (method === 'GET') return json(res, 200, { comments: listComments(needState().data, key) });
+      const body = await readJson(req, 'comment');
+      return json(res, 201, { comment: mutate((d, p, today, t) => addComment(d, key, body, t)) });
+    }
+    if (what === 'tasks' && parts[2] === 'comments' && parts.length === 4) {
+      allow('DELETE');
+      return json(res, 200, { comment: mutate(d => deleteComment(d, key, parts[3])) });
     }
     if (what === 'tasks' && parts.length === 2) {
       allow('GET', 'PATCH', 'DELETE');

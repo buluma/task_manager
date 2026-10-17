@@ -20,6 +20,9 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   done KEY            mark complete
   rm KEY              archive (restore it from the app's Archive page)
   rm KEY --purge      delete an archived task for good
+  comments KEY
+  comment KEY TEXT [--at DATE]   add a comment (--at backdates it)
+  comment rm KEY COMMENT_ID
   projects [--archived]
   project show KEY
   project add NAME [--key KEY] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE] [--lead MEMBER]
@@ -50,6 +53,7 @@ const OPTIONS = {
   desc: { type: 'string' },
   estimate: { type: 'string' },
   completed: { type: 'string' },
+  at: { type: 'string' },
   name: { type: 'string' },
   key: { type: 'string' },
   color: { type: 'string' },
@@ -170,6 +174,22 @@ async function main(argv) {
     case 'rm': {
       const { task } = await api('DELETE', `/api/tasks/${key()}${v.purge ? '?purge=1' : ''}`);
       return out(task, `${v.purge ? 'deleted' : 'archived'} ${task.key}  ${task.title}`);
+    }
+    case 'comments': {
+      const { comments } = await api('GET', `/api/tasks/${key()}/comments`);
+      const when = at => new Date(at).toISOString().slice(0, 16).replace('T', ' ');
+      return out(comments, comments.length ? comments.map(c => `${when(c.at)}  ${c.id}\n${c.text}`).join('\n\n') : 'no comments');
+    }
+    case 'comment': {
+      if (rest[0] === 'rm') {
+        if (rest.length !== 3) throw new CliError('comment rm needs a task key and a comment id');
+        const { comment } = await api('DELETE', `/api/tasks/${encodeURIComponent(rest[1])}/comments/${encodeURIComponent(rest[2])}`);
+        return out(comment, `deleted comment ${comment.id}`);
+      }
+      if (rest.length < 2) throw new CliError('comment needs a task key and some text');
+      const [taskKey, ...words] = rest;
+      const { comment } = await api('POST', `/api/tasks/${encodeURIComponent(taskKey)}/comments`, { text: words.join(' '), ...(v.at && { at: v.at }) });
+      return out(comment, `commented on ${taskKey.toUpperCase()}  ${comment.id}`);
     }
     case 'projects': {
       const { projects } = await api('GET', `/api/projects${v.archived ? '?archived=1' : ''}`);

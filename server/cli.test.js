@@ -196,3 +196,19 @@ test("--completed sets a done task's completion date and none clears it", async 
   t = JSON.parse((await run(['show', 'GR-1', '--json'])).stdout);
   assert.equal(t.completedAt, null);
 });
+
+test('comment adds, comments lists, comment rm deletes', async () => {
+  await run(['add', 'host']);
+  const add = await run(['comment', 'GR-1', 'looks', 'good', '--at', '2026-07-12']);
+  assert.equal(add.code, 0, add.stderr);
+  assert.match(add.stdout, /commented on GR-1/);
+  await run(['comment', 'GR-1', 'ship it']);
+  const list = await run(['comments', 'GR-1']);
+  assert.match(list.stdout, /2026-07-12 00:00 +\w+\nlooks good/);
+  assert.match(list.stdout, /ship it/);
+  const id = JSON.parse((await run(['comments', 'GR-1', '--json'])).stdout)[0].id;
+  assert.equal((await run(['comment', 'rm', 'GR-1', id])).code, 0);
+  assert.doesNotMatch((await run(['comments', 'GR-1'])).stdout, /looks good/);
+  assert.notEqual((await run(['comment', 'GR-1'])).code, 0);
+  assert.match((await run(['comments', 'GR-9'])).stderr, /no task GR-9/);
+});
