@@ -2,16 +2,17 @@
 /* gr8r: manage tasks on the sync server from the shell. See `gr8r help`. */
 import { parseArgs } from 'node:util';
 
+const TOKEN = process.env.GR8R_TOKEN;
 const BASE = (process.env.GR8R_URL || 'http://127.0.0.1:8787').replace(/\/$/, '');
 /* A host that silently drops packets would otherwise hang the CLI forever. */
 const TIMEOUT_MS = Number(process.env.GR8R_TIMEOUT_MS) || 10000;
-const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http://127.0.0.1:8787)
+const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http://127.0.0.1:8787; token: $GR8R_TOKEN)
 
   list [--status S] [--priority P] [--project KEY] [--cycle current|none|DATE] [--query TEXT] [--archived]
   show KEY
   add TITLE [--project KEY] [--status S] [--priority P] [--due DATE] [--start DATE] [--cycle current|DATE]
             [--label L ...] [--desc TEXT] [--estimate E]
-  set KEY [--title T] [--status S] [--priority P] [--due DATE|none] [--start DATE|none] [--cycle current|DATE|none]
+  set KEY [--title T] [--project KEY] [--status S] [--priority P] [--due DATE|none] [--start DATE|none] [--cycle current|DATE|none]
           [--label L ... | --label none] [--desc TEXT] [--estimate E|none]
   done KEY            mark complete
   rm KEY              archive (restore it from the app's Archive page)
@@ -61,7 +62,7 @@ async function api(method, route, body) {
   try {
     res = await fetch(BASE + route, {
       method,
-      headers: body ? { 'content-type': 'application/json' } : {},
+      headers: { ...(body && { 'content-type': 'application/json' }), ...(TOKEN && { authorization: `Bearer ${TOKEN}` }) },
       body: body && JSON.stringify(body),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -142,7 +143,7 @@ async function main(argv) {
       return out(task, `created ${task.key}  ${task.title}`);
     }
     case 'set': {
-      const body = fields(v, ['title', 'status', 'priority', 'due', 'start', 'cycle', 'desc', 'estimate']);
+      const body = fields(v, ['title', 'project', 'status', 'priority', 'due', 'start', 'cycle', 'desc', 'estimate']);
       const { task } = await api('PATCH', `/api/tasks/${key()}`, body);
       return out(task, `updated ${task.key}  ${task.status}  ${task.title}`);
     }

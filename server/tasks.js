@@ -14,7 +14,7 @@ export const bad = msg => new ApiError(400, msg);
 
 const STATUS_NAMES = { backlog: 'Backlog', todo: 'To Do', progress: 'In Progress', review: 'Review', done: 'Done' };
 const prioName = (data, id) => scaleOf(data).find(p => p.id === id)?.name;
-const EDITABLE = ['title', 'desc', 'status', 'priority', 'due', 'start', 'labels', 'assignee', 'cycle', 'estimate'];
+const EDITABLE = ['title', 'desc', 'status', 'priority', 'due', 'start', 'labels', 'assignee', 'cycle', 'estimate', 'project'];
 
 export const rand = () => Math.random().toString(36).slice(2, 8);
 const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -127,7 +127,7 @@ export function listTasks(data, prefs, query, today) {
 }
 
 export function createTask(data, prefs, today, input, now) {
-  const fields = clean(data, prefs, today, input, [...EDITABLE, 'project']);
+  const fields = clean(data, prefs, today, input, EDITABLE);
   if (!fields.title) throw bad('title is required');
   const p = fields.project ? data.projects.find(p => p.id === fields.project) : data.projects.find(p => !p.archived);
   if (!p) throw bad('no project to add the task to');
@@ -177,6 +177,12 @@ export function patchTask(data, prefs, today, key, input, now) {
         t.prevStatus = old;
         log(data, 'completed', t, '', now);
       } else log(data, 'moved', t, `from ${STATUS_NAMES[old]} to ${STATUS_NAMES[nv]}`, now);
+    } else if (k === 'project') {
+      // Like the app: re-key from the target project's counter, so the old key stops resolving.
+      const p = data.projects.find(p => p.id === nv);
+      p.seq = (p.seq ?? 200) + 1;
+      t.key = `${p.key}-${p.seq}`;
+      log(data, 'moved', t, `to ${p.name}`, now);
     } else if (k === 'assignee') log(data, 'assigned', t, nv ? `to ${data.members.find(m => m.id === nv).name}` : '(unassigned)', now);
     else if (k === 'priority') log(data, 'changed priority of', t, `to ${prioName(data, nv)}`, now);
     else if (k === 'due') log(data, 'changed due date of', t, nv ? `to ${nv}` : '(cleared)', now);

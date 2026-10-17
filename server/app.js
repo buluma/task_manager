@@ -1,6 +1,7 @@
 /* Personal sync server: stores the whole app state as one JSON file and serves the built app.
    Revision numbers stop a stale tab or device from silently overwriting newer data. */
 import http from 'node:http';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patchTask } from './tasks.js';
@@ -18,8 +19,18 @@ const TYPES = {
   '.woff2': 'font/woff2',
 };
 
-export function createApp({ dataFile, distDir, now = () => new Date() }) {
+/* `token` (GR8R_TOKEN) guards the task, project and priority APIs. /api/rev and /api/state stay open because
+   the browser app syncs through them without credentials, so the token stops casual API use, not a determined
+   write to the whole state; keep the server on a private interface. */
+export function createApp({ dataFile, distDir, now = () => new Date(), token }) {
   let current = readStored(dataFile);
+  const digest = s => crypto.createHash('sha256').update(s).digest();
+  const expected = token ? digest(`Bearer ${token}`) : null;
+  function authorize(req, res) {
+    if (!expected || crypto.timingSafeEqual(digest(req.headers.authorization || ''), expected)) return;
+    res.setHeader('www-authenticate', 'Bearer realm="gr8r"');
+    throw new ApiError(401, 'unauthorized: send "Authorization: Bearer <token>" (the CLI reads GR8R_TOKEN)');
+  }
 
   const json = (res, status, body) => {
     res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
@@ -100,6 +111,7 @@ export function createApp({ dataFile, distDir, now = () => new Date() }) {
       allow('GET');
       return json(res, 200, { rev: current?.rev ?? 0 });
     }
+    authorize(req, res);
     if (what === 'projects' && parts.length === 1) {
       allow('GET', 'POST');
       if (method === 'GET') return json(res, 200, { projects: listProjects(needState().data, url.searchParams) });
