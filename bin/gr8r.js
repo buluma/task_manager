@@ -50,7 +50,7 @@ async function api(method, route, body) {
     });
   } catch (e) {
     if (e.name === 'TimeoutError') throw new CliError(`${BASE} did not answer within ${TIMEOUT_MS / 1000}s. Check GR8R_URL and that the server is running`);
-    throw new CliError(`cannot reach ${BASE} (${e.cause?.code || e.message}). Set GR8R_URL to the server, e.g. http://100.x.y.z:8787`);
+    throw new CliError(`cannot reach ${BASE} (${e.cause?.code || e.cause?.message || e.message}). Set GR8R_URL to the server, e.g. http://100.x.y.z:8787`);
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new CliError(data.error || `server answered ${res.status}`);

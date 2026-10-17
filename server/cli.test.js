@@ -97,6 +97,7 @@ test('an unreachable server explains how to point the CLI at it', async () => {
   const r = await run(['list'], { GR8R_URL: 'http://127.0.0.1:1' });
   assert.notEqual(r.code, 0);
   assert.match(r.stderr, /GR8R_URL/);
+  assert.match(r.stderr, /bad port/);
 });
 
 test('a server that never answers times out instead of hanging', async () => {
