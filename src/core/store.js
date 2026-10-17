@@ -1,6 +1,6 @@
 /* ---------- store ---------- */
 import { TODAY, diffD, iso, parse, uid } from './utils.js';
-import { PCOLORS, TEAMS_SEED } from './constants.js';
+import { PCOLORS, TEAMS_SEED, applyPriorities } from './constants.js';
 import { emptyWorkspace } from '../data/seed.js';
 import { pull, push, syncing } from './sync.js';
 import { cycleStart } from './cycles.js';
@@ -86,6 +86,7 @@ export const S = {
     drafts: {},
   },
 };
+applyPriorities(S.data.priorities);
 const snapshot = () => ({ data: S.data, prefs: S.prefs, views: S.views, collapsed: S.ui.collapsed });
 export function cache() {
   try {

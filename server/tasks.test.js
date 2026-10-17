@@ -203,3 +203,13 @@ test('cross-origin task writes are refused and unknown routes are 404/405', asyn
   assert.equal((await call('GET', '/api/nope')).status, 404);
   assert.equal((await call('PUT', '/api/tasks', { title: 'x' })).status, 405);
 });
+
+test('inherited object keys are not valid statuses or priorities', async () => {
+  for (const bad of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+    assert.equal((await post({ title: 'x', status: bad })).status, 400, bad);
+    assert.equal((await post({ title: 'x', priority: bad })).status, 400, bad);
+    assert.equal((await call('GET', `/api/tasks?status=${bad}`)).status, 400, bad);
+    assert.equal((await call('GET', `/api/tasks?priority=${bad}`)).status, 400, bad);
+  }
+  assert.equal(stored().rev, 1);
+});

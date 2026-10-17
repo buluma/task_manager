@@ -3,7 +3,9 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ApiError, archiveTask, createTask, findTask, listProjects, listTasks, localIso, patchTask } from './tasks.js';
+import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patchTask } from './tasks.js';
+import { archiveProject, createProject, findProject, listProjects, patchProject } from './projects.js';
+import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
 
 const MAX_BODY = 10 * 1024 * 1024;
 const TYPES = {
@@ -99,8 +101,32 @@ export function createApp({ dataFile, distDir, now = () => new Date() }) {
       return json(res, 200, { rev: current?.rev ?? 0 });
     }
     if (what === 'projects' && parts.length === 1) {
-      allow('GET');
-      return json(res, 200, { projects: listProjects(needState().data) });
+      allow('GET', 'POST');
+      if (method === 'GET') return json(res, 200, { projects: listProjects(needState().data, url.searchParams) });
+      const body = await readJson(req, 'project');
+      return json(res, 201, { project: mutate((d, p, today, t) => createProject(d, today, body, t)) });
+    }
+    if (what === 'projects' && parts.length === 2) {
+      allow('GET', 'PATCH', 'DELETE');
+      if (method === 'GET') return json(res, 200, { project: findProject(needState().data, key) });
+      if (method === 'DELETE') return json(res, 200, { project: mutate((d, p, today, t) => archiveProject(d, key, t)) });
+      const body = await readJson(req, 'project');
+      return json(res, 200, { project: mutate((d, p, today, t) => patchProject(d, key, body, t)) });
+    }
+    if (what === 'priorities' && parts.length === 1) {
+      allow('GET', 'POST');
+      if (method === 'GET') return json(res, 200, { priorities: listPriorities(needState().data) });
+      const body = await readJson(req, 'priority');
+      return json(res, 201, { priority: mutate(d => addPriority(d, body)) });
+    }
+    if (what === 'priorities' && parts.length === 2) {
+      allow('PATCH', 'DELETE');
+      if (method === 'DELETE') {
+        const replace = url.searchParams.get('replace') ?? undefined;
+        return json(res, 200, { moved: mutate((d, p, today, t) => deletePriority(d, key, replace, t)) });
+      }
+      const body = await readJson(req, 'priority');
+      return json(res, 200, { priority: mutate(d => patchPriority(d, key, body)) });
     }
     if (what === 'tasks' && parts.length === 1) {
       allow('GET', 'POST');

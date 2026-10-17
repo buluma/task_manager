@@ -15,9 +15,18 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
           [--label L ... | --label none] [--desc TEXT] [--estimate E|none]
   done KEY            mark complete
   rm KEY              archive (restore it from the app's Archive page)
-  projects
+  projects [--archived]
+  project show KEY
+  project add NAME [--key KEY] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE] [--lead MEMBER]
+  project set KEY [--name N] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE|none] [--lead MEMBER]
+  project rm KEY      archive          project restore KEY    bring it back
+  priorities
+  priority add NAME --weight 1-99 [--id ID]
+  priority set ID [--name N] [--weight 1-99]
+  priority rm ID [--replace ID]    tasks on it move to ID (default none)
 
-  status: backlog todo progress review done     priority: urgent high medium low none
+  status: backlog todo progress review done     priority: see \`gr8r priorities\` (default urgent high medium low none)
+  project status: planning active risk hold complete
   Add --json to any command for machine-readable output.`;
 
 const OPTIONS = {
@@ -33,6 +42,14 @@ const OPTIONS = {
   label: { type: 'string', multiple: true },
   desc: { type: 'string' },
   estimate: { type: 'string' },
+  name: { type: 'string' },
+  key: { type: 'string' },
+  color: { type: 'string' },
+  icon: { type: 'string' },
+  lead: { type: 'string' },
+  weight: { type: 'string' },
+  id: { type: 'string' },
+  replace: { type: 'string' },
   json: { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
 };
@@ -71,6 +88,8 @@ const strip = html =>
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+const projectRow = p => `${p.key.padEnd(8)} ${p.name}${p.archived ? '  [archived]' : ''}`;
+const prioRow = p => `${p.id.padEnd(10)} ${String(p.w).padEnd(3)} ${p.name.padEnd(12)} ${p.tasks} task${p.tasks === 1 ? '' : 's'}`;
 const row = t =>
   `${t.key.padEnd(8)} ${t.status.padEnd(9)} ${t.priority.padEnd(7)} ${t.title}${t.cycle ? `  [cycle ${t.cycle}]` : ''}${t.archived ? '  [archived]' : ''}`;
 function detail(t) {
@@ -136,8 +155,70 @@ async function main(argv) {
       return out(task, `archived ${task.key}  ${task.title}`);
     }
     case 'projects': {
-      const { projects } = await api('GET', '/api/projects');
-      return out(projects, projects.map(p => `${p.key.padEnd(8)} ${p.name}`).join('\n'));
+      const { projects } = await api('GET', `/api/projects${v.archived ? '?archived=1' : ''}`);
+      return out(projects, projects.map(projectRow).join('\n'));
+    }
+    case 'project': {
+      const [sub, ...args] = rest;
+      const one = () => {
+        if (args.length !== 1) throw new CliError(`project ${sub} needs exactly one project key`);
+        return encodeURIComponent(args[0]);
+      };
+      const body = () => fields(v, ['name', 'desc', 'status', 'color', 'icon', 'due', 'lead']);
+      switch (sub) {
+        case 'show': {
+          const { project } = await api('GET', `/api/projects/${one()}`);
+          return out(project, [projectRow(project), project.desc && `\n${project.desc}`].filter(Boolean).join('\n'));
+        }
+        case 'add': {
+          if (!args.length) throw new CliError('project add needs a name');
+          const { project } = await api('POST', '/api/projects', { name: args.join(' '), ...(v.key && { key: v.key }), ...body() });
+          return out(project, `created ${project.key}  ${project.name}`);
+        }
+        case 'set': {
+          const { project } = await api('PATCH', `/api/projects/${one()}`, { ...(v.key && { key: v.key }), ...body() });
+          return out(project, `updated ${project.key}  ${project.name}`);
+        }
+        case 'rm': {
+          const { project } = await api('DELETE', `/api/projects/${one()}`);
+          return out(project, `archived ${project.key}  ${project.name}`);
+        }
+        case 'restore': {
+          const { project } = await api('PATCH', `/api/projects/${one()}`, { archived: false });
+          return out(project, `restored ${project.key}  ${project.name}`);
+        }
+        default:
+          throw new CliError(`unknown project command: ${sub ?? '(none)'}\n\n${HELP}`);
+      }
+    }
+    case 'priorities': {
+      const { priorities } = await api('GET', '/api/priorities');
+      return out(priorities, priorities.map(prioRow).join('\n'));
+    }
+    case 'priority': {
+      const [sub, ...args] = rest;
+      const weight = v.weight === undefined ? {} : { w: Number(v.weight) };
+      const one = () => {
+        if (args.length !== 1) throw new CliError(`priority ${sub} needs exactly one priority id`);
+        return encodeURIComponent(args[0]);
+      };
+      switch (sub) {
+        case 'add': {
+          if (!args.length) throw new CliError('priority add needs a name');
+          const { priority } = await api('POST', '/api/priorities', { name: args.join(' '), ...(v.id && { id: v.id }), ...weight });
+          return out(priority, `created ${priority.id}  ${priority.w}  ${priority.name}`);
+        }
+        case 'set': {
+          const { priority } = await api('PATCH', `/api/priorities/${one()}`, { ...(v.name && { name: v.name }), ...weight });
+          return out(priority, `updated ${priority.id}  ${priority.w}  ${priority.name}`);
+        }
+        case 'rm': {
+          const { moved } = await api('DELETE', `/api/priorities/${one()}${v.replace ? `?replace=${encodeURIComponent(v.replace)}` : ''}`);
+          return out({ moved }, `deleted ${args[0]}, moved ${moved} task${moved === 1 ? '' : 's'} to ${v.replace || 'none'}`);
+        }
+        default:
+          throw new CliError(`unknown priority command: ${sub ?? '(none)'}\n\n${HELP}`);
+      }
     }
     default:
       throw new CliError(`unknown command: ${cmd}\n\n${HELP}`);
