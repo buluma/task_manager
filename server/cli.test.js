@@ -212,3 +212,12 @@ test('comment adds, comments lists, comment rm deletes', async () => {
   assert.notEqual((await run(['comment', 'GR-1'])).code, 0);
   assert.match((await run(['comments', 'GR-9'])).stderr, /no task GR-9/);
 });
+
+test('--recur sets the repeat and completing a due task prints the next one', async () => {
+  await run(['add', 'standup', '--due', '2026-10-19', '--recur', 'Weekly']);
+  const done = await run(['done', 'GR-1']);
+  assert.equal(done.code, 0, done.stderr);
+  assert.match(done.stdout, /next GR-2.*2026-10-26/);
+  assert.equal((await run(['set', 'GR-2', '--recur', 'none'])).code, 0);
+  assert.equal(JSON.parse((await run(['show', 'GR-2', '--json'])).stdout).recur, null);
+});

@@ -15,8 +15,9 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   show KEY
   add TITLE [--project KEY] [--status S] [--priority P] [--due DATE] [--start DATE] [--cycle current|DATE]
             [--label L ...] [--desc TEXT] [--estimate E] [--completed DATE (done tasks)]
+            [--recur Daily|Weekly|"Every 2 weeks"|Monthly]
   set KEY [--title T] [--project KEY] [--status S] [--priority P] [--due DATE|none] [--start DATE|none] [--cycle current|DATE|none]
-          [--label L ... | --label none] [--desc TEXT] [--estimate E|none] [--completed DATE|none]
+          [--label L ... | --label none] [--desc TEXT] [--estimate E|none] [--completed DATE|none] [--recur ...|none]
   done KEY            mark complete
   rm KEY              archive (restore it from the app's Archive page)
   rm KEY --purge      delete an archived task for good
@@ -53,6 +54,7 @@ const OPTIONS = {
   desc: { type: 'string' },
   estimate: { type: 'string' },
   completed: { type: 'string' },
+  recur: { type: 'string' },
   at: { type: 'string' },
   name: { type: 'string' },
   key: { type: 'string' },
@@ -87,7 +89,7 @@ async function api(method, route, body) {
 }
 
 /* "none" clears the fields that can be empty; for priority it is a real value. */
-const CLEARABLE = ['due', 'start', 'cycle', 'estimate', 'completed'];
+const CLEARABLE = ['due', 'start', 'cycle', 'estimate', 'completed', 'recur'];
 function fields(v, keys) {
   const out = {};
   for (const k of keys) if (v[k] !== undefined) out[k] = CLEARABLE.includes(k) && v[k] === 'none' ? null : v[k];
@@ -158,18 +160,21 @@ async function main(argv) {
     }
     case 'add': {
       if (rest.length < 1) throw new CliError('add needs a title');
-      const body = { title: rest.join(' '), ...fields(v, ['project', 'status', 'priority', 'due', 'start', 'cycle', 'desc', 'estimate', 'completed']) };
+      const body = {
+        title: rest.join(' '),
+        ...fields(v, ['project', 'status', 'priority', 'due', 'start', 'cycle', 'desc', 'estimate', 'completed', 'recur']),
+      };
       const { task } = await api('POST', '/api/tasks', body);
       return out(task, `created ${task.key}  ${task.title}`);
     }
     case 'set': {
-      const body = fields(v, ['title', 'project', 'status', 'priority', 'due', 'start', 'cycle', 'desc', 'estimate', 'completed']);
+      const body = fields(v, ['title', 'project', 'status', 'priority', 'due', 'start', 'cycle', 'desc', 'estimate', 'completed', 'recur']);
       const { task } = await api('PATCH', `/api/tasks/${key()}`, body);
       return out(task, `updated ${task.key}  ${task.status}  ${task.title}`);
     }
     case 'done': {
-      const { task } = await api('PATCH', `/api/tasks/${key()}`, { status: 'done' });
-      return out(task, `done ${task.key}  ${task.title}`);
+      const { task, next } = await api('PATCH', `/api/tasks/${key()}`, { status: 'done' });
+      return out(task, `done ${task.key}  ${task.title}${next ? `\nnext ${next.key}  due ${next.due}` : ''}`);
     }
     case 'rm': {
       const { task } = await api('DELETE', `/api/tasks/${key()}${v.purge ? '?purge=1' : ''}`);

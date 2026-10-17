@@ -106,7 +106,7 @@ GR8R_HOST=$(tailscale ip -4) npm start     # http://<tailnet-ip>:8787, data in ~
 
 The priority scale lives in the workspace state, so levels added through the API show up in the app's pickers, filters and grouping within a few seconds. Edit the scale in the app under Settings → Priorities, or through the API. The `urgent` level keeps its special icon and the other levels spread over one to three bars by rank.
 
-Recurring tasks are not spawned when a task is completed through the API; the app does that only in the browser.
+Completing a repeating task (`recur`: Daily, Weekly, Every 2 weeks or Monthly) that has a due date schedules the next occurrence, as in the app; the response carries it as `next`.
 
 The CLI wraps the same API. Point it at the server with `GR8R_URL`, and use `npm link` to get a `gr8r` command. Requests give up after 10 seconds; set `GR8R_TIMEOUT_MS` to change that.
 

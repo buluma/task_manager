@@ -176,7 +176,8 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
         return json(res, 200, { task: mutate((d, p, today, t) => archiveTask(d, key, t)) });
       }
       const body = await readJson(req, 'task');
-      return json(res, 200, { task: mutate((d, p, today, t) => patchTask(d, p, today, key, body, t)) });
+      const { task, next } = mutate((d, p, today, t) => patchTask(d, p, today, key, body, t));
+      return json(res, 200, next ? { task, next } : { task });
     }
     throw new ApiError(404, 'not found');
   }

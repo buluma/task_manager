@@ -306,3 +306,53 @@ test('completed sets or clears the completion date of a done task, and only of a
   const back = await call('PATCH', '/api/tasks/GR-1', { status: 'done' });
   assert.ok(back.body.task.completedAt >= NOW.getTime(), 'completing without a date still stamps now');
 });
+
+test('recur is validated; completing a repeating task with a due date schedules the next one, like the app', async () => {
+  await post({ title: 'standup', due: '2026-10-19', recur: 'Weekly', labels: ['ops'], priority: 'high' });
+  assert.equal((await post({ title: 'x', recur: 'Hourly' })).status, 400);
+  assert.equal((await call('PATCH', '/api/tasks/GR-1', { recur: 'Fortnightly' })).status, 400);
+  const s = stored();
+  s.state.data.tasks[0].subtasks = [{ id: 's1', title: 'agenda', done: true }];
+  fs.writeFileSync(dataFile, JSON.stringify(s));
+  await server.close();
+  server = createApp({ dataFile, distDir: dir, now: () => NOW });
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  base = `http://127.0.0.1:${server.address().port}`;
+
+  const r = await call('PATCH', '/api/tasks/GR-1', { status: 'done' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.task.status, 'done');
+  const n = r.body.next;
+  assert.deepEqual(
+    [n.key, n.title, n.status, n.due, n.start, n.recur, n.priority, n.labels],
+    ['GR-2', 'standup', 'todo', '2026-10-26', '2026-10-26', 'Weekly', 'high', ['ops']],
+  );
+  assert.deepEqual(n.subtasks, [{ id: 's1', title: 'agenda', done: false }]);
+  assert.equal(n.completedAt, undefined);
+  assert.notEqual(n.id, r.body.task.id);
+  const d = stored().state.data;
+  assert.equal(d.tasks.length, 2);
+  assert.equal(d.projects[0].seq, 2);
+  assert.equal(d.activity[0].verb, 'created');
+
+  assert.equal((await call('PATCH', '/api/tasks/GR-1', { status: 'done' })).body.next, undefined, 'no second spawn for an unchanged status');
+});
+
+test('completing a task without a repeat, or without a due date, schedules nothing', async () => {
+  await post({ title: 'plain', due: '2026-10-19' });
+  await post({ title: 'no due', recur: 'Daily' });
+  assert.equal((await call('PATCH', '/api/tasks/GR-1', { status: 'done' })).body.next, undefined);
+  assert.equal((await call('PATCH', '/api/tasks/GR-2', { status: 'done' })).body.next, undefined);
+  assert.equal(stored().state.data.tasks.length, 2);
+});
+
+test("each repeat length moves the due date by the app's number of days", async () => {
+  const days = { Daily: '2026-10-20', Weekly: '2026-10-26', 'Every 2 weeks': '2026-11-02', Monthly: '2026-11-18' };
+  let n = 0;
+  for (const [recur, expected] of Object.entries(days)) {
+    await post({ title: recur, due: '2026-10-19', recur });
+    const r = await call('PATCH', `/api/tasks/GR-${++n}`, { status: 'done' });
+    assert.equal(r.body.next.due, expected, recur);
+    n++;
+  }
+});
