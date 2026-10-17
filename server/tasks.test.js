@@ -246,3 +246,127 @@ test('desc is plain text: escaped, blank lines split paragraphs, single newlines
   assert.equal(crlf.body.task.desc, '<p>a</p><p>b</p>');
   assert.equal((await call('PATCH', '/api/tasks/GR-2', { desc: '   ' })).body.task.desc, '');
 });
+
+test('DELETE ?purge=1 permanently removes an archived task, its comments and dependency links', async () => {
+  await post({ title: 'keep' });
+  await post({ title: 'doomed' });
+  const s = stored();
+  s.state.data.tasks[0].deps = [s.state.data.tasks[1].id];
+  s.state.data.comments = [
+    { id: 'c1', task: s.state.data.tasks[1].id, text: 'bye' },
+    { id: 'c2', task: s.state.data.tasks[0].id, text: 'stay' },
+  ];
+  fs.writeFileSync(dataFile, JSON.stringify(s));
+  await server.close();
+  server = createApp({ dataFile, distDir: dir, now: () => NOW });
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  base = `http://127.0.0.1:${server.address().port}`;
+
+  const early = await call('DELETE', '/api/tasks/GR-2?purge=1');
+  assert.equal(early.status, 409, 'must be archived first');
+  assert.match(early.body.error, /archive/i);
+  assert.equal((await call('DELETE', '/api/tasks/GR-2')).status, 200);
+  const r = await call('DELETE', '/api/tasks/GR-2?purge=1');
+  assert.equal(r.status, 200);
+  assert.equal(r.body.task.key, 'GR-2');
+  const d = stored().state.data;
+  assert.deepEqual(
+    d.tasks.map(t => t.key),
+    ['GR-1'],
+  );
+  assert.deepEqual(d.tasks[0].deps, []);
+  assert.deepEqual(
+    d.comments.map(c => c.id),
+    ['c2'],
+  );
+  assert.equal((await call('GET', '/api/tasks/GR-2')).status, 404);
+  assert.equal((await call('DELETE', '/api/tasks/GR-2?purge=1')).status, 404);
+});
+
+test('completed sets or clears the completion date of a done task, and only of a done task', async () => {
+  const t = (await post({ title: 'old news', status: 'done', completed: '2026-07-12' })).body.task;
+  assert.equal(t.completedAt, new Date(2026, 6, 12, 12, 0, 0).getTime());
+  assert.equal(t.completed, undefined, 'the input field is not stored');
+  const moved = await call('PATCH', '/api/tasks/GR-1', { completed: '2026-07-13' });
+  assert.equal(moved.body.task.completedAt, new Date(2026, 6, 13, 12, 0, 0).getTime());
+  assert.equal((await call('PATCH', '/api/tasks/GR-1', { completed: null })).body.task.completedAt, null);
+
+  await post({ title: 'open' });
+  const notDone = await call('PATCH', '/api/tasks/GR-2', { completed: '2026-07-12' });
+  assert.equal(notDone.status, 400);
+  assert.match(notDone.body.error, /done/);
+  assert.equal((await post({ title: 'x', completed: '2026-07-12' })).status, 400);
+  assert.equal((await call('PATCH', '/api/tasks/GR-2', { completed: '2026-02-30' })).status, 400);
+  assert.equal((await call('PATCH', '/api/tasks/GR-2', { completed: 'yesterday' })).status, 400);
+
+  const both = await call('PATCH', '/api/tasks/GR-2', { status: 'done', completed: '2026-06-01' });
+  assert.equal(both.body.task.completedAt, new Date(2026, 5, 1, 12, 0, 0).getTime(), 'the given date wins over now');
+  const plain = await call('PATCH', '/api/tasks/GR-1', { status: 'progress' });
+  assert.equal(plain.status, 200);
+  const back = await call('PATCH', '/api/tasks/GR-1', { status: 'done' });
+  assert.ok(back.body.task.completedAt >= NOW.getTime(), 'completing without a date still stamps now');
+});
+
+test('recur is validated; completing a repeating task with a due date schedules the next one, like the app', async () => {
+  await post({ title: 'standup', due: '2026-10-19', recur: 'Weekly', labels: ['ops'], priority: 'high' });
+  assert.equal((await post({ title: 'x', recur: 'Hourly' })).status, 400);
+  assert.equal((await call('PATCH', '/api/tasks/GR-1', { recur: 'Fortnightly' })).status, 400);
+  const s = stored();
+  s.state.data.tasks[0].subtasks = [{ id: 's1', title: 'agenda', done: true }];
+  fs.writeFileSync(dataFile, JSON.stringify(s));
+  await server.close();
+  server = createApp({ dataFile, distDir: dir, now: () => NOW });
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  base = `http://127.0.0.1:${server.address().port}`;
+
+  const r = await call('PATCH', '/api/tasks/GR-1', { status: 'done' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.task.status, 'done');
+  const n = r.body.next;
+  assert.deepEqual(
+    [n.key, n.title, n.status, n.due, n.start, n.recur, n.priority, n.labels],
+    ['GR-2', 'standup', 'todo', '2026-10-26', '2026-10-26', 'Weekly', 'high', ['ops']],
+  );
+  assert.deepEqual(n.subtasks, [{ id: 's1', title: 'agenda', done: false }]);
+  assert.equal(n.completedAt, undefined);
+  assert.notEqual(n.id, r.body.task.id);
+  const d = stored().state.data;
+  assert.equal(d.tasks.length, 2);
+  assert.equal(d.projects[0].seq, 2);
+  assert.equal(d.activity[0].verb, 'created');
+
+  assert.equal((await call('PATCH', '/api/tasks/GR-1', { status: 'done' })).body.next, undefined, 'no second spawn for an unchanged status');
+});
+
+test('completing a task without a repeat, or without a due date, schedules nothing', async () => {
+  await post({ title: 'plain', due: '2026-10-19' });
+  await post({ title: 'no due', recur: 'Daily' });
+  assert.equal((await call('PATCH', '/api/tasks/GR-1', { status: 'done' })).body.next, undefined);
+  assert.equal((await call('PATCH', '/api/tasks/GR-2', { status: 'done' })).body.next, undefined);
+  assert.equal(stored().state.data.tasks.length, 2);
+});
+
+test("each repeat length moves the due date by the app's number of days", async () => {
+  const days = { Daily: '2026-10-20', Weekly: '2026-10-26', 'Every 2 weeks': '2026-11-02', Monthly: '2026-11-18' };
+  let n = 0;
+  for (const [recur, expected] of Object.entries(days)) {
+    await post({ title: recur, due: '2026-10-19', recur });
+    const r = await call('PATCH', `/api/tasks/GR-${++n}`, { status: 'done' });
+    assert.equal(r.body.next.due, expected, recur);
+    n++;
+  }
+});
+
+test('descFormat "markdown" renders the description as safe HTML; the default stays plain text', async () => {
+  const md = await post({ title: 'md', desc: '## Plan\n\n* **one**\n* `two`\n\n<script>x</script>', descFormat: 'markdown' });
+  assert.equal(md.status, 201);
+  assert.equal(md.body.task.desc, '<h4>Plan</h4><ul><li><b>one</b></li><li><code>two</code></li></ul><p>&lt;script&gt;x&lt;/script&gt;</p>');
+  assert.equal(md.body.task.descFormat, undefined, 'the format is an input, not stored');
+  const plain = await post({ title: 'plain', desc: '## Plan\n* not a list' });
+  assert.equal(plain.body.task.desc, '<p>## Plan<br>* not a list</p>');
+  const patched = await call('PATCH', '/api/tasks/GR-2', { desc: '**now bold**', descFormat: 'markdown' });
+  assert.equal(patched.body.task.desc, '<p><b>now bold</b></p>');
+  assert.equal((await call('PATCH', '/api/tasks/GR-2', { desc: '   ', descFormat: 'markdown' })).body.task.desc, '');
+  assert.equal((await post({ title: 'x', desc: 'a', descFormat: 'html' })).status, 400);
+  assert.equal((await post({ title: 'x', descFormat: 'markdown' })).status, 400, 'a format without a description');
+});

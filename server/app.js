@@ -4,8 +4,10 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patchTask } from './tasks.js';
-import { archiveProject, createProject, findProject, listProjects, patchProject } from './projects.js';
+import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patchTask, purgeTask } from './tasks.js';
+import { archiveProject, createProject, findProject, listProjects, patchProject, purgeProject } from './projects.js';
+import { addDep, addSubtask, deleteSubtask, listDeps, patchSubtask, removeDep } from './relations.js';
+import { addComment, deleteComment, listComments } from './comments.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
 
 const MAX_BODY = 10 * 1024 * 1024;
@@ -121,7 +123,15 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
     if (what === 'projects' && parts.length === 2) {
       allow('GET', 'PATCH', 'DELETE');
       if (method === 'GET') return json(res, 200, { project: findProject(needState().data, key) });
-      if (method === 'DELETE') return json(res, 200, { project: mutate((d, p, today, t) => archiveProject(d, key, t)) });
+      if (method === 'DELETE') {
+        if (url.searchParams.get('purge'))
+          return json(
+            res,
+            200,
+            mutate(d => purgeProject(d, key)),
+          );
+        return json(res, 200, { project: mutate((d, p, today, t) => archiveProject(d, key, t)) });
+      }
       const body = await readJson(req, 'project');
       return json(res, 200, { project: mutate((d, p, today, t) => patchProject(d, key, body, t)) });
     }
@@ -149,12 +159,47 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
       const body = await readJson(req, 'task');
       return json(res, 201, { task: mutate((d, p, today, t) => createTask(d, p, today, body, t)) });
     }
+    if (what === 'tasks' && parts[2] === 'subtasks' && parts.length === 3) {
+      allow('POST');
+      const body = await readJson(req, 'subtask');
+      return json(res, 201, { subtask: mutate((d, p, today, t) => addSubtask(d, key, body, t)) });
+    }
+    if (what === 'tasks' && parts[2] === 'subtasks' && parts.length === 4) {
+      allow('PATCH', 'DELETE');
+      if (method === 'DELETE') return json(res, 200, { subtask: mutate((d, p, today, t) => deleteSubtask(d, key, parts[3], t)) });
+      const body = await readJson(req, 'subtask');
+      return json(res, 200, { subtask: mutate((d, p, today, t) => patchSubtask(d, key, parts[3], body, t)) });
+    }
+    if (what === 'tasks' && parts[2] === 'deps' && parts.length === 3) {
+      allow('GET', 'POST');
+      if (method === 'GET') return json(res, 200, { deps: listDeps(needState().data, key) });
+      const body = await readJson(req, 'dependency');
+      return json(res, 201, { deps: mutate((d, p, today, t) => addDep(d, key, body, t)) });
+    }
+    if (what === 'tasks' && parts[2] === 'deps' && parts.length === 4) {
+      allow('DELETE');
+      return json(res, 200, { deps: mutate((d, p, today, t) => removeDep(d, key, parts[3], t)) });
+    }
+    if (what === 'tasks' && parts[2] === 'comments' && parts.length === 3) {
+      allow('GET', 'POST');
+      if (method === 'GET') return json(res, 200, { comments: listComments(needState().data, key) });
+      const body = await readJson(req, 'comment');
+      return json(res, 201, { comment: mutate((d, p, today, t) => addComment(d, key, body, t)) });
+    }
+    if (what === 'tasks' && parts[2] === 'comments' && parts.length === 4) {
+      allow('DELETE');
+      return json(res, 200, { comment: mutate(d => deleteComment(d, key, parts[3])) });
+    }
     if (what === 'tasks' && parts.length === 2) {
       allow('GET', 'PATCH', 'DELETE');
       if (method === 'GET') return json(res, 200, { task: findTask(needState().data, key) });
-      if (method === 'DELETE') return json(res, 200, { task: mutate((d, p, today, t) => archiveTask(d, key, t)) });
+      if (method === 'DELETE') {
+        if (url.searchParams.get('purge')) return json(res, 200, { task: mutate(d => purgeTask(d, key)) });
+        return json(res, 200, { task: mutate((d, p, today, t) => archiveTask(d, key, t)) });
+      }
       const body = await readJson(req, 'task');
-      return json(res, 200, { task: mutate((d, p, today, t) => patchTask(d, p, today, key, body, t)) });
+      const { task, next } = mutate((d, p, today, t) => patchTask(d, p, today, key, body, t));
+      return json(res, 200, next ? { task, next } : { task });
     }
     throw new ApiError(404, 'not found');
   }

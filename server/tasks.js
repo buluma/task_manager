@@ -3,6 +3,7 @@
    Every function validates before it mutates, so a rejected request leaves the state untouched. */
 import { cycleStart } from '../src/core/cycles.js';
 import { scaleOf } from '../src/core/priorities.js';
+import { markdownToHtml } from './markdown.js';
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -14,7 +15,24 @@ export const bad = msg => new ApiError(400, msg);
 
 const STATUS_NAMES = { backlog: 'Backlog', todo: 'To Do', progress: 'In Progress', review: 'Review', done: 'Done' };
 const prioName = (data, id) => scaleOf(data).find(p => p.id === id)?.name;
-const EDITABLE = ['title', 'desc', 'status', 'priority', 'due', 'start', 'labels', 'assignee', 'cycle', 'estimate', 'project'];
+/* Days between occurrences of a repeating task, as in the app (actions.js). */
+const RECUR_DAYS = { Daily: 1, Weekly: 7, 'Every 2 weeks': 14, Monthly: 30 };
+const EDITABLE = [
+  'title',
+  'desc',
+  'status',
+  'priority',
+  'due',
+  'start',
+  'labels',
+  'assignee',
+  'cycle',
+  'estimate',
+  'project',
+  'completed',
+  'recur',
+  'descFormat',
+];
 
 export const rand = () => Math.random().toString(36).slice(2, 8);
 const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -32,6 +50,18 @@ function projectOf(data, ref) {
   return data.projects.find(p => !p.archived && (p.id.toLowerCase() === r || p.key.toLowerCase() === r));
 }
 
+/* Descriptions are stored as small HTML, which the app shows as is. Plain text (the default) is escaped, blank
+   lines start paragraphs and single newlines break lines; "markdown" goes through markdown.js. */
+function renderDesc(text, format) {
+  if (!text.trim()) return '';
+  if (format === 'markdown') return markdownToHtml(text);
+  return text
+    .trim()
+    .split(/\r?\n(?:[ \t]*\r?\n)+/)
+    .map(para => `<p>${esc(para).replace(/\r?\n/g, '<br>')}</p>`)
+    .join('');
+}
+
 /* Checks the fields a caller may set and returns them in stored form. */
 function clean(data, prefs, today, input, allowed) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw bad('body must be a JSON object');
@@ -45,13 +75,11 @@ function clean(data, prefs, today, input, allowed) {
         break;
       case 'desc':
         if (typeof v !== 'string') throw bad('desc must be a string');
-        out.desc = !v.trim()
-          ? ''
-          : v
-              .trim()
-              .split(/\r?\n(?:[ \t]*\r?\n)+/)
-              .map(para => `<p>${esc(para).replace(/\r?\n/g, '<br>')}</p>`)
-              .join('');
+        out.desc = v; // rendered after the loop, once descFormat is known
+        break;
+      case 'descFormat':
+        if (v !== 'plain' && v !== 'markdown') throw bad('descFormat must be "plain" or "markdown"');
+        out.descFormat = v;
         break;
       case 'status':
         if (!Object.hasOwn(STATUS_NAMES, v)) throw bad(`status must be one of: ${Object.keys(STATUS_NAMES).join(', ')}`);
@@ -79,6 +107,14 @@ function clean(data, prefs, today, input, allowed) {
         if (v !== null && !data.members.some(m => m.id === v)) throw bad('assignee must be a member id or null');
         out.assignee = v;
         break;
+      case 'recur':
+        if (v !== null && !Object.hasOwn(RECUR_DAYS, v)) throw bad(`recur must be one of: ${Object.keys(RECUR_DAYS).join(', ')}, or null`);
+        out.recur = v;
+        break;
+      case 'completed':
+        if (v !== null && !isDate(v)) throw bad('completed must be YYYY-MM-DD or null');
+        out.completed = v;
+        break;
       case 'estimate':
         if (v !== null && typeof v !== 'string') throw bad('estimate must be a string or null');
         out.estimate = v;
@@ -97,8 +133,31 @@ function clean(data, prefs, today, input, allowed) {
       }
     }
   }
+  if (out.descFormat && !('desc' in out)) throw bad('descFormat needs a desc to format');
+  if ('desc' in out) out.desc = renderDesc(out.desc, out.descFormat);
+  delete out.descFormat;
   return out;
 }
+
+/* A completion date is stored as the app does, a timestamp; local noon keeps it on that day in any timezone. */
+const completedStamp = d => {
+  const [y, m, day] = d.split('-').map(Number);
+  return new Date(y, m - 1, day, 12, 0, 0).getTime();
+};
+const needDone = status => {
+  if (status !== 'done') throw bad('completed only applies to done tasks');
+};
+
+const addDays = (isoDate, n) => {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+};
+const newTaskId = data => {
+  let id;
+  do id = 't' + rand();
+  while (data.tasks.some(t => t.id === id));
+  return id;
+};
 
 function log(data, verb, t, extra, now) {
   data.activity.unshift({ id: 'a' + rand(), by: data.me, verb, task: t.id, project: t.project, at: now, extra });
@@ -133,14 +192,13 @@ export function listTasks(data, prefs, query, today) {
 }
 
 export function createTask(data, prefs, today, input, now) {
-  const fields = clean(data, prefs, today, input, EDITABLE);
+  const { completed, ...fields } = clean(data, prefs, today, input, EDITABLE);
   if (!fields.title) throw bad('title is required');
+  if (completed) needDone(fields.status);
   const p = fields.project ? data.projects.find(p => p.id === fields.project) : data.projects.find(p => !p.archived);
   if (!p) throw bad('no project to add the task to');
   p.seq = (p.seq ?? 200) + 1;
-  let id;
-  do id = 't' + rand();
-  while (data.tasks.some(t => t.id === id));
+  const id = newTaskId(data);
   const t = {
     status: 'backlog',
     assignee: data.me,
@@ -164,15 +222,44 @@ export function createTask(data, prefs, today, input, now) {
     updated: now,
     order: Math.max(0, ...data.tasks.map(x => x.order || 0)) + 1,
   };
+  if (completed) t.completedAt = completedStamp(completed);
   data.tasks.push(t);
   log(data, 'created', t, '', now);
   return t;
 }
 
+/* Like the app: completing a repeating task that has a due date schedules the next one, a copy that starts over. */
+function spawnNext(data, t, now) {
+  const p = data.projects.find(x => x.id === t.project);
+  const due = addDays(t.due, RECUR_DAYS[t.recur] || 7);
+  p.seq = (p.seq ?? 200) + 1;
+  const next = {
+    ...structuredClone(t),
+    id: newTaskId(data),
+    key: `${p.key}-${p.seq}`,
+    status: 'todo',
+    due,
+    start: due,
+    subtasks: (t.subtasks || []).map(s => ({ ...s, done: false })),
+    attachments: [],
+    created: now,
+    updated: now,
+    order: Math.max(0, ...data.tasks.map(x => x.order || 0)) + 1,
+  };
+  delete next.completedAt;
+  delete next.prevStatus;
+  data.tasks.push(next);
+  log(data, 'created', next, '', now);
+  return next;
+}
+
+/* Returns { task, next }: `next` is the occurrence scheduled by completing a repeating task, if any. */
 export function patchTask(data, prefs, today, key, input, now) {
   const t = findTask(data, key);
-  const fields = clean(data, prefs, today, input, EDITABLE);
-  if (!Object.keys(fields).length) throw bad('no fields to update');
+  let next;
+  const { completed, ...fields } = clean(data, prefs, today, input, EDITABLE);
+  if (!Object.keys(fields).length && completed === undefined) throw bad('no fields to update');
+  if (completed) needDone(fields.status ?? t.status);
   for (const [k, nv] of Object.entries(fields)) {
     const old = t[k];
     if (JSON.stringify(old) === JSON.stringify(nv)) continue;
@@ -182,6 +269,7 @@ export function patchTask(data, prefs, today, key, input, now) {
         t.completedAt = now;
         t.prevStatus = old;
         log(data, 'completed', t, '', now);
+        if (t.recur && t.due && !t.archived) next = spawnNext(data, t, now);
       } else log(data, 'moved', t, `from ${STATUS_NAMES[old]} to ${STATUS_NAMES[nv]}`, now);
     } else if (k === 'project') {
       // Like the app: re-key from the target project's counter, so the old key stops resolving.
@@ -199,6 +287,26 @@ export function patchTask(data, prefs, today, key, input, now) {
     else if (k === 'cycle') log(data, nv ? 'added to this cycle' : 'removed from its cycle', t, '', now);
     t.updated = now;
   }
+  if (completed !== undefined) {
+    t.completedAt = completed ? completedStamp(completed) : null;
+    t.updated = now;
+  }
+  return { task: t, next };
+}
+
+/* Mirrors deleteTasks in the app: the tasks, dependency links pointing at them, and their comments. */
+export function removeTasks(data, ids) {
+  const gone = new Set(ids);
+  data.tasks = data.tasks.filter(t => !gone.has(t.id));
+  for (const t of data.tasks) if (t.deps) t.deps = t.deps.filter(d => !gone.has(d));
+  if (data.comments) data.comments = data.comments.filter(c => !gone.has(c.task));
+}
+
+/* Permanent delete. Only for tasks already archived, so removing one is always two deliberate steps. */
+export function purgeTask(data, key) {
+  const t = findTask(data, key);
+  if (!t.archived) throw new ApiError(409, `${t.key} is not archived: archive it first (DELETE without purge), then purge`);
+  removeTasks(data, [t.id]);
   return t;
 }
 

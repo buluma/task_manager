@@ -1,7 +1,7 @@
 /* Project operations on the app's state object, mirroring createProject / archiveProject in actions.js.
    Like tasks.js, every function validates before it mutates. Deleting archives, so the app can restore it. */
 import { PCOLORS, PSTAT } from '../src/core/constants.js';
-import { ApiError, bad, isDate, rand } from './tasks.js';
+import { ApiError, bad, isDate, rand, removeTasks } from './tasks.js';
 
 const CREATE = ['name', 'key', 'desc', 'color', 'icon', 'status', 'due', 'lead'];
 const EDITABLE = ['name', 'desc', 'color', 'icon', 'status', 'due', 'lead', 'archived'];
@@ -151,4 +151,17 @@ export function archiveProject(data, ref, now) {
     p.archivedAt = now;
   }
   return p;
+}
+
+/* Permanent delete, like the app's: the project, every task in it (archived ones too) with their comments and
+   dependency links, and its files. Only for a project already archived. Returns how many tasks went with it. */
+export function purgeProject(data, ref) {
+  const p = findProject(data, ref);
+  if (!p.archived) throw new ApiError(409, `${p.key} is not archived: archive it first (DELETE without purge), then purge`);
+  const ids = data.tasks.filter(t => t.project === p.id).map(t => t.id);
+  removeTasks(data, ids);
+  data.projects = data.projects.filter(x => x !== p);
+  if (data.projOrder) data.projOrder = data.projOrder.filter(id => id !== p.id);
+  if (data.files) data.files = data.files.filter(f => f.project !== p.id);
+  return { project: p, tasks: ids.length };
 }

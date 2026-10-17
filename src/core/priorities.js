@@ -1,7 +1,7 @@
 /* Edits to the priority scale, shared by the sync server's API and the settings screen so both
    enforce the same rules. The scale is workspace state (data.priorities). Until someone edits it the
    state has no such field and the defaults apply. Every function validates before it mutates. */
-import { DEFAULT_PRIOS } from './constants.js';
+import { DEFAULT_PRIOS, applyPriorities } from './constants.js';
 
 export class ScaleError extends Error {
   constructor(status, message) {
@@ -68,6 +68,38 @@ export function patchLevel(data, id, input) {
   return { ...level };
 }
 
+/* Saved views keep priority ids in their filters. Drops ids that are no longer on the scale, and any filter
+   left with none, so a deleted level cannot linger in a view. */
+function pruneViewFilters(data) {
+  const known = new Set(scaleOf(data).map(p => p.id));
+  for (const view of data.savedViews || []) {
+    if (!view.filters) continue;
+    view.filters = view.filters
+      .map(f => (f.f === 'priority' && Array.isArray(f.v) ? { ...f, v: f.v.filter(id => known.has(id)) } : f))
+      .filter(f => !(f.f === 'priority' && Array.isArray(f.v) && f.v.length === 0));
+  }
+}
+
+/* Makes loaded state consistent with its scale: a task on a level that no longer exists (or none at all) goes
+   to "none", because the app looks every level up by id. Returns how many tasks it moved. */
+export function normalizePriorities(data) {
+  const known = new Set(scaleOf(data).map(p => p.id));
+  let fixed = 0;
+  for (const t of data.tasks) {
+    if (known.has(t.priority)) continue;
+    t.priority = 'none';
+    fixed++;
+  }
+  pruneViewFilters(data);
+  return fixed;
+}
+
+/* The one call to make whenever workspace state is loaded or replaced. */
+export function adoptPriorities(data) {
+  applyPriorities(data.priorities);
+  normalizePriorities(data);
+}
+
 /* Tasks (archived ones too) on the removed level move to `replace`. Returns how many moved. */
 export function removeLevel(data, id, replace = 'none', now) {
   find(data, id);
@@ -82,5 +114,6 @@ export function removeLevel(data, id, replace = 'none', now) {
       t.updated = now;
       moved++;
     }
+  pruneViewFilters(data);
   return moved;
 }

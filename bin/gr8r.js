@@ -14,16 +14,24 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   list [--status S] [--priority P] [--project KEY] [--cycle current|none|DATE] [--query TEXT] [--archived]
   show KEY
   add TITLE [--project KEY] [--status S] [--priority P] [--due DATE] [--start DATE] [--cycle current|DATE]
-            [--label L ...] [--desc TEXT] [--estimate E]
+            [--label L ...] [--desc TEXT [--markdown]] [--estimate E] [--completed DATE (done tasks)]
+            [--recur Daily|Weekly|"Every 2 weeks"|Monthly]
   set KEY [--title T] [--project KEY] [--status S] [--priority P] [--due DATE|none] [--start DATE|none] [--cycle current|DATE|none]
-          [--label L ... | --label none] [--desc TEXT] [--estimate E|none]
+          [--label L ... | --label none] [--desc TEXT [--markdown]] [--estimate E|none] [--completed DATE|none] [--recur ...|none]
   done KEY            mark complete
   rm KEY              archive (restore it from the app's Archive page)
+  rm KEY --purge      delete an archived task for good
+  subtask add KEY TITLE        subtask done|reopen|rm KEY SUBTASK_ID
+  deps KEY                     dep add|rm KEY OTHER_KEY   (KEY waits for OTHER_KEY)
+  comments KEY
+  comment KEY TEXT [--at DATE]   add a comment (--at backdates it)
+  comment rm KEY COMMENT_ID
   projects [--archived]
   project show KEY
   project add NAME [--key KEY] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE] [--lead MEMBER]
   project set KEY [--name N] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE|none] [--lead MEMBER]
   project rm KEY      archive          project restore KEY    bring it back
+  project rm KEY --purge    delete an archived project and its tasks for good
   priorities
   priority add NAME --weight 1-99 [--id ID]
   priority set ID [--name N] [--weight 1-99]
@@ -40,12 +48,17 @@ const OPTIONS = {
   cycle: { type: 'string' },
   query: { type: 'string', short: 'q' },
   archived: { type: 'boolean' },
+  purge: { type: 'boolean' },
+  markdown: { type: 'boolean' },
   title: { type: 'string' },
   due: { type: 'string' },
   start: { type: 'string' },
   label: { type: 'string', multiple: true },
   desc: { type: 'string' },
   estimate: { type: 'string' },
+  completed: { type: 'string' },
+  recur: { type: 'string' },
+  at: { type: 'string' },
   name: { type: 'string' },
   key: { type: 'string' },
   color: { type: 'string' },
@@ -79,10 +92,11 @@ async function api(method, route, body) {
 }
 
 /* "none" clears the fields that can be empty; for priority it is a real value. */
-const CLEARABLE = ['due', 'start', 'cycle', 'estimate'];
+const CLEARABLE = ['due', 'start', 'cycle', 'estimate', 'completed', 'recur'];
 function fields(v, keys) {
   const out = {};
   for (const k of keys) if (v[k] !== undefined) out[k] = CLEARABLE.includes(k) && v[k] === 'none' ? null : v[k];
+  if (v.markdown && out.desc !== undefined) out.descFormat = 'markdown';
   if (v.label) out.labels = v.label.length === 1 && v.label[0] === 'none' ? [] : v.label;
   return out;
 }
@@ -90,7 +104,9 @@ function fields(v, keys) {
 /* Descriptions are small HTML: keep paragraph and line breaks, drop the tags, decode the entities the server writes. */
 const strip = html =>
   (html || '')
-    .replace(/<\/p>\s*<p>/g, '\n\n')
+    .replace(/<li>/g, '\n• ')
+    .replace(/<\/(?:p|h[1-6]|pre|blockquote|ul|ol)>/g, '\n\n')
+    .replace(/<hr>/g, '\n---\n')
     .replace(/<br\s*\/?>/g, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&lt;/g, '<')
@@ -100,6 +116,7 @@ const strip = html =>
     .replace(/&amp;/g, '&')
     .replace(/[ \t]+/g, ' ')
     .replace(/ ?\n ?/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 const projectRow = p => `${p.key.padEnd(8)} ${p.name}${p.archived ? '  [archived]' : ''}`;
 const prioRow = p => `${p.id.padEnd(10)} ${String(p.w).padEnd(3)} ${p.name.padEnd(12)} ${p.tasks} task${p.tasks === 1 ? '' : 's'}`;
@@ -115,6 +132,7 @@ function detail(t) {
     `labels    ${t.labels.length ? t.labels.join(', ') : '-'}`,
   ];
   if (strip(t.desc)) lines.push('', strip(t.desc));
+  if (t.subtasks?.length) lines.push('', 'subtasks', ...t.subtasks.map(s => `${s.done ? '[x]' : '[ ]'} ${s.title}  (${s.id})`));
   return lines.join('\n');
 }
 
@@ -150,22 +168,73 @@ async function main(argv) {
     }
     case 'add': {
       if (rest.length < 1) throw new CliError('add needs a title');
-      const body = { title: rest.join(' '), ...fields(v, ['project', 'status', 'priority', 'due', 'start', 'cycle', 'desc', 'estimate']) };
+      const body = {
+        title: rest.join(' '),
+        ...fields(v, ['project', 'status', 'priority', 'due', 'start', 'cycle', 'desc', 'estimate', 'completed', 'recur']),
+      };
       const { task } = await api('POST', '/api/tasks', body);
       return out(task, `created ${task.key}  ${task.title}`);
     }
     case 'set': {
-      const body = fields(v, ['title', 'project', 'status', 'priority', 'due', 'start', 'cycle', 'desc', 'estimate']);
+      const body = fields(v, ['title', 'project', 'status', 'priority', 'due', 'start', 'cycle', 'desc', 'estimate', 'completed', 'recur']);
       const { task } = await api('PATCH', `/api/tasks/${key()}`, body);
       return out(task, `updated ${task.key}  ${task.status}  ${task.title}`);
     }
     case 'done': {
-      const { task } = await api('PATCH', `/api/tasks/${key()}`, { status: 'done' });
-      return out(task, `done ${task.key}  ${task.title}`);
+      const { task, next } = await api('PATCH', `/api/tasks/${key()}`, { status: 'done' });
+      return out(task, `done ${task.key}  ${task.title}${next ? `\nnext ${next.key}  due ${next.due}` : ''}`);
     }
     case 'rm': {
-      const { task } = await api('DELETE', `/api/tasks/${key()}`);
-      return out(task, `archived ${task.key}  ${task.title}`);
+      const { task } = await api('DELETE', `/api/tasks/${key()}${v.purge ? '?purge=1' : ''}`);
+      return out(task, `${v.purge ? 'deleted' : 'archived'} ${task.key}  ${task.title}`);
+    }
+    case 'subtask': {
+      const [sub, taskKey, ...tail] = rest;
+      const enc = encodeURIComponent;
+      if (sub === 'add') {
+        if (!taskKey || !tail.length) throw new CliError('subtask add needs a task key and a title');
+        const { subtask } = await api('POST', `/api/tasks/${enc(taskKey)}/subtasks`, { title: tail.join(' ') });
+        return out(subtask, `added subtask ${subtask.id} to ${taskKey.toUpperCase()}  ${subtask.title}`);
+      }
+      if (!['done', 'reopen', 'rm'].includes(sub)) throw new CliError(`unknown subtask command: ${sub ?? '(none)'}\n\n${HELP}`);
+      if (!taskKey || tail.length !== 1) throw new CliError(`subtask ${sub} needs a task key and a subtask id`);
+      const route = `/api/tasks/${enc(taskKey)}/subtasks/${enc(tail[0])}`;
+      const { subtask } = sub === 'rm' ? await api('DELETE', route) : await api('PATCH', route, { done: sub === 'done' });
+      return out(subtask, `${sub === 'rm' ? 'removed' : sub === 'done' ? 'completed' : 'reopened'} subtask ${subtask.id}  ${subtask.title}`);
+    }
+    case 'deps': {
+      const { deps } = await api('GET', `/api/tasks/${key()}/deps`);
+      return out(deps, deps.length ? deps.map(d => `${d.key.padEnd(8)} ${d.status.padEnd(9)} ${d.title}`).join('\n') : 'no dependencies');
+    }
+    case 'dep': {
+      const [sub, taskKey, otherKey] = rest;
+      if (!['add', 'rm'].includes(sub)) throw new CliError(`unknown dep command: ${sub ?? '(none)'}\n\n${HELP}`);
+      if (!taskKey || !otherKey || rest.length !== 3) throw new CliError(`dep ${sub} needs two task keys`);
+      const enc = encodeURIComponent;
+      const { deps } =
+        sub === 'add'
+          ? await api('POST', `/api/tasks/${enc(taskKey)}/deps`, { on: otherKey })
+          : await api('DELETE', `/api/tasks/${enc(taskKey)}/deps/${enc(otherKey)}`);
+      return out(
+        deps,
+        `${taskKey.toUpperCase()} ${sub === 'add' ? 'now waits for' : 'no longer waits for'} ${otherKey.toUpperCase()} (${deps.length} dependenc${deps.length === 1 ? 'y' : 'ies'})`,
+      );
+    }
+    case 'comments': {
+      const { comments } = await api('GET', `/api/tasks/${key()}/comments`);
+      const when = at => new Date(at).toISOString().slice(0, 16).replace('T', ' ');
+      return out(comments, comments.length ? comments.map(c => `${when(c.at)}  ${c.id}\n${c.text}`).join('\n\n') : 'no comments');
+    }
+    case 'comment': {
+      if (rest[0] === 'rm') {
+        if (rest.length !== 3) throw new CliError('comment rm needs a task key and a comment id');
+        const { comment } = await api('DELETE', `/api/tasks/${encodeURIComponent(rest[1])}/comments/${encodeURIComponent(rest[2])}`);
+        return out(comment, `deleted comment ${comment.id}`);
+      }
+      if (rest.length < 2) throw new CliError('comment needs a task key and some text');
+      const [taskKey, ...words] = rest;
+      const { comment } = await api('POST', `/api/tasks/${encodeURIComponent(taskKey)}/comments`, { text: words.join(' '), ...(v.at && { at: v.at }) });
+      return out(comment, `commented on ${taskKey.toUpperCase()}  ${comment.id}`);
     }
     case 'projects': {
       const { projects } = await api('GET', `/api/projects${v.archived ? '?archived=1' : ''}`);
@@ -193,8 +262,10 @@ async function main(argv) {
           return out(project, `updated ${project.key}  ${project.name}`);
         }
         case 'rm': {
-          const { project } = await api('DELETE', `/api/projects/${one()}`);
-          return out(project, `archived ${project.key}  ${project.name}`);
+          const res = await api('DELETE', `/api/projects/${one()}${v.purge ? '?purge=1' : ''}`);
+          const { project } = res;
+          if (!v.purge) return out(project, `archived ${project.key}  ${project.name}`);
+          return out(res, `deleted ${project.key}  ${project.name} (${res.tasks} task${res.tasks === 1 ? '' : 's'})`);
         }
         case 'restore': {
           const { project } = await api('PATCH', `/api/projects/${one()}`, { archived: false });

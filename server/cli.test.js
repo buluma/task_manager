@@ -167,3 +167,88 @@ test('show prints each description paragraph and line on its own line', async ()
   const out = (await run(['show', 'GR-1'])).stdout;
   assert.match(out, /line one\nline two\n+second paragraph/);
 });
+
+test('rm --purge removes an archived task for good; project rm --purge does the same for a project', async () => {
+  await run(['add', 'doomed']);
+  const early = await run(['rm', 'GR-1', '--purge']);
+  assert.notEqual(early.code, 0);
+  assert.match(early.stderr, /archive/i);
+  assert.equal((await run(['rm', 'GR-1'])).code, 0);
+  const gone = await run(['rm', 'GR-1', '--purge']);
+  assert.equal(gone.code, 0, gone.stderr);
+  assert.match(gone.stdout, /deleted GR-1/);
+  assert.match((await run(['show', 'GR-1'])).stderr, /no task GR-1/);
+
+  await run(['project', 'add', 'Doomed', '--key', 'DM']);
+  await run(['add', 'inside', '--project', 'DM']);
+  assert.equal((await run(['project', 'rm', 'DM'])).code, 0);
+  const p = await run(['project', 'rm', 'DM', '--purge']);
+  assert.equal(p.code, 0, p.stderr);
+  assert.match(p.stdout, /deleted DM.*1 task/);
+  assert.doesNotMatch((await run(['projects', '--archived'])).stdout, /DM/);
+});
+
+test("--completed sets a done task's completion date and none clears it", async () => {
+  await run(['add', 'old news', '--status', 'done', '--completed', '2026-07-12']);
+  let t = JSON.parse((await run(['show', 'GR-1', '--json'])).stdout);
+  assert.equal(t.completedAt, new Date(2026, 6, 12, 12, 0, 0).getTime());
+  assert.equal((await run(['set', 'GR-1', '--completed', 'none'])).code, 0);
+  t = JSON.parse((await run(['show', 'GR-1', '--json'])).stdout);
+  assert.equal(t.completedAt, null);
+});
+
+test('comment adds, comments lists, comment rm deletes', async () => {
+  await run(['add', 'host']);
+  const add = await run(['comment', 'GR-1', 'looks', 'good', '--at', '2026-07-12']);
+  assert.equal(add.code, 0, add.stderr);
+  assert.match(add.stdout, /commented on GR-1/);
+  await run(['comment', 'GR-1', 'ship it']);
+  const list = await run(['comments', 'GR-1']);
+  assert.match(list.stdout, /2026-07-12 00:00 +\w+\nlooks good/);
+  assert.match(list.stdout, /ship it/);
+  const id = JSON.parse((await run(['comments', 'GR-1', '--json'])).stdout)[0].id;
+  assert.equal((await run(['comment', 'rm', 'GR-1', id])).code, 0);
+  assert.doesNotMatch((await run(['comments', 'GR-1'])).stdout, /looks good/);
+  assert.notEqual((await run(['comment', 'GR-1'])).code, 0);
+  assert.match((await run(['comments', 'GR-9'])).stderr, /no task GR-9/);
+});
+
+test('--recur sets the repeat and completing a due task prints the next one', async () => {
+  await run(['add', 'standup', '--due', '2026-10-19', '--recur', 'Weekly']);
+  const done = await run(['done', 'GR-1']);
+  assert.equal(done.code, 0, done.stderr);
+  assert.match(done.stdout, /next GR-2.*2026-10-26/);
+  assert.equal((await run(['set', 'GR-2', '--recur', 'none'])).code, 0);
+  assert.equal(JSON.parse((await run(['show', 'GR-2', '--json'])).stdout).recur, null);
+});
+
+test('--markdown renders the description, and show prints headings and lists on their own lines', async () => {
+  await run(['add', 'notes', '--markdown', '--desc', '## Plan\n\n* first\n* second **bold**\n\nclosing line']);
+  const raw = JSON.parse((await run(['show', 'GR-1', '--json'])).stdout).desc;
+  assert.match(raw, /<h4>Plan<\/h4><ul><li>first<\/li>/);
+  const out = (await run(['show', 'GR-1'])).stdout;
+  assert.match(out, /Plan\n+• first\n• second bold\n+closing line/);
+});
+
+test('subtask add, done, reopen, rm and dep add, deps, dep rm work from the shell', async () => {
+  await run(['add', 'parent']);
+  await run(['add', 'blocker']);
+  const add = await run(['subtask', 'add', 'GR-1', 'write', 'tests']);
+  assert.equal(add.code, 0, add.stderr);
+  const id = JSON.parse((await run(['show', 'GR-1', '--json'])).stdout).subtasks[0].id;
+  assert.match((await run(['show', 'GR-1'])).stdout, /\[ \] write tests/);
+  assert.equal((await run(['subtask', 'done', 'GR-1', id])).code, 0);
+  assert.match((await run(['show', 'GR-1'])).stdout, /\[x\] write tests/);
+  assert.equal((await run(['subtask', 'reopen', 'GR-1', id])).code, 0);
+  assert.equal((await run(['subtask', 'rm', 'GR-1', id])).code, 0);
+  assert.doesNotMatch((await run(['show', 'GR-1'])).stdout, /write tests/);
+
+  assert.equal((await run(['dep', 'add', 'GR-1', 'GR-2'])).code, 0);
+  assert.match((await run(['deps', 'GR-1'])).stdout, /GR-2\s+backlog\s+blocker/);
+  const self = await run(['dep', 'add', 'GR-1', 'GR-1']);
+  assert.notEqual(self.code, 0);
+  assert.equal((await run(['dep', 'rm', 'GR-1', 'GR-2'])).code, 0);
+  assert.match((await run(['deps', 'GR-1'])).stdout, /no dependencies/);
+  assert.notEqual((await run(['subtask', 'add', 'GR-1'])).code, 0);
+  assert.notEqual((await run(['subtask', 'frob', 'GR-1'])).code, 0);
+});

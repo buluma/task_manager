@@ -160,3 +160,46 @@ test('unsupported methods are 405', async () => {
   assert.equal((await call('PUT', '/api/projects', {})).status, 405);
   assert.equal((await call('POST', '/api/projects/gr', {})).status, 405);
 });
+
+test('DELETE ?purge=1 permanently removes an archived project with its tasks, comments and files', async () => {
+  await call('POST', '/api/projects', { name: 'Doomed', key: 'DM' });
+  await call('POST', '/api/tasks', { title: 'in doomed', project: 'DM' });
+  await call('POST', '/api/tasks', { title: 'safe', project: 'GR' });
+  const s = stored();
+  const doomed = s.state.data.projects.find(p => p.key === 'DM');
+  const inDoomed = s.state.data.tasks.find(t => t.project === doomed.id);
+  s.state.data.comments = [{ id: 'c1', task: inDoomed.id }];
+  s.state.data.files = [
+    { id: 'f1', project: doomed.id },
+    { id: 'f2', project: 'p1' },
+  ];
+  fs.writeFileSync(dataFile, JSON.stringify(s));
+  await server.close();
+  server = createApp({ dataFile, distDir: dir, now: () => new Date(2026, 9, 17, 12, 0, 0) });
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  base = `http://127.0.0.1:${server.address().port}`;
+
+  const early = await call('DELETE', '/api/projects/DM?purge=1');
+  assert.equal(early.status, 409, 'must be archived first');
+  await call('DELETE', '/api/projects/DM');
+  const r = await call('DELETE', '/api/projects/DM?purge=1');
+  assert.equal(r.status, 200);
+  assert.deepEqual([r.body.project.key, r.body.tasks], ['DM', 1]);
+  const d = stored().state.data;
+  assert.equal(
+    d.projects.some(p => p.key === 'DM'),
+    false,
+  );
+  assert.equal(d.projOrder.includes(doomed.id), false);
+  assert.deepEqual(
+    d.tasks.map(t => t.title),
+    ['safe'],
+  );
+  assert.deepEqual(d.comments, []);
+  assert.deepEqual(
+    d.files.map(f => f.id),
+    ['f2'],
+  );
+  assert.equal((await call('GET', '/api/projects/DM')).status, 404);
+  assert.equal((await call('DELETE', '/api/projects/GR?purge=1')).status, 409, 'an active project cannot be purged');
+});
