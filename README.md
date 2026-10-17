@@ -30,6 +30,8 @@ vite.config.js          Vite config, including the Lucide icon-subset plugin
 eslint.config.js        lint rules (ESLint flat config); formatting by Prettier (.prettierrc.json)
 .github/workflows/      CI: lint, format check, build
 docs/preview.png        README screenshot
+server/                 personal sync server and task API (no dependencies), with tests
+bin/gr8r.js             command-line client for the task API
 src/
   main.js               entry: imports styles and modules, then boots the app
   styles/
@@ -71,6 +73,40 @@ Dependencies point downward:
   design-system menu and keeps the native element as the source of truth.
 - **Icons:** call `ic('name')` with any [Lucide](https://lucide.dev) icon name. The
   `virtual:icons` plugin bundles only the icons the source uses.
+
+## Personal server and CLI
+
+The app works on its own from browser storage. To keep one copy of your data across browsers and devices, run the sync server, which also serves the built app and a small task API. It has no authentication, so bind it to a private interface such as your Tailscale address and never to 0.0.0.0.
+
+```bash
+npm run build
+GR8R_HOST=$(tailscale ip -4) npm start     # http://<tailnet-ip>:8787, data in ~/.gr8r/state.json
+```
+
+`GR8R_HOST` (default 127.0.0.1), `GR8R_PORT` (default 8787) and `GR8R_DATA` (state file) configure it. Open the app once so it saves its starting state, then the API accepts writes. Open tabs pick up changes made through the API within a few seconds.
+
+| Request                                                          | Does                                                                                                                                    |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/tasks?status=&priority=&project=&cycle=&q=&archived=1` | list tasks (`cycle` is `current`, `none` or a date)                                                                                     |
+| `POST /api/tasks`                                                | create a task: `title` plus optional `project`, `status`, `priority`, `due`, `start`, `cycle`, `labels`, `desc`, `estimate`, `assignee` |
+| `GET /api/tasks/GR-1`                                            | one task by key                                                                                                                         |
+| `PATCH /api/tasks/GR-1`                                          | change `title`, `desc`, `status`, `priority`, `due`, `start`, `labels`, `assignee`, `cycle`, `estimate`                                 |
+| `DELETE /api/tasks/GR-1`                                         | archive the task (restore it from the Archive page)                                                                                     |
+| `GET /api/projects`                                              | list projects                                                                                                                           |
+| `GET/PUT /api/state`                                             | the whole workspace, guarded by a revision number (`baseRev`)                                                                           |
+
+Recurring tasks are not spawned when a task is completed through the API; the app does that only in the browser.
+
+The CLI wraps the same API. Point it at the server with `GR8R_URL`, and use `npm link` to get a `gr8r` command. Requests give up after 10 seconds; set `GR8R_TIMEOUT_MS` to change that.
+
+```bash
+export GR8R_URL=http://100.x.y.z:8787
+gr8r add "write report" --priority high --cycle current
+gr8r list --cycle current
+gr8r set GR-3 --status progress
+gr8r done GR-3
+gr8r help
+```
 
 ## Continuous integration
 

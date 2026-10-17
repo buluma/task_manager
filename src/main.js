@@ -55,7 +55,8 @@ import './actions/teams.js';
 import './actions/subtasks.js';
 import './actions/archive.js';
 import { rollNow } from './actions/cycles.js';
-import { S, D } from './core/store.js';
+import { S, D, cache } from './core/store.js';
+import { watchRemote } from './core/sync.js';
 import { A } from './actions/actions.js';
 import { ROUTE_NAMES, render, go } from './shell/render.js';
 import { toast } from './ui/toast.js';
@@ -86,6 +87,17 @@ setInterval(rollIfNewCycle, 36e5);
 // Another device saved first; sync is paused so its changes aren't overwritten.
 window.addEventListener('gr8r:conflict', () =>
   toast('Changed on another device. Reload to get the latest.', { kind: 'err', action: 'Reload', onAction: () => location.reload(), ms: 600000 }),
+);
+
+// Adopt changes made elsewhere (CLI, another device) unless the user is mid-edit.
+watchRemote(
+  state => {
+    S.data = state.data;
+    cache();
+    render();
+  },
+  () =>
+    !S.ui.auth && !S.ui.modals.length && !S.ui.composer && !S.ui.editCell && !S.ui.pop && !document.activeElement?.matches('input,textarea,[contenteditable]'),
 );
 
 // Dev-only handle for debugging and screenshot tooling; stripped from production builds.

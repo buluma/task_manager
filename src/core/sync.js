@@ -3,6 +3,7 @@
    working from localStorage alone. */
 const URL_STATE = '/api/state';
 const RETRY_MS = 5000;
+const POLL_MS = 5000;
 
 let rev = null; // null: no server, or syncing halted after a conflict
 let busy = false;
@@ -26,6 +27,22 @@ export async function pull() {
 }
 
 export const syncing = () => rev !== null;
+
+/* Other writers (the gr8r CLI, another device) bump the server revision. When this tab has nothing
+   in flight and `idle()` says the user isn't mid-edit, adopt their state instead of waiting for a 409. */
+export function watchRemote(apply, idle) {
+  setInterval(async () => {
+    if (rev === null || busy || pending || document.hidden || !idle()) return;
+    try {
+      const r = await fetch('/api/rev', { cache: 'no-store', signal: AbortSignal.timeout(3000) });
+      if (!r.ok || (await r.json()).rev === rev) return;
+      const state = await pull();
+      if (state) apply(state);
+    } catch {
+      /* server unreachable: try again next tick */
+    }
+  }, POLL_MS);
+}
 
 /* Sends the latest state; saves arriving mid-flight collapse into one follow-up request. */
 export async function push(state) {

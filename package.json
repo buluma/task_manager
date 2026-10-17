@@ -9,10 +9,13 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "node server/index.js",
-    "test": "node --test server/ src/",
+    "test": "node --test \"server/*.test.js\" \"src/**/*.test.js\"",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
+  },
+  "bin": {
+    "gr8r": "bin/gr8r.js"
   },
   "engines": {
     "node": ">=18"
