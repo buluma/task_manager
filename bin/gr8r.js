@@ -3,6 +3,8 @@
 import { parseArgs } from 'node:util';
 
 const BASE = (process.env.GR8R_URL || 'http://127.0.0.1:8787').replace(/\/$/, '');
+/* A host that silently drops packets would otherwise hang the CLI forever. */
+const TIMEOUT_MS = Number(process.env.GR8R_TIMEOUT_MS) || 10000;
 const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http://127.0.0.1:8787)
 
   list [--status S] [--priority P] [--project KEY] [--cycle current|none|DATE] [--query TEXT] [--archived]
@@ -40,8 +42,14 @@ class CliError extends Error {}
 async function api(method, route, body) {
   let res;
   try {
-    res = await fetch(BASE + route, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body && JSON.stringify(body) });
+    res = await fetch(BASE + route, {
+      method,
+      headers: body ? { 'content-type': 'application/json' } : {},
+      body: body && JSON.stringify(body),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
   } catch (e) {
+    if (e.name === 'TimeoutError') throw new CliError(`${BASE} did not answer within ${TIMEOUT_MS / 1000}s. Check GR8R_URL and that the server is running`);
     throw new CliError(`cannot reach ${BASE} (${e.cause?.code || e.message}). Set GR8R_URL to the server, e.g. http://100.x.y.z:8787`);
   }
   const data = await res.json().catch(() => ({}));

@@ -2,6 +2,7 @@ import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -96,4 +97,17 @@ test('an unreachable server explains how to point the CLI at it', async () => {
   const r = await run(['list'], { GR8R_URL: 'http://127.0.0.1:1' });
   assert.notEqual(r.code, 0);
   assert.match(r.stderr, /GR8R_URL/);
+});
+
+test('a server that never answers times out instead of hanging', async () => {
+  const silent = http.createServer(() => {});
+  await new Promise(r => silent.listen(0, '127.0.0.1', r));
+  try {
+    const r = await run(['list'], { GR8R_URL: `http://127.0.0.1:${silent.address().port}`, GR8R_TIMEOUT_MS: '200' });
+    assert.notEqual(r.code, 0);
+    assert.match(r.stderr, /did not answer within/);
+  } finally {
+    silent.closeAllConnections();
+    await new Promise(r => silent.close(r));
+  }
 });

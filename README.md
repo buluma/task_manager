@@ -97,7 +97,7 @@ GR8R_HOST=$(tailscale ip -4) npm start     # http://<tailnet-ip>:8787, data in ~
 
 Recurring tasks are not spawned when a task is completed through the API; the app does that only in the browser.
 
-The CLI wraps the same API. Point it at the server with `GR8R_URL`, and use `npm link` to get a `gr8r` command.
+The CLI wraps the same API. Point it at the server with `GR8R_URL`, and use `npm link` to get a `gr8r` command. Requests give up after 10 seconds; set `GR8R_TIMEOUT_MS` to change that.
 
 ```bash
 export GR8R_URL=http://100.x.y.z:8787
