@@ -45,7 +45,13 @@ function clean(data, prefs, today, input, allowed) {
         break;
       case 'desc':
         if (typeof v !== 'string') throw bad('desc must be a string');
-        out.desc = v.trim() ? `<p>${esc(v.trim())}</p>` : '';
+        out.desc = !v.trim()
+          ? ''
+          : v
+              .trim()
+              .split(/\r?\n(?:[ \t]*\r?\n)+/)
+              .map(para => `<p>${esc(para).replace(/\r?\n/g, '<br>')}</p>`)
+              .join('');
         break;
       case 'status':
         if (!Object.hasOwn(STATUS_NAMES, v)) throw bad(`status must be one of: ${Object.keys(STATUS_NAMES).join(', ')}`);
