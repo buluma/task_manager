@@ -202,6 +202,22 @@ export function patchTask(data, prefs, today, key, input, now) {
   return t;
 }
 
+/* Mirrors deleteTasks in the app: the tasks, dependency links pointing at them, and their comments. */
+export function removeTasks(data, ids) {
+  const gone = new Set(ids);
+  data.tasks = data.tasks.filter(t => !gone.has(t.id));
+  for (const t of data.tasks) if (t.deps) t.deps = t.deps.filter(d => !gone.has(d));
+  if (data.comments) data.comments = data.comments.filter(c => !gone.has(c.task));
+}
+
+/* Permanent delete. Only for tasks already archived, so removing one is always two deliberate steps. */
+export function purgeTask(data, key) {
+  const t = findTask(data, key);
+  if (!t.archived) throw new ApiError(409, `${t.key} is not archived: archive it first (DELETE without purge), then purge`);
+  removeTasks(data, [t.id]);
+  return t;
+}
+
 export function archiveTask(data, key, now) {
   const t = findTask(data, key);
   if (!t.archived) {

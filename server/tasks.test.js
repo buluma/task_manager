@@ -246,3 +246,39 @@ test('desc is plain text: escaped, blank lines split paragraphs, single newlines
   assert.equal(crlf.body.task.desc, '<p>a</p><p>b</p>');
   assert.equal((await call('PATCH', '/api/tasks/GR-2', { desc: '   ' })).body.task.desc, '');
 });
+
+test('DELETE ?purge=1 permanently removes an archived task, its comments and dependency links', async () => {
+  await post({ title: 'keep' });
+  await post({ title: 'doomed' });
+  const s = stored();
+  s.state.data.tasks[0].deps = [s.state.data.tasks[1].id];
+  s.state.data.comments = [
+    { id: 'c1', task: s.state.data.tasks[1].id, text: 'bye' },
+    { id: 'c2', task: s.state.data.tasks[0].id, text: 'stay' },
+  ];
+  fs.writeFileSync(dataFile, JSON.stringify(s));
+  await server.close();
+  server = createApp({ dataFile, distDir: dir, now: () => NOW });
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  base = `http://127.0.0.1:${server.address().port}`;
+
+  const early = await call('DELETE', '/api/tasks/GR-2?purge=1');
+  assert.equal(early.status, 409, 'must be archived first');
+  assert.match(early.body.error, /archive/i);
+  assert.equal((await call('DELETE', '/api/tasks/GR-2')).status, 200);
+  const r = await call('DELETE', '/api/tasks/GR-2?purge=1');
+  assert.equal(r.status, 200);
+  assert.equal(r.body.task.key, 'GR-2');
+  const d = stored().state.data;
+  assert.deepEqual(
+    d.tasks.map(t => t.key),
+    ['GR-1'],
+  );
+  assert.deepEqual(d.tasks[0].deps, []);
+  assert.deepEqual(
+    d.comments.map(c => c.id),
+    ['c2'],
+  );
+  assert.equal((await call('GET', '/api/tasks/GR-2')).status, 404);
+  assert.equal((await call('DELETE', '/api/tasks/GR-2?purge=1')).status, 404);
+});

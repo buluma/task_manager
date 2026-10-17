@@ -19,11 +19,13 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
           [--label L ... | --label none] [--desc TEXT] [--estimate E|none]
   done KEY            mark complete
   rm KEY              archive (restore it from the app's Archive page)
+  rm KEY --purge      delete an archived task for good
   projects [--archived]
   project show KEY
   project add NAME [--key KEY] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE] [--lead MEMBER]
   project set KEY [--name N] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE|none] [--lead MEMBER]
   project rm KEY      archive          project restore KEY    bring it back
+  project rm KEY --purge    delete an archived project and its tasks for good
   priorities
   priority add NAME --weight 1-99 [--id ID]
   priority set ID [--name N] [--weight 1-99]
@@ -40,6 +42,7 @@ const OPTIONS = {
   cycle: { type: 'string' },
   query: { type: 'string', short: 'q' },
   archived: { type: 'boolean' },
+  purge: { type: 'boolean' },
   title: { type: 'string' },
   due: { type: 'string' },
   start: { type: 'string' },
@@ -164,8 +167,8 @@ async function main(argv) {
       return out(task, `done ${task.key}  ${task.title}`);
     }
     case 'rm': {
-      const { task } = await api('DELETE', `/api/tasks/${key()}`);
-      return out(task, `archived ${task.key}  ${task.title}`);
+      const { task } = await api('DELETE', `/api/tasks/${key()}${v.purge ? '?purge=1' : ''}`);
+      return out(task, `${v.purge ? 'deleted' : 'archived'} ${task.key}  ${task.title}`);
     }
     case 'projects': {
       const { projects } = await api('GET', `/api/projects${v.archived ? '?archived=1' : ''}`);
@@ -193,8 +196,10 @@ async function main(argv) {
           return out(project, `updated ${project.key}  ${project.name}`);
         }
         case 'rm': {
-          const { project } = await api('DELETE', `/api/projects/${one()}`);
-          return out(project, `archived ${project.key}  ${project.name}`);
+          const res = await api('DELETE', `/api/projects/${one()}${v.purge ? '?purge=1' : ''}`);
+          const { project } = res;
+          if (!v.purge) return out(project, `archived ${project.key}  ${project.name}`);
+          return out(res, `deleted ${project.key}  ${project.name} (${res.tasks} task${res.tasks === 1 ? '' : 's'})`);
         }
         case 'restore': {
           const { project } = await api('PATCH', `/api/projects/${one()}`, { archived: false });

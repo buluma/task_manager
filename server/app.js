@@ -4,8 +4,8 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patchTask } from './tasks.js';
-import { archiveProject, createProject, findProject, listProjects, patchProject } from './projects.js';
+import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patchTask, purgeTask } from './tasks.js';
+import { archiveProject, createProject, findProject, listProjects, patchProject, purgeProject } from './projects.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
 
 const MAX_BODY = 10 * 1024 * 1024;
@@ -121,7 +121,15 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
     if (what === 'projects' && parts.length === 2) {
       allow('GET', 'PATCH', 'DELETE');
       if (method === 'GET') return json(res, 200, { project: findProject(needState().data, key) });
-      if (method === 'DELETE') return json(res, 200, { project: mutate((d, p, today, t) => archiveProject(d, key, t)) });
+      if (method === 'DELETE') {
+        if (url.searchParams.get('purge'))
+          return json(
+            res,
+            200,
+            mutate(d => purgeProject(d, key)),
+          );
+        return json(res, 200, { project: mutate((d, p, today, t) => archiveProject(d, key, t)) });
+      }
       const body = await readJson(req, 'project');
       return json(res, 200, { project: mutate((d, p, today, t) => patchProject(d, key, body, t)) });
     }
@@ -152,7 +160,10 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
     if (what === 'tasks' && parts.length === 2) {
       allow('GET', 'PATCH', 'DELETE');
       if (method === 'GET') return json(res, 200, { task: findTask(needState().data, key) });
-      if (method === 'DELETE') return json(res, 200, { task: mutate((d, p, today, t) => archiveTask(d, key, t)) });
+      if (method === 'DELETE') {
+        if (url.searchParams.get('purge')) return json(res, 200, { task: mutate(d => purgeTask(d, key)) });
+        return json(res, 200, { task: mutate((d, p, today, t) => archiveTask(d, key, t)) });
+      }
       const body = await readJson(req, 'task');
       return json(res, 200, { task: mutate((d, p, today, t) => patchTask(d, p, today, key, body, t)) });
     }

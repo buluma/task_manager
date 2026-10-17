@@ -167,3 +167,23 @@ test('show prints each description paragraph and line on its own line', async ()
   const out = (await run(['show', 'GR-1'])).stdout;
   assert.match(out, /line one\nline two\n+second paragraph/);
 });
+
+test('rm --purge removes an archived task for good; project rm --purge does the same for a project', async () => {
+  await run(['add', 'doomed']);
+  const early = await run(['rm', 'GR-1', '--purge']);
+  assert.notEqual(early.code, 0);
+  assert.match(early.stderr, /archive/i);
+  assert.equal((await run(['rm', 'GR-1'])).code, 0);
+  const gone = await run(['rm', 'GR-1', '--purge']);
+  assert.equal(gone.code, 0, gone.stderr);
+  assert.match(gone.stdout, /deleted GR-1/);
+  assert.match((await run(['show', 'GR-1'])).stderr, /no task GR-1/);
+
+  await run(['project', 'add', 'Doomed', '--key', 'DM']);
+  await run(['add', 'inside', '--project', 'DM']);
+  assert.equal((await run(['project', 'rm', 'DM'])).code, 0);
+  const p = await run(['project', 'rm', 'DM', '--purge']);
+  assert.equal(p.code, 0, p.stderr);
+  assert.match(p.stdout, /deleted DM.*1 task/);
+  assert.doesNotMatch((await run(['projects', '--archived'])).stdout, /DM/);
+});
