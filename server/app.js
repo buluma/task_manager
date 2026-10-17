@@ -3,6 +3,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { ApiError, archiveTask, createTask, findTask, listProjects, listTasks, localIso, patchTask } from './tasks.js';
 
 const MAX_BODY = 10 * 1024 * 1024;
 const TYPES = {
@@ -15,7 +16,7 @@ const TYPES = {
   '.woff2': 'font/woff2',
 };
 
-export function createApp({ dataFile, distDir }) {
+export function createApp({ dataFile, distDir, now = () => new Date() }) {
   let current = readStored(dataFile);
 
   const json = (res, status, body) => {
@@ -38,6 +39,18 @@ export function createApp({ dataFile, distDir }) {
     });
   }
 
+  /* Shared guard for every write: same-origin only, JSON only, bounded size. */
+  async function readJson(req, what) {
+    if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) throw new ApiError(403, 'cross-origin write refused');
+    if (!/^application\/json\b/.test(req.headers['content-type'] || '')) throw new ApiError(415, 'content-type must be application/json');
+    try {
+      return JSON.parse(await readBody(req));
+    } catch (e) {
+      if (e.status === 413) throw new ApiError(413, `${what} too large`);
+      throw new ApiError(400, 'invalid JSON');
+    }
+  }
+
   async function handleState(req, res) {
     if (req.method === 'GET') {
       if (!current) return json(res, 404, { error: 'no state saved yet' });
@@ -47,15 +60,7 @@ export function createApp({ dataFile, distDir }) {
       res.setHeader('allow', 'GET, PUT');
       return json(res, 405, { error: 'method not allowed' });
     }
-    if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) return json(res, 403, { error: 'cross-origin write refused' });
-    if (!/^application\/json\b/.test(req.headers['content-type'] || '')) return json(res, 415, { error: 'content-type must be application/json' });
-    let body;
-    try {
-      body = JSON.parse(await readBody(req));
-    } catch (e) {
-      if (e.status === 413) return json(res, 413, { error: 'state too large' });
-      return json(res, 400, { error: 'invalid JSON' });
-    }
+    const body = await readJson(req, 'state');
     if (!Number.isInteger(body?.baseRev) || !body?.state?.data?.tasks)
       return json(res, 400, { error: 'expected { baseRev: integer, state: { data: { tasks } } }' });
     const rev = current?.rev ?? 0;
@@ -63,6 +68,57 @@ export function createApp({ dataFile, distDir }) {
     current = { rev: rev + 1, state: body.state };
     writeStored(dataFile, current);
     return json(res, 200, { rev: current.rev });
+  }
+
+  /* Runs one task change against a copy of the state; it only becomes current once it is on disk. */
+  function mutate(change) {
+    if (!current) throw new ApiError(409, 'no workspace yet: open the app once so it can save its starting state');
+    const state = structuredClone(current.state);
+    const result = change(state.data, state.prefs, localIso(now()), now().getTime());
+    const next = { rev: current.rev + 1, state };
+    writeStored(dataFile, next);
+    current = next;
+    return result;
+  }
+  const needState = () => {
+    if (!current) throw new ApiError(409, 'no workspace yet: open the app once so it can save its starting state');
+    return current.state;
+  };
+
+  async function handleApi(req, res, url) {
+    const parts = url.pathname.split('/').slice(2).map(decodeURIComponent);
+    const [what, key] = parts;
+    const method = req.method;
+    const allow = (...m) => {
+      if (m.includes(method)) return;
+      res.setHeader('allow', m.join(', '));
+      throw new ApiError(405, 'method not allowed');
+    };
+    if (what === 'rev' && parts.length === 1) {
+      allow('GET');
+      return json(res, 200, { rev: current?.rev ?? 0 });
+    }
+    if (what === 'projects' && parts.length === 1) {
+      allow('GET');
+      return json(res, 200, { projects: listProjects(needState().data) });
+    }
+    if (what === 'tasks' && parts.length === 1) {
+      allow('GET', 'POST');
+      if (method === 'GET') {
+        const s = needState();
+        return json(res, 200, { tasks: listTasks(s.data, s.prefs, url.searchParams, localIso(now())) });
+      }
+      const body = await readJson(req, 'task');
+      return json(res, 201, { task: mutate((d, p, today, t) => createTask(d, p, today, body, t)) });
+    }
+    if (what === 'tasks' && parts.length === 2) {
+      allow('GET', 'PATCH', 'DELETE');
+      if (method === 'GET') return json(res, 200, { task: findTask(needState().data, key) });
+      if (method === 'DELETE') return json(res, 200, { task: mutate((d, p, today, t) => archiveTask(d, key, t)) });
+      const body = await readJson(req, 'task');
+      return json(res, 200, { task: mutate((d, p, today, t) => patchTask(d, p, today, key, body, t)) });
+    }
+    throw new ApiError(404, 'not found');
   }
 
   function handleStatic(req, res) {
@@ -83,8 +139,10 @@ export function createApp({ dataFile, distDir }) {
   }
 
   return http.createServer((req, res) => {
-    const route = new URL(req.url, 'http://x').pathname === '/api/state' ? handleState : handleStatic;
-    Promise.resolve(route(req, res)).catch(e => {
+    const url = new URL(req.url, 'http://x');
+    const route = url.pathname === '/api/state' ? handleState : url.pathname.startsWith('/api/') ? handleApi : handleStatic;
+    Promise.resolve(route(req, res, url)).catch(e => {
+      if (e instanceof ApiError) return json(res, e.status, { error: e.message });
       console.error(e);
       if (!res.headersSent) json(res, 500, { error: 'internal error' });
       else res.end();

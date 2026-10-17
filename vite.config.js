@@ -51,5 +51,15 @@ export default defineConfig({
   plugins: [lucideSubset()],
   // Top-level await in core/store.js (initial server pull) needs an ES2022 target.
   build: { target: 'es2022' },
-  server: { port: 5173, proxy: { '/api': 'http://127.0.0.1:8787' } },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+        // The API refuses writes whose Origin differs from the Host it receives. changeOrigin rewrites Host to the target, so rewrite Origin to match.
+        configure: proxy => proxy.on('proxyReq', req => req.getHeader('origin') && req.setHeader('origin', 'http://127.0.0.1:8787')),
+      },
+    },
+  },
 });

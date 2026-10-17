@@ -86,17 +86,20 @@ export const S = {
     drafts: {},
   },
 };
+const snapshot = () => ({ data: S.data, prefs: S.prefs, views: S.views, collapsed: S.ui.collapsed });
+export function cache() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(snapshot()));
+  } catch {
+    /* storage full or blocked: keep working in memory */
+  }
+}
 export let _saveT;
 export function save() {
   clearTimeout(_saveT);
   _saveT = setTimeout(() => {
-    const snapshot = { data: S.data, prefs: S.prefs, views: S.views, collapsed: S.ui.collapsed };
-    try {
-      localStorage.setItem(STORE_KEY, JSON.stringify(snapshot));
-    } catch {
-      /* storage full or blocked: keep working in memory */
-    }
-    push(JSON.parse(JSON.stringify(snapshot)));
+    cache();
+    push(JSON.parse(JSON.stringify(snapshot())));
   }, 150);
 }
 

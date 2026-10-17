@@ -14,6 +14,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
+  "bin": {
+    "gr8r": "bin/gr8r.js"
+  },
   "engines": {
     "node": ">=18"
   },
