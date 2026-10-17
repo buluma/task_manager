@@ -14,7 +14,7 @@ export const bad = msg => new ApiError(400, msg);
 
 const STATUS_NAMES = { backlog: 'Backlog', todo: 'To Do', progress: 'In Progress', review: 'Review', done: 'Done' };
 const prioName = (data, id) => scaleOf(data).find(p => p.id === id)?.name;
-const EDITABLE = ['title', 'desc', 'status', 'priority', 'due', 'start', 'labels', 'assignee', 'cycle', 'estimate', 'project'];
+const EDITABLE = ['title', 'desc', 'status', 'priority', 'due', 'start', 'labels', 'assignee', 'cycle', 'estimate', 'project', 'completed'];
 
 export const rand = () => Math.random().toString(36).slice(2, 8);
 const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -79,6 +79,10 @@ function clean(data, prefs, today, input, allowed) {
         if (v !== null && !data.members.some(m => m.id === v)) throw bad('assignee must be a member id or null');
         out.assignee = v;
         break;
+      case 'completed':
+        if (v !== null && !isDate(v)) throw bad('completed must be YYYY-MM-DD or null');
+        out.completed = v;
+        break;
       case 'estimate':
         if (v !== null && typeof v !== 'string') throw bad('estimate must be a string or null');
         out.estimate = v;
@@ -99,6 +103,15 @@ function clean(data, prefs, today, input, allowed) {
   }
   return out;
 }
+
+/* A completion date is stored as the app does, a timestamp; local noon keeps it on that day in any timezone. */
+const completedStamp = d => {
+  const [y, m, day] = d.split('-').map(Number);
+  return new Date(y, m - 1, day, 12, 0, 0).getTime();
+};
+const needDone = status => {
+  if (status !== 'done') throw bad('completed only applies to done tasks');
+};
 
 function log(data, verb, t, extra, now) {
   data.activity.unshift({ id: 'a' + rand(), by: data.me, verb, task: t.id, project: t.project, at: now, extra });
@@ -133,8 +146,9 @@ export function listTasks(data, prefs, query, today) {
 }
 
 export function createTask(data, prefs, today, input, now) {
-  const fields = clean(data, prefs, today, input, EDITABLE);
+  const { completed, ...fields } = clean(data, prefs, today, input, EDITABLE);
   if (!fields.title) throw bad('title is required');
+  if (completed) needDone(fields.status);
   const p = fields.project ? data.projects.find(p => p.id === fields.project) : data.projects.find(p => !p.archived);
   if (!p) throw bad('no project to add the task to');
   p.seq = (p.seq ?? 200) + 1;
@@ -164,6 +178,7 @@ export function createTask(data, prefs, today, input, now) {
     updated: now,
     order: Math.max(0, ...data.tasks.map(x => x.order || 0)) + 1,
   };
+  if (completed) t.completedAt = completedStamp(completed);
   data.tasks.push(t);
   log(data, 'created', t, '', now);
   return t;
@@ -171,8 +186,9 @@ export function createTask(data, prefs, today, input, now) {
 
 export function patchTask(data, prefs, today, key, input, now) {
   const t = findTask(data, key);
-  const fields = clean(data, prefs, today, input, EDITABLE);
-  if (!Object.keys(fields).length) throw bad('no fields to update');
+  const { completed, ...fields } = clean(data, prefs, today, input, EDITABLE);
+  if (!Object.keys(fields).length && completed === undefined) throw bad('no fields to update');
+  if (completed) needDone(fields.status ?? t.status);
   for (const [k, nv] of Object.entries(fields)) {
     const old = t[k];
     if (JSON.stringify(old) === JSON.stringify(nv)) continue;
@@ -197,6 +213,10 @@ export function patchTask(data, prefs, today, key, input, now) {
     else if (k === 'title') log(data, 'renamed', t, `to “${nv}”`, now);
     else if (k === 'estimate') log(data, 'estimated', t, nv || 'none', now);
     else if (k === 'cycle') log(data, nv ? 'added to this cycle' : 'removed from its cycle', t, '', now);
+    t.updated = now;
+  }
+  if (completed !== undefined) {
+    t.completedAt = completed ? completedStamp(completed) : null;
     t.updated = now;
   }
   return t;

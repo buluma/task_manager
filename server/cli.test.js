@@ -187,3 +187,12 @@ test('rm --purge removes an archived task for good; project rm --purge does the 
   assert.match(p.stdout, /deleted DM.*1 task/);
   assert.doesNotMatch((await run(['projects', '--archived'])).stdout, /DM/);
 });
+
+test("--completed sets a done task's completion date and none clears it", async () => {
+  await run(['add', 'old news', '--status', 'done', '--completed', '2026-07-12']);
+  let t = JSON.parse((await run(['show', 'GR-1', '--json'])).stdout);
+  assert.equal(t.completedAt, new Date(2026, 6, 12, 12, 0, 0).getTime());
+  assert.equal((await run(['set', 'GR-1', '--completed', 'none'])).code, 0);
+  t = JSON.parse((await run(['show', 'GR-1', '--json'])).stdout);
+  assert.equal(t.completedAt, null);
+});
