@@ -93,7 +93,7 @@ test('without a token the API stays open, as before', async () => {
 
 const run = (args, env) =>
   new Promise(resolve =>
-    execFile(process.execPath, [BIN, ...args], { env: { PATH: process.env.PATH, GR8R_URL: base, ...env } }, (err, stdout, stderr) =>
+    execFile(process.execPath, [BIN, ...args], { env: { PATH: process.env.PATH, GR8R_ENV_FILE: '', GR8R_URL: base, ...env } }, (err, stdout, stderr) =>
       resolve({ code: err?.code ?? 0, stdout, stderr }),
     ),
   );
@@ -111,4 +111,14 @@ test('the CLI sends GR8R_TOKEN and explains a missing or wrong one', async () =>
   assert.doesNotMatch(wrong.stderr + none.stderr, /s3cret/);
   const list = await run(['list'], { GR8R_TOKEN: 's3cret' });
   assert.match(list.stdout, /with token/);
+});
+
+test('the CLI reads GR8R_TOKEN from a .env file when the shell does not set it', async () => {
+  await start('s3cret');
+  const envFile = path.join(dir, 'cli.env');
+  fs.writeFileSync(envFile, 'GR8R_TOKEN=s3cret\n');
+  const ok = await run(['list'], { GR8R_ENV_FILE: envFile });
+  assert.equal(ok.code, 0, ok.stderr);
+  const shellWins = await run(['list'], { GR8R_ENV_FILE: envFile, GR8R_TOKEN: 'nope' });
+  assert.notEqual(shellWins.code, 0, 'a token set in the shell overrides the file');
 });
