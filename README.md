@@ -27,4 +27,4 @@ npm run format    # Prettier
 
 ## CI and deploy
 
-Every push and pull request runs lint, the format check, the tests and a production build (`.github/workflows/ci.yml`). `vercel.json` builds with Vite and serves `dist/`.
+Every push and pull request runs lint, the format check, the tests and a production build (`.github/workflows/ci.yml`). Nothing deploys automatically: the app runs from the [personal server](docs/server.md), which serves `dist/` from its own checkout. `vercel.json` is kept for a static deploy, where the app works from browser storage alone; no Vercel project is connected to this repo.
