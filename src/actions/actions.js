@@ -6,7 +6,6 @@ import { PR, PSTAT, ST } from '../core/constants.js';
 import { adoptPriorities } from '../core/priorities.js';
 import { nextDue } from '../core/recur.js';
 import { D, S, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
-import { fileType, fsize } from '../ui/helpers.js';
 import { effectiveDark } from '../core/theme.js';
 import { mutate, toast } from '../ui/toast.js';
 import { autosize, focusKey, fxSet, go, render } from '../shell/render.js';
@@ -536,7 +535,6 @@ A.editTask = el => {
     start: t.start,
     labels: [...t.labels],
     subtasks: t.subtasks.map(s => ({ ...s })),
-    files: [],
     recur: t.recur,
     more: false,
   };
@@ -562,7 +560,6 @@ A.newTask = el => {
     start: null,
     labels: [],
     subtasks: [],
-    files: [],
     recur: null,
     more: S.ui.form?.more || false,
   };
@@ -579,10 +576,6 @@ IN.form = el => {
 IN.formMore = el => {
   S.ui.form.more = el.checked;
 };
-IN.formFiles = el => {
-  [...el.files].forEach(f => S.ui.form.files.push({ name: f.name, size: fsize(f.size), type: fileType(f.name) }));
-  render();
-};
 KEY.formAddSub = el => {
   const v = el.value.trim();
   if (!v) return;
@@ -592,10 +585,6 @@ KEY.formAddSub = el => {
 };
 A.formRmSub = el => {
   S.ui.form.subtasks.splice(+el.dataset.i, 1);
-  render();
-};
-A.formRmFile = el => {
-  S.ui.form.files.splice(+el.dataset.i, 1);
   render();
 };
 A.submitTask = () => {
@@ -611,7 +600,6 @@ A.submitTask = () => {
     return;
   }
   S.ui.errors = {};
-  const files = f.files.map(x => ({ id: uid('a'), name: x.name, type: x.type, size: x.size, by: D().me, at: Date.now() }));
   const base = {
     title,
     project: f.project,
@@ -637,7 +625,6 @@ A.submitTask = () => {
             .trim()
         )
           t.desc = f.desc ? `<p>${esc(f.desc)}</p>` : '';
-        t.attachments.push(...files);
       })
     )
       return;
@@ -649,13 +636,12 @@ A.submitTask = () => {
   let t;
   if (
     !mutate(() => {
-      t = createTask({ ...base, desc: f.desc ? `<p>${esc(f.desc)}</p>` : '', attachments: files });
-      files.forEach(x => D().files.unshift({ ...x, project: t.project, task: t.id }));
+      t = createTask({ ...base, desc: f.desc ? `<p>${esc(f.desc)}</p>` : '' });
     })
   )
     return;
   if (f.more) {
-    Object.assign(f, { title: '', desc: '', subtasks: [], files: [] });
+    Object.assign(f, { title: '', desc: '', subtasks: [] });
     render();
     setTimeout(() => $('#f-title')?.focus(), 0);
     toast(`Created ${t.key}`, { ms: 2000 });
@@ -777,61 +763,6 @@ KEY.addSub = el => {
 A.expandRow = el => {
   S.ui.openTasks[el.dataset.id] = !S.ui.openTasks[el.dataset.id];
   render();
-};
-
-/* attachments */
-A.rmAttach = el => {
-  const t = task(el.dataset.id);
-  const f = t.attachments.find(a => a.id === el.dataset.aid);
-  mutate(() => {
-    t.attachments = t.attachments.filter(a => a.id !== el.dataset.aid);
-    logAct('removed a file from', t);
-  });
-  toast(`Removed ${f.name}`);
-};
-A.filePreview = el => {
-  const t = task(el.dataset.tid);
-  const f = t.attachments.find(a => a.id === el.dataset.aid);
-  openModal({ type: 'filePreview', file: f, tid: t.id });
-};
-A.previewFile = el => {
-  const f = D().files.find(x => x.id === el.dataset.id);
-  S.ui.pop = null;
-  if (f) openModal({ type: 'filePreview', file: f, tid: f.task });
-};
-export function handleFiles(files, ctx) {
-  if (!files || !files.length) return;
-  S.ui.uploads = S.ui.uploads || [];
-  [...files].forEach(file => {
-    const up = { id: uid('u'), name: file.name, size: fsize(file.size), project: ctx.project, task: ctx.task, pct: 0 };
-    S.ui.uploads.push(up);
-    const iv = setInterval(() => {
-      up.pct = Math.min(100, up.pct + 9 + Math.round(Math.random() * 22));
-      const bar = document.getElementById('upbar-' + up.id),
-        pc = document.getElementById('upct-' + up.id);
-      if (bar) bar.style.setProperty('--p', up.pct / 100);
-      if (pc) pc.textContent = up.pct + '%';
-      if (up.pct >= 100) {
-        clearInterval(iv);
-        S.ui.uploads = S.ui.uploads.filter(x => x !== up);
-        const rec = { id: uid('f'), name: up.name, type: fileType(up.name), size: up.size, by: D().me, at: Date.now() };
-        D().files.unshift({ ...rec, project: up.project, task: up.task || null });
-        if (up.task) {
-          const t = task(up.task);
-          t.attachments.push(rec);
-          logAct('added a file to', t, up.name);
-        }
-        save();
-        render();
-        toast(`Uploaded ${up.name}`);
-      }
-    }, 220);
-  });
-  render();
-}
-IN.uploadFiles = el => {
-  handleFiles(el.files, { project: el.dataset.project, task: el.dataset.task });
-  el.value = '';
 };
 
 /* comments */
@@ -1593,66 +1524,6 @@ IN.memQ = el => {
 IN.actWho = el => {
   S.ui.actWho = el.value;
   render();
-};
-
-/* files */
-IN.fileQ = el => {
-  S.ui.fileQ = el.value;
-  render();
-};
-IN.fileType = el => {
-  S.ui.fileType = el.value;
-  render();
-};
-IN.fileSort = el => {
-  S.ui.fileSort = el.value;
-  render();
-};
-A.renameFile = el => {
-  const f = D().files.find(x => x.id === el.dataset.id);
-  S.ui.pop = null;
-  openModal({
-    type: 'prompt',
-    title: 'Rename file',
-    label: 'File name',
-    value: f.name,
-    run: v => {
-      if (v)
-        mutate(() => {
-          f.name = v;
-          f.type = fileType(v);
-        });
-    },
-  });
-};
-A.dupFile = el => {
-  const f = D().files.find(x => x.id === el.dataset.id);
-  S.ui.pop = null;
-  mutate(() => {
-    const i = D().files.indexOf(f);
-    D().files.splice(i + 1, 0, { ...f, id: uid('f'), name: f.name.replace(/(\.[^.]+)$/, ' copy$1'), at: Date.now(), by: D().me });
-  });
-  toast('File duplicated');
-};
-A.delFile = el => {
-  const f = D().files.find(x => x.id === el.dataset.id);
-  S.ui.pop = null;
-  confirmDlg({
-    title: 'Delete file?',
-    body: `<b>${esc(f.name)}</b> will be removed from the project${f.task ? ' and its task' : ''}.`,
-    ok: 'Delete file',
-    danger: true,
-    run: () => {
-      const snap = snapshot();
-      if (
-        mutate(() => {
-          D().files = D().files.filter(x => x !== f);
-          if (f.task && task(f.task)) task(f.task).attachments = task(f.task).attachments.filter(a => a.name !== f.name);
-        })
-      )
-        toast(`Deleted ${f.name}`, { action: 'Undo', onAction: () => restore(snap) });
-    },
-  });
 };
 
 /* inbox & notifications */

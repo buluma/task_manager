@@ -73,16 +73,6 @@ export function ctxMenu(p) {
         : '')
     );
   }
-  if (p.ctx === 'file') {
-    return (
-      I('previewFile', 'eye', 'Preview') +
-      I('renameFile', 'pencil', 'Rename') +
-      I('copyLink', 'link', 'Copy link') +
-      I('dupFile', 'copy', 'Duplicate') +
-      sep +
-      I('delFile', 'trash-2', 'Delete', 'danger')
-    );
-  }
   if (p.ctx === 'savedview') {
     return `<button class="mi" data-a="renameView" data-id="${p.vid}">${ic('pencil', 15)}Rename view</button><button class="mi danger" data-a="delView" data-id="${p.vid}">${ic('trash-2', 15)}Delete view</button>`;
   }

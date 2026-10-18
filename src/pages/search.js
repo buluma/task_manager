@@ -2,11 +2,11 @@
 import { ago, esc } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { D, S, allTasks, canSee, mem, pColor, proj, task, visibleProjects } from '../core/store.js';
-import { FT, av, empty, hl, pIcon, pStatus, stIcon } from '../ui/helpers.js';
+import { av, empty, hl, pIcon, pStatus, stIcon } from '../ui/helpers.js';
 
 export function searchAll(q) {
   q = (q || '').trim().toLowerCase();
-  if (!q) return { tasks: [], projects: [], people: [], files: [], comments: [] };
+  if (!q) return { tasks: [], projects: [], people: [], comments: [] };
   const has = s => (s || '').toLowerCase().includes(q);
   return {
     tasks: allTasks()
@@ -14,7 +14,6 @@ export function searchAll(q) {
       .slice(0, 30),
     projects: visibleProjects().filter(p => has(p.name) || has(p.desc)),
     people: D().members.filter(m => has(m.name) || has(m.email) || has(m.title)),
-    files: D().files.filter(f => has(f.name) && canSee(proj(f.project))),
     comments: D().comments.filter(c => has(c.text) && task(c.task) && canSee(proj(task(c.task).project))),
   };
 }
@@ -27,7 +26,6 @@ export function pageSearch() {
     ['tasks', 'Tasks'],
     ['projects', 'Projects'],
     ['people', 'People'],
-    ['files', 'Files'],
     ['comments', 'Comments'],
   ];
   const total = Object.values(r).reduce((a, b) => a + b.length, 0);
@@ -71,16 +69,6 @@ export function pageSearch() {
                 .map(
                   m =>
                     `<div class="mini" data-a="go" data-r="member" data-id="${m.id}">${av(m.id, 'md', false)}<span class="tt">${hl(m.name, q)} <span class="faint" style="font-size:12px">${esc(m.title)}</span></span><span class="faint" style="font-size:12px">${esc(m.email)}</span></div>`,
-                )
-                .join(''),
-            ) +
-            sec(
-              'files',
-              'Files',
-              r.files
-                .map(
-                  f =>
-                    `<div class="mini" data-a="go" data-r="project" data-id="${f.project}" data-tab="files"><span class="ftype" style="--c:${FT[f.type].c}">${ic(FT[f.type].i, 14)}</span><span class="tt">${hl(f.name, q)}</span><span class="faint" style="font-size:12px">${f.size} · ${esc(proj(f.project).name)}</span></div>`,
                 )
                 .join(''),
             ) +

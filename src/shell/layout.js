@@ -126,7 +126,6 @@ export function renderSidebar() {
                 ['board', 'Board', 'square-kanban'],
                 ['list', 'List', 'list'],
                 ['timeline', 'Timeline', 'chart-gantt'],
-                ['files', 'Files', 'paperclip'],
               ]
                 .map(
                   ([tab, n, i]) =>

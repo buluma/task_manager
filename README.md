@@ -1,6 +1,6 @@
 # Gr8r Studio
 
-A calm, structured project management workspace: home dashboard, inbox, my tasks, projects with board / list / table / calendar / timeline / files views, members, teams, activity and settings. Built with plain JavaScript ES modules and CSS, bundled by [Vite](https://vite.dev). There is no UI framework and no runtime dependency.
+A calm, structured project management workspace: home dashboard, inbox, my tasks, projects with board / list / table / calendar / timeline views, members, teams, activity and settings. Built with plain JavaScript ES modules and CSS, bundled by [Vite](https://vite.dev). There is no UI framework and no runtime dependency.
 
 ![Gr8r Studio home dashboard](docs/preview.png)
 

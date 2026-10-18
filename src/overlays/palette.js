@@ -3,12 +3,11 @@ import { MOD, clamp, esc } from '../core/utils.js';
 import { LOGO, ic, wsLogo } from '../core/icons.js';
 import { PSTAT } from '../core/constants.js';
 import { D, S, allTasks, pColor, proj, save, task } from '../core/store.js';
-import { FT, av, hl, stIcon } from '../ui/helpers.js';
+import { av, hl, stIcon } from '../ui/helpers.js';
 import { effectiveDark } from '../core/theme.js';
 import { go, render } from '../shell/render.js';
 import { sortTasks } from '../shell/view-engine.js';
 import { searchAll } from '../pages/search.js';
-import { openModal } from './modals.js';
 import { A } from '../actions/actions.js';
 
 export function commands() {
@@ -123,7 +122,6 @@ export function paletteItems() {
             go('project', { id: 'p1', tab: 'v:v1' });
           },
         },
-        { icon: 'paperclip', name: 'Files in Website Redesign', run: () => go('project', { id: 'p1', tab: 'files' }) },
       ],
     });
     return groups;
@@ -150,17 +148,6 @@ export function paletteItems() {
     groups.push({
       name: 'People',
       items: r.people.slice(0, lim).map(m => ({ html: av(m.id, 'sm', false), name: m.name, sub: m.title, run: () => go('member', { id: m.id }) })),
-    });
-  if (sc === 'all' || sc === 'files')
-    groups.push({
-      name: 'Files',
-      items: r.files.slice(0, lim).map(f => ({
-        icon: FT[f.type].i,
-        name: f.name,
-        sub: proj(f.project).name,
-        r: f.size,
-        run: () => openModal({ type: 'filePreview', file: f, tid: f.task }),
-      })),
     });
   if (sc === 'all' || sc === 'comments')
     groups.push({
@@ -206,7 +193,6 @@ export function paletteHtml() {
             ['tasks', 'Tasks', 'circle-check'],
             ['projects', 'Projects', 'folder'],
             ['people', 'People', 'users'],
-            ['files', 'Files', 'paperclip'],
             ['comments', 'Comments', 'message-square'],
           ]
             .map(([k, n, i]) => `<button role="tab" class="${pl.scope === k ? 'on' : ''}" data-a="palScope" data-v="${k}">${ic(i, 12)}${n}</button>`)

@@ -17,7 +17,7 @@ src/
     index.css           imports every stylesheet in cascade order
     tokens.css          colours, spacing, type, radius, the shared --gutter
     base.css  components.css  shell.css  panels.css  overlays.css  states.css  motion.css  responsive.css
-    views/              list, board, table, calendar, timeline, projects & files
+    views/              list, board, table, calendar, timeline, projects
     pages/              settings, auth & onboarding
   core/                 utilities, constants, icons, store (state + lookups), theme
   data/seed.js          demo workspace data
@@ -25,7 +25,7 @@ src/
   shell/                render loop and router, sidebar/topbar layout, skeletons, view engine
   components/           task list renderer
   pages/                one module per route
-  views/                project views: board, table, calendar, timeline, files, overview
+  views/                project views: board, table, calendar, timeline, overview
   overlays/             task drawer, modals, popovers, context menu, command palette
   features/             teams, subtasks, archive (rendering)
   actions/              user actions, event wiring, keyboard shortcuts, drag and drop
