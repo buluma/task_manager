@@ -479,7 +479,7 @@ export function seed() {
   const tmp = tk('t3');
   tmp.updated = minsAgo(38);
   return {
-    ws: { name: 'Gr8r Studio', url: 'gr8rstudio', c: '#1D1C1A', brand: true },
+    ws: { name: 'Gr8r Studio', c: '#1D1C1A', brand: true },
     me: 'm1',
     members,
     projects,
@@ -498,7 +498,7 @@ export function seed() {
    Its id stays 'p1' because task creation falls back to that id when no project is in context. */
 export function emptyWorkspace() {
   return {
-    ws: { name: 'My Workspace', url: 'my-workspace', c: '#1D1C1A', brand: true },
+    ws: { name: 'My Workspace', c: '#1D1C1A', brand: true },
     me: 'm1',
     members: [{ id: 'm1', name: 'Me', email: '', role: 'Owner', team: 'product', title: '', c: '#5A67D8', status: 'active', last: 0, tz: '' }],
     projects: [
