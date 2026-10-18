@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { archiveProject, archiveTask, removeProject, removeTasks, restoreProject } from './archive.js';
+import { archiveProject, archiveTask, removeProject, removeTasks, restoreProject, restoreTask } from './archive.js';
 
 const NOW = 1000;
 const ctx = { by: 'm2', now: NOW, newId: p => p + 'x' };
@@ -32,6 +32,14 @@ test('archiveTask stamps and logs the task once', () => {
   assert.deepEqual([d.activity[0].verb, d.activity[0].by], ['archived', 'm2']);
   archiveTask(d, d.tasks[0], { ...ctx, now: 2000 });
   assert.deepEqual([d.tasks[0].archivedAt, d.activity.length], [NOW, 3]);
+});
+
+test('restoreTask clears the archive and logs it, only for an archived task', () => {
+  const d = state();
+  restoreTask(d, d.tasks[1], ctx);
+  assert.deepEqual([d.tasks[1].archived, d.tasks[1].archivedAt, d.activity[0].verb], [false, null, 'restored']);
+  restoreTask(d, d.tasks[1], ctx);
+  assert.equal(d.activity.length, 3);
 });
 
 test('removeTasks takes the tasks, the dependency links to them and their comments', () => {

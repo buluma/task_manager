@@ -174,6 +174,10 @@ test('rm --purge removes an archived task for good; project rm --purge does the 
   assert.notEqual(early.code, 0);
   assert.match(early.stderr, /archive/i);
   assert.equal((await run(['rm', 'GR-1'])).code, 0);
+  const back = await run(['restore', 'GR-1']);
+  assert.equal(back.code, 0, back.stderr);
+  assert.match(back.stdout, /restored GR-1/);
+  assert.equal((await run(['rm', 'GR-1'])).code, 0);
   const gone = await run(['rm', 'GR-1', '--purge']);
   assert.equal(gone.code, 0, gone.stderr);
   assert.match(gone.stdout, /deleted GR-1/);

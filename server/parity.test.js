@@ -281,3 +281,9 @@ archiveCase(
   d => purgeTask(d, 'GR-1'),
   d => Object.assign(d.tasks[0], { archived: true, archivedAt: 5 }),
 );
+archiveCase(
+  'restoring a task',
+  () => app.A.restoreTask({ dataset: { id: 't1' } }),
+  d => patchTask(d, PREFS, TODAY, 'GR-1', { archived: false }, NOW),
+  d => Object.assign(d.tasks[0], { archived: true, archivedAt: 5 }),
+);

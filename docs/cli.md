@@ -27,7 +27,8 @@ Tasks are addressed by key, `PROJECT-N` (`GR-12`), and keys are case-insensitive
 | `add TITLE [options]`             | create a task (`--project`, `--status`, `--priority`, `--due`, `--start`, `--cycle`, `--label` (repeatable), `--desc`, `--estimate`, `--completed`, `--recur`) |
 | `set KEY [options]`               | change a task; the same options plus `--title` and `--project` (moving re-keys the task, so `GR-6` can become `PP-1` and the old key stops working)            |
 | `done KEY`                        | mark complete; a repeating task with a due date prints its next occurrence                                                                                     |
-| `rm KEY`                          | archive the task (restore it from the app's Archive page)                                                                                                      |
+| `rm KEY`                          | archive the task (`restore KEY` or the app's Archive page brings it back)                                                                                      |
+| `restore KEY`                     | bring an archived task back                                                                                                                                    |
 | `rm KEY --purge`                  | delete an already archived task for good                                                                                                                       |
 | `subtask add KEY TITLE`           | add a subtask                                                                                                                                                  |
 | `subtask done\|reopen\|rm KEY ID` | complete, reopen or remove a subtask                                                                                                                           |
