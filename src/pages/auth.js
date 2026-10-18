@@ -39,7 +39,7 @@ export function renderAuth() {
   if (s === 'signup')
     return authShell(
       `<form class="auth-card${S.ui.fx.auth ? ' fx-auth' : ''}" data-submit="doSignup" novalidate>
-    <div style="display:flex;justify-content:center">${LOGO(30)}</div><h1>Create your account</h1><p class="sub">Free for up to 3 members. No credit card required.</p>
+    <div style="display:flex;justify-content:center">${LOGO(30)}</div><h1>Create your account</h1><p class="sub">Create your workspace.</p>
     ${socialBtns()}<div class="or">or sign up with email</div>
     <div class="field"><label class="label" for="s-name">Full name</label><input class="input input-lg ${icls('name')}" id="s-name" value="${esc(f.name)}" autocomplete="name" placeholder="Tanjim Islam">${ferr('name')}</div>
     <div class="field"><label class="label" for="s-email">Work email</label><input class="input input-lg ${icls('email')}" id="s-email" type="email" value="" autocomplete="email" placeholder="you@company.com">${ferr('email')}</div>

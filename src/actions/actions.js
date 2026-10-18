@@ -1803,7 +1803,6 @@ A.resetDemo = () => {
     },
   });
 };
-A.toastInfo = el => toast(el.dataset.msg, { kind: 'info' });
 A.demoToast = el => {
   const v = el.dataset.v;
   if (v === 'err') toast("Your changes couldn't be saved.", { kind: 'err', action: 'Try again', onAction: () => toast('Saved') });
@@ -1868,11 +1867,6 @@ IN.noop = () => {};
 IN.prefToggle = el => {
   S.prefs[el.dataset.k] = el.checked;
   save();
-};
-IN.npToggle = el => {
-  D().notifPrefs[el.dataset.k] = el.checked;
-  save();
-  toast('Notification preferences saved', { ms: 1500 });
 };
 IN.prefSel = el => {
   const k = el.dataset.k;
@@ -1960,83 +1954,6 @@ IN.pwStrength = el => {
   if (m) m.replaceWith(tmp.firstElementChild || document.createTextNode(''));
   else if (tmp.firstElementChild) el.after(tmp.firstElementChild);
 };
-A.savePassword = () => {
-  const e = (S.ui.errors = {});
-  const cur = $('#pw-cur').value,
-    nw = $('#pw-new').value,
-    cf = $('#pw-conf').value;
-  S.ui.pwDone = false;
-  if (!cur) e.pwCur = 'Enter your current password';
-  if (nw.length < 10 || !/[0-9\W]/.test(nw)) e.pwNew = 'Use at least 10 characters, including a number or symbol';
-  if (nw !== cf) e.pwConf = "Passwords don't match";
-  if (Object.keys(e).length) {
-    render();
-    return;
-  }
-  loadingBtn('pw-save', 800, () => {
-    S.ui.pwDone = true;
-    S.ui.pwNew = '';
-    render();
-    toast('Password updated');
-  });
-};
-A.revokeSession = el => {
-  mutate(() => {
-    D().sessions = D().sessions.filter(s => s.id !== el.dataset.id);
-  });
-  toast('Session signed out');
-};
-A.revokeAll = () =>
-  confirmDlg({
-    title: 'Sign out of all other sessions?',
-    body: "You'll stay signed in on this device. Other devices will need to sign in again.",
-    ok: 'Sign out others',
-    danger: true,
-    icon: 'log-out',
-    run: () => {
-      mutate(() => {
-        D().sessions = D().sessions.filter(s => s.cur);
-      });
-      toast('Signed out of other sessions');
-    },
-  });
-A.setup2fa = () => {
-  S.ui.tfaSetup = true;
-  S.ui.errors = {};
-  render();
-};
-A.cancel2fa = () => {
-  S.ui.tfaSetup = false;
-  render();
-};
-A.verify2fa = () => {
-  const v = $('#tfa-code').value.trim();
-  if (!/^\d{6}$/.test(v)) {
-    S.ui.errors.tfa = 'Enter the 6-digit code from your app';
-    render();
-    return;
-  }
-  S.ui.errors = {};
-  mutate(() => {
-    D().tfa = true;
-    S.ui.tfaSetup = false;
-  });
-  toast('Two-factor authentication enabled');
-};
-A.disable2fa = () =>
-  confirmDlg({
-    title: 'Turn off two-factor authentication?',
-    body: 'Your account will be protected by your password only.',
-    ok: 'Turn off',
-    danger: true,
-    icon: 'shield-off',
-    run: () => {
-      mutate(() => {
-        D().tfa = false;
-      });
-      toast('Two-factor authentication turned off');
-    },
-  });
 
 /* auth */
 A.auth = el => {

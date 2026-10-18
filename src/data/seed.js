@@ -516,31 +516,12 @@ export function seed() {
     projOrder: projects.map(p => p.id),
     savedViews: [{ id: 'v1', project: 'p1', name: 'High priority', type: 'list', filters: [{ f: 'priority', op: 'is', v: ['urgent', 'high'] }] }],
     recentSearches: ['homepage', 'Sarah', 'wireframes'],
-    sessions: [
-      { id: 'se1', dev: 'MacBook Pro · Chrome', loc: 'San Francisco, US', at: 'Active now', cur: true },
-      { id: 'se2', dev: 'iPhone 15 · Gr8r app', loc: 'San Francisco, US', at: '2 hours ago' },
-      { id: 'se3', dev: 'Windows · Edge', loc: 'Oakland, US', at: 'Sep 12' },
-    ],
-    tfa: false,
-    notifPrefs: {
-      email_mention: true,
-      email_assign: true,
-      email_digest: true,
-      email_comment: false,
-      push_mention: true,
-      push_assign: true,
-      push_comment: true,
-      push_due: true,
-      mention_all: true,
-      assign_self: true,
-    },
   };
 }
 
 /* A real, empty workspace for personal use: one member and one starter project to hold new tasks.
    Its id stays 'p1' because task creation falls back to that id when no project is in context. */
 export function emptyWorkspace() {
-  const base = seed();
   return {
     ws: { name: 'My Workspace', url: 'my-workspace', c: '#1D1C1A', brand: true },
     workspaces: [{ id: 'w1', name: 'My Workspace', c: '#1D1C1A' }],
@@ -575,8 +556,5 @@ export function emptyWorkspace() {
     projOrder: ['p1'],
     savedViews: [],
     recentSearches: [],
-    sessions: [],
-    tfa: false,
-    notifPrefs: base.notifPrefs,
   };
 }
