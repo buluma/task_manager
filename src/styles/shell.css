@@ -424,16 +424,3 @@ h3.sub {
 .bottomnav {
   display: none;
 }
-.offline-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
-  background: var(--amber-soft);
-  color: var(--text);
-  font-size: var(--fs-sm);
-  border-bottom: 1px solid var(--border);
-}
-.offline-bar .i {
-  color: var(--amber);
-}

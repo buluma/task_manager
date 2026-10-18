@@ -22,7 +22,6 @@ import { pageProject } from '../pages/project.js';
 import { pageWsCalendar } from '../views/calendar.js';
 import { pageWsTimeline } from '../views/timeline.js';
 import { pageSettings } from '../pages/settings.js';
-import { pageStates, pageSystem } from '../pages/design-system.js';
 import { pageArchive } from '../features/archive.js';
 
 export function renderShell() {
@@ -32,7 +31,6 @@ export function renderShell() {
     ${u.mnav ? '<div class="side-scrim" data-a="closeMnav"></div>' : ''}
     <main class="main" id="main">
       ${renderTopbar()}
-      ${u.offline ? `<div class="offline-bar" role="alert">${ic('wifi-off', 15)}<span><b>You're offline.</b> Changes won't be saved until your connection is back.</span><span class="sp"></span><button class="btn btn-sm btn-secondary" data-a="retryOnline">Try again</button></div>` : ''}
       <div class="content ${u.fx.route ? 'fx-route' : ''}" id="main-content" tabindex="-1" data-keep="c:${u.route}:${u.params.id || ''}:${u.params.tab || ''}:${u.params.sec || ''}">${u.loading ? skeleton() : renderPage()}</div>
     </main>
     ${renderBottomNav()}
@@ -60,8 +58,6 @@ export function renderPage() {
       team: pageTeam,
       activity: pageActivity,
       settings: pageSettings,
-      system: pageSystem,
-      states: pageStates,
       archive: pageArchive,
     };
     return (P[r] || page404)();
