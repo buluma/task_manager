@@ -8,6 +8,7 @@ import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patch
 import { archiveProject, createProject, findProject, listProjects, patchProject, purgeProject } from './projects.js';
 import { addDep, addSubtask, deleteSubtask, listDeps, patchSubtask, removeDep } from './relations.js';
 import { addComment, deleteComment, listComments } from './comments.js';
+import { createNotification, listNotifications, setRead } from './notifications.js';
 import { addAgent, findAgent, listAgents } from './agents.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
 
@@ -128,6 +129,17 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
       if (method === 'GET') return json(res, 200, { agents: listAgents(needState().data) });
       const body = await readJson(req, 'agent');
       return json(res, 201, { agent: mutate(d => addAgent(d, body)) });
+    }
+    if (what === 'notifications' && parts.length === 1) {
+      allow('GET', 'POST');
+      if (method === 'GET') return json(res, 200, { notifications: listNotifications(needState().data, url.searchParams) });
+      const body = await readJson(req, 'notification');
+      return json(res, 201, { notification: mutate((d, p, today, t) => createNotification(d, body, t)) });
+    }
+    if (what === 'notifications' && parts.length === 2) {
+      allow('PATCH');
+      const body = await readJson(req, 'notification');
+      return json(res, 200, { notification: mutate(d => setRead(d, key, body)) });
     }
     if (what === 'projects' && parts.length === 1) {
       allow('GET', 'POST');

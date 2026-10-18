@@ -35,6 +35,8 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   project set KEY [--name N] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE|none] [--lead MEMBER]
   project rm KEY      archive          project restore KEY    bring it back
   project rm KEY --purge    delete an archived project and its tasks for good
+  notify TEXT [--task KEY] [--snippet TEXT] [--type comment|update|mention|assign]   raise an Inbox item (use with --as)
+  inbox [--unread]               list Inbox items      inbox read|unread ID   mark one
   agent add NAME                 register an agent, so its writes show under its own name
   agent list
   priorities
@@ -66,6 +68,10 @@ const OPTIONS = {
   recur: { type: 'string' },
   at: { type: 'string' },
   as: { type: 'string' },
+  task: { type: 'string' },
+  snippet: { type: 'string' },
+  type: { type: 'string' },
+  unread: { type: 'boolean' },
   name: { type: 'string' },
   key: { type: 'string' },
   color: { type: 'string' },
@@ -262,6 +268,23 @@ async function main(argv) {
       if (existing) return out(existing, `${prUrl} is already linked to ${taskKey.toUpperCase()}`);
       const { comment } = await api('POST', route, { text });
       return out(comment, `linked ${taskKey.toUpperCase()}  ${prUrl}`);
+    }
+    case 'notify': {
+      if (!rest.length) throw new CliError('notify needs some text');
+      const body = { text: rest.join(' '), ...(v.task && { task: v.task }), ...(v.snippet && { snippet: v.snippet }), ...(v.type && { type: v.type }) };
+      const { notification } = await api('POST', '/api/notifications', body);
+      return out(notification, `notified  ${notification.id}`);
+    }
+    case 'inbox': {
+      const [sub, id, ...extra] = rest;
+      if (sub !== undefined) {
+        if (!['read', 'unread'].includes(sub) || !id || extra.length) throw new CliError(`inbox needs: (nothing) | read ID | unread ID\n\n${HELP}`);
+        const { notification } = await api('PATCH', `/api/notifications/${encodeURIComponent(id)}`, { read: sub === 'read' });
+        return out(notification, `marked ${id} ${sub}`);
+      }
+      const { notifications } = await api('GET', `/api/notifications${v.unread ? '?unread=1' : ''}`);
+      const line = n => `${n.read ? ' ' : '*'} ${n.id.padEnd(9)} ${(n.from || '-').padEnd(10)} ${n.text.padEnd(16)} ${(n.key || '-').padEnd(8)} ${n.snippet}`;
+      return out(notifications, notifications.length ? notifications.map(line).join('\n') : 'inbox is empty');
     }
     case 'agent': {
       const [sub, ...args] = rest;

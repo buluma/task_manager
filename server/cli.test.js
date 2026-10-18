@@ -234,6 +234,28 @@ test('agent add registers an agent, agent list shows it, and --as attributes a w
   assert.notEqual((await run(['agent', 'nope'])).code, 0);
 });
 
+test('notify raises an Inbox item as an agent; inbox lists it and read/unread mark it', async () => {
+  await run(['agent', 'add', 'Claude']);
+  await run(['add', 'ship it']);
+  const n = await run(['notify', 'needs your call', '--task', 'gr-1', '--snippet', 'two options', '--as', 'Claude']);
+  assert.equal(n.code, 0, n.stderr);
+  assert.match(n.stdout, /notified/);
+  await run(['comment', 'GR-1', 'tests pass', '--as', 'Claude']);
+  const list = await run(['inbox']);
+  assert.match(list.stdout, /Claude\s+commented on\s+GR-1\s+tests pass/);
+  assert.match(list.stdout, /Claude\s+needs your call\s+GR-1\s+two options/);
+  const items = JSON.parse((await run(['inbox', '--json'])).stdout);
+  assert.equal(items.length, 2);
+  assert.equal((await run(['inbox', 'read', items[0].id])).code, 0);
+  assert.equal(JSON.parse((await run(['inbox', '--unread', '--json'])).stdout).length, 1);
+  assert.equal((await run(['inbox', 'unread', items[0].id])).code, 0);
+  assert.equal(JSON.parse((await run(['inbox', '--unread', '--json'])).stdout).length, 2);
+  assert.notEqual((await run(['notify'])).code, 0);
+  assert.notEqual((await run(['notify', 'x', '--type', 'wat'])).code, 0);
+  assert.notEqual((await run(['inbox', 'read'])).code, 0);
+  assert.notEqual((await run(['inbox', 'read', 'nope'])).code, 0);
+});
+
 test('comment adds, comments lists, comment rm deletes', async () => {
   await run(['add', 'host']);
   const add = await run(['comment', 'GR-1', 'looks', 'good', '--at', '2026-07-12']);
