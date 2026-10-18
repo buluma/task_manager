@@ -17,6 +17,8 @@ export const bad = msg => new ApiError(400, msg);
 /* Who a write is logged to: the agent named on the request, else the workspace owner. `data.actor` exists only
    while a request is being applied (app.js mutate) and is never stored. */
 export const actorOf = data => data.actor ?? data.me;
+/* The `ctx` the shared changes in src/core/ take (see activity.js): the request's actor, its time, and server ids. */
+export const changeCtx = (data, now) => ({ by: actorOf(data), now, newId: prefix => prefix + rand() });
 
 export const STATUS_NAMES = Object.fromEntries(STATUSES.map(s => [s.id, s.name]));
 const prioName = (data, id) => scaleOf(data).find(p => p.id === id)?.name;

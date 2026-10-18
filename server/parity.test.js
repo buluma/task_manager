@@ -6,6 +6,7 @@ import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import { createTask, patchTask, removeTasks } from './tasks.js';
+import { addComment, deleteComment } from './comments.js';
 import { addSubtask, deleteSubtask, patchSubtask } from './relations.js';
 import { TEAMS_SEED } from '../src/core/constants.js';
 
@@ -90,7 +91,7 @@ const fixture = () => ({
   notifs: [],
 });
 
-/* Ids are random on both sides, so tasks are compared by key and activity rows and subtasks without their id. */
+/* Ids are random on both sides, so tasks are compared by key, and activity rows, subtasks and comments without their id. */
 function normalize(data) {
   const keyOf = id => data.tasks.find(t => t.id === id)?.key ?? id;
   const without = (o, k) => {
@@ -101,7 +102,7 @@ function normalize(data) {
   return {
     ...data,
     tasks: data.tasks.map(t => ({ ...without(t, 'id'), deps: t.deps.map(keyOf), subtasks: t.subtasks.map(s => without(s, 'id')) })),
-    comments: data.comments.map(c => ({ ...c, task: keyOf(c.task) })),
+    comments: data.comments.map(c => ({ ...without(c, 'id'), task: keyOf(c.task) })),
     activity: data.activity.map(a => ({ ...without(a, 'id'), task: keyOf(a.task) })),
   };
 }
@@ -184,10 +185,9 @@ test('delete parity: the task, links to it and its comments go', () => {
   assert.deepEqual(s, a);
 });
 
-/* Subtasks: the drawer's handlers against the subtask routes. GR-1 starts with one done subtask, s1. */
-const sub = { dataset: { id: 't1', sid: 's1' } };
-const subCase = (name, onApp, onServer, setup = () => {}) =>
-  test(`subtask parity: ${name}`, () => {
+/* An app handler against the API route that does the same thing. */
+const handlerCase = (title, onApp, onServer, setup = () => {}) =>
+  test(title, () => {
     const a = viaApp(() => {
       setup(S.data);
       onApp();
@@ -198,6 +198,10 @@ const subCase = (name, onApp, onServer, setup = () => {}) =>
     });
     assert.deepEqual(s, a);
   });
+
+/* Subtasks: the drawer's handlers against the subtask routes. GR-1 starts with one done subtask, s1. */
+const sub = { dataset: { id: 't1', sid: 's1' } };
+const subCase = (name, ...rest) => handlerCase(`subtask parity: ${name}`, ...rest);
 
 subCase(
   'adding',
@@ -224,4 +228,21 @@ subCase(
   'deleting',
   () => app.A.rmSub(sub),
   d => deleteSubtask(d, 'GR-1', 's1', NOW),
+);
+
+/* Comments: the drawer's composer and delete button against the comment routes. GR-1 starts with one comment, c1. */
+const commentCase = (name, ...rest) => handlerCase(`comment parity: ${name}`, ...rest);
+
+commentCase(
+  'posting',
+  () => {
+    S.ui.drafts.t1 = '  Looks good  ';
+    app.A.postComment({ dataset: { id: 't1' } });
+  },
+  d => addComment(d, 'GR-1', { text: '  Looks good  ' }, NOW),
+);
+commentCase(
+  'deleting',
+  () => app.A.delComment({ dataset: { id: 'c1' } }),
+  d => deleteComment(d, 'GR-1', 'c1'),
 );

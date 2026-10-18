@@ -5,6 +5,7 @@ import { $, $$, TODAY, addD, dOff, esc, fmtDate, iso, parse, uid } from '../core
 import { PR, PSTAT, ST } from '../core/constants.js';
 import { adoptPriorities } from '../core/priorities.js';
 import { nextDue } from '../core/recur.js';
+import { addComment, removeComment } from '../core/comments.js';
 import { addSub, removeSub, setSubDone } from '../core/subtasks.js';
 import { D, S, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
 import { effectiveDark } from '../core/theme.js';
@@ -19,6 +20,9 @@ export const A = {},
   KEY = {},
   DBL = {},
   BLUR = {};
+
+/* The `ctx` the shared changes in core/ take (see core/activity.js): this user, now, and the app's ids. */
+const asMe = () => ({ by: D().me, now: Date.now(), newId: uid });
 
 /* ---------- task mutations ---------- */
 export function nextKey(p) {
@@ -733,12 +737,11 @@ BLUR.commitDrawerTitle = el => {
 KEY.blur = el => el.blur();
 
 /* subtasks: the changes themselves are in core/subtasks.js, shared with the server */
-const subCtx = () => ({ by: D().me, now: Date.now(), newId: uid });
 A.toggleSub = el => {
   const t = task(el.dataset.id);
   const s = t.subtasks.find(x => x.id === el.dataset.sid);
   if (!s.done) fxSet({ done: s.id });
-  mutate(() => setSubDone(D(), t, s, !s.done, subCtx()));
+  mutate(() => setSubDone(D(), t, s, !s.done, asMe()));
 };
 A.rmSub = el => {
   const t = task(el.dataset.id);
@@ -749,7 +752,7 @@ KEY.addSub = el => {
   const t = task(el.dataset.id);
   const v = el.value.trim();
   if (!v) return;
-  mutate(() => fxSet({ added: addSub(D(), t, v, subCtx()).id }));
+  mutate(() => fxSet({ added: addSub(D(), t, v, asMe()).id }));
   setTimeout(() => $('#d-sub')?.focus(), 0);
 };
 A.expandRow = el => {
@@ -803,8 +806,7 @@ A.postComment = el => {
   const t = task(id);
   if (
     mutate(() => {
-      D().comments.push({ id: uid('c'), task: id, by: D().me, at: Date.now(), text: txt, re: {} });
-      logAct('commented on', t);
+      addComment(D(), t, txt, asMe());
       S.ui.drafts[id] = '';
       S.ui.mention = null;
       S.ui.drawerTab = 'comments';
@@ -816,9 +818,7 @@ A.postComment = el => {
 A.delComment = el => {
   const c = D().comments.find(x => x.id === el.dataset.id);
   const snap = snapshot();
-  mutate(() => {
-    D().comments = D().comments.filter(x => x !== c);
-  });
+  mutate(() => removeComment(D(), c));
   toast('Comment deleted', { action: 'Undo', onAction: () => restore(snap) });
 };
 A.react = el => {
