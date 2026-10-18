@@ -7,7 +7,7 @@ import { STATUSES } from '../src/core/constants.js';
 import { cycleStart } from '../src/core/cycles.js';
 import { scaleOf } from '../src/core/priorities.js';
 import { RECUR_DAYS, nextDue } from '../src/core/recur.js';
-import { markdownToHtml } from './markdown.js';
+import { markdownToHtml } from '../src/core/markdown.js';
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -60,7 +60,7 @@ function projectOf(data, ref) {
 }
 
 /* Descriptions are stored as small HTML, which the app shows as is. Plain text (the default) is escaped, blank
-   lines start paragraphs and single newlines break lines; "markdown" goes through markdown.js. */
+   lines start paragraphs and single newlines break lines; "markdown" goes through src/core/markdown.js. */
 function renderDesc(text, format) {
   if (!text.trim()) return '';
   if (format === 'markdown') return markdownToHtml(text);
