@@ -1614,10 +1614,6 @@ A.wsColor = el => {
 };
 A.saveWorkspace = () => {
   const n = $('#ws-name').value.trim();
-  const u = $('#ws-url')
-    .value.trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-');
   if (!n) {
     toast("Workspace name can't be empty", { kind: 'err' });
     return;
@@ -1627,7 +1623,6 @@ A.saveWorkspace = () => {
       mutate(() => {
         const old = D().ws.name;
         D().ws.name = n;
-        D().ws.url = u || D().ws.url;
         const w = D().workspaces.find(x => x.name === old);
         if (w) w.name = n;
       })
