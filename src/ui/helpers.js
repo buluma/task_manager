@@ -3,6 +3,7 @@ import { TODAY, diffD, esc, parse, relDate } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { LB, PR, PSTAT, ST, prBars } from '../core/constants.js';
 import { D, isOpen, mem, pColor } from '../core/store.js';
+import { markMentions, markdownToHtml } from '../core/markdown.js';
 
 export function av(id, cls = '', tip = true) {
   const m = mem(id);
@@ -66,10 +67,15 @@ export function hl(text, q) {
   if (i < 0) return esc(text);
   return esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length));
 }
-export function fmtComment(txt) {
-  let h = esc(txt);
-  D().members.forEach(m => {
-    h = h.split('@' + esc(m.name)).join(`<span class="mention">@${esc(m.name)}</span>`);
-  });
-  return h;
-}
+/* A comment's text is stored as written and rendered as markdown when shown, with @mentions of members marked. */
+export const fmtComment = txt =>
+  markMentions(
+    markdownToHtml(txt || ''),
+    D().members.map(m => m.name),
+  );
+/* One line of comment text (an Inbox snippet): escaped as is, with mentions marked. */
+export const fmtSnippet = txt =>
+  markMentions(
+    esc(txt),
+    D().members.map(m => m.name),
+  );

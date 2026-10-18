@@ -1,5 +1,5 @@
-/* A small markdown to HTML converter for task descriptions, opt-in on the API (`descFormat: "markdown"`).
-   The app drops a description into the page as HTML, so safety comes from escaping every character of input first
+/* A small markdown to HTML converter, shared by the server (task descriptions, opt-in with `descFormat: "markdown"`)
+   and the app (comments, rendered when shown). The result goes into the page as HTML, so safety comes from escaping every character of input first
    and only then adding tags of our own: headings, b/i/s/code, lists, pre, blockquote, hr and http(s)/mailto links.
    Not a full CommonMark: nested lists are flattened and tables stay as preformatted text. */
 
@@ -110,4 +110,33 @@ export function markdownToHtml(text) {
   }
   flush();
   return out.join('');
+}
+
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/* Wraps @Name in a mention chip, for each member name, in the text of `html` from markdownToHtml: never inside a tag
+   or a link, so an address with an @ in it is left alone. Longest names first, so "@Ada Lovelace" beats "@Ada". */
+export function markMentions(html, names) {
+  if (!names.length) return html;
+  const re = new RegExp(
+    '@(' +
+      [...names]
+        .sort((a, b) => b.length - a.length)
+        .map(n => reEsc(esc(n)))
+        .join('|') +
+      ')',
+    'g',
+  );
+  let inLink = 0;
+  return html
+    .split(/(<[^>]*>)/)
+    .map(part => {
+      if (part.startsWith('<')) {
+        if (/^<a\b/.test(part)) inLink++;
+        else if (part === '</a>') inLink--;
+        return part;
+      }
+      return inLink ? part : part.replace(re, '<span class="mention">@$1</span>');
+    })
+    .join('');
 }

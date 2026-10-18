@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { markdownToHtml } from './markdown.js';
+import { markMentions, markdownToHtml } from './markdown.js';
 
 const md = markdownToHtml;
 
@@ -69,4 +69,20 @@ test('HTML in the input is always escaped, whatever the position', () => {
   const html = md('<script>alert(1)</script>\n\n# <img src=x onerror=alert(1)>\n\n* <b onclick=x>\n\n> <i>\n\n[<u>t</u>](https://e.co/"onmouseover="x)');
   assert.doesNotMatch(html, /<script|<img|<b onclick|<i>|<u>|onmouseover="x/);
   assert.match(html, /&lt;script&gt;/);
+});
+
+test('markMentions wraps @Name in text only, never inside a tag or a link address', () => {
+  const html = markdownToHtml('Thanks @Ada Lovelace, see https://example.com/@Ada and **@Me**');
+  const out = markMentions(html, ['Ada Lovelace', 'Ada', 'Me']);
+  assert.match(out, /Thanks <span class="mention">@Ada Lovelace<\/span>,/);
+  assert.match(out, /href="https:\/\/example.com\/@Ada"/);
+  assert.match(out, /<b><span class="mention">@Me<\/span><\/b>/);
+  assert.match(out, />https:\/\/example.com\/@Ada<\/a>/); // nor in a link's text
+  assert.equal(out.match(/class="mention"/g).length, 2);
+});
+
+test('markMentions matches escaped names, so a name with markup characters stays inert', () => {
+  const out = markMentions(markdownToHtml('hi @<b>x</b>'), ['<b>x</b>']);
+  assert.match(out, /<span class="mention">@&lt;b&gt;x&lt;\/b&gt;<\/span>/);
+  assert.doesNotMatch(out, /<b>x<\/b>/);
 });

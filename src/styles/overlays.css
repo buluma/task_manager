@@ -245,15 +245,19 @@
   content: attr(data-ph);
   color: var(--text-3);
 }
-.rte-body p {
+.rte-body p,
+.cmt .txt p {
   margin: 0 0 6px;
 }
 .rte-body ul,
-.rte-body ol {
+.cmt .txt ul,
+.rte-body ol,
+.cmt .txt ol {
   margin: 4px 0;
   padding-left: 20px;
 }
-.rte-body h4 {
+.rte-body h4,
+.cmt .txt h4 {
   font-size: var(--fs-md);
   margin: 10px 0 4px;
 }
@@ -264,15 +268,20 @@
   overflow-wrap: anywhere;
 }
 .rte-body h3,
+.cmt .txt h3,
 .rte-body h5,
-.rte-body h6 {
+.cmt .txt h5,
+.rte-body h6,
+.cmt .txt h6 {
   font-size: var(--fs);
   margin: 10px 0 4px;
 }
-.rte-body h3 {
+.rte-body h3,
+.cmt .txt h3 {
   font-size: var(--fs-lg, var(--fs-md));
 }
-.rte-body pre {
+.rte-body pre,
+.cmt .txt pre {
   margin: 6px 0;
   padding: 8px 10px;
   max-width: 100%;
@@ -285,30 +294,35 @@
   white-space: pre;
   overflow-wrap: normal;
 }
-.rte-body code {
+.rte-body code,
+.cmt .txt code {
   font-family: var(--mono);
   font-size: 0.92em;
   background: var(--surface-2);
   padding: 1px 4px;
   border-radius: 4px;
 }
-.rte-body pre code {
+.rte-body pre code,
+.cmt .txt pre code {
   padding: 0;
   background: none;
   font-size: inherit;
 }
-.rte-body blockquote {
+.rte-body blockquote,
+.cmt .txt blockquote {
   margin: 6px 0;
   padding-left: 12px;
   border-left: 3px solid var(--border-strong);
   color: var(--text-2);
 }
-.rte-body hr {
+.rte-body hr,
+.cmt .txt hr {
   border: 0;
   border-top: 1px solid var(--border);
   margin: 10px 0;
 }
-.rte-body a {
+.rte-body a,
+.cmt .txt a {
   color: var(--accent);
 }
 .subt {
@@ -378,8 +392,13 @@
   font-size: var(--fs);
   margin-top: 3px;
   line-height: 1.55;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Comments render as markdown (fmtComment), sharing the description's block styles above; a single paragraph keeps
+   the old tight spacing. */
+.cmt .txt > :last-child {
+  margin-bottom: 0;
 }
 .mention {
   color: var(--accent);

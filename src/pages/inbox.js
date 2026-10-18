@@ -3,7 +3,7 @@ import { MOD, ago, esc } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { inboxCats } from '../core/inbox.js';
 import { D, S, commentsOf, mem, pColor, proj, task } from '../core/store.js';
-import { av, empty, fmtComment } from '../ui/helpers.js';
+import { av, empty, fmtSnippet } from '../ui/helpers.js';
 import { cellAssignee, cellDue, cellPrio, cellStatus } from '../components/task-list.js';
 import { commentHtml } from '../overlays/drawer.js';
 
@@ -56,7 +56,7 @@ export function inboxItem(n, on) {
     ${notifIcon(n)}
     <div class="grow" style="font-size:13px;line-height:1.45">
       <div>${notifText(n)}</div>
-      <div class="trunc muted" style="font-size:12.5px;margin-top:2px">${fmtComment(n.snippet)}</div>
+      <div class="trunc muted" style="font-size:12.5px;margin-top:2px">${fmtSnippet(n.snippet)}</div>
       <div class="row" style="gap:6px;margin-top:5px;font-size:11.5px;color:var(--text-3)">${ic(typeIc, 11)}${p ? `<span class="pdot" style="--c:${pColor(p)};width:6px;height:6px"></span>${esc(p.name)}` : ''}<span>·</span><span>${ago(n.at)}</span></div>
     </div>
     <button class="ibtn ibtn-xs" data-a="toggleRead" data-id="${n.id}" data-tip="${n.read ? 'Mark as unread' : 'Mark as read'}" aria-label="${n.read ? 'Mark as unread' : 'Mark as read'}">${ic(n.read ? 'mail' : 'mail-open', 13)}</button>
