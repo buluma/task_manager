@@ -76,7 +76,6 @@ export const S = {
     inboxCat: 'all',
     inboxUnread: false,
     inboxSel: null,
-    notifFilter: 'all',
     settings: 'appearance',
     searchQ: '',
     searchCat: 'all',
