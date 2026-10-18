@@ -2037,22 +2037,6 @@ A.disable2fa = () =>
       toast('Two-factor authentication turned off');
     },
   });
-A.changePlan = el => {
-  const v = el.dataset.v;
-  const price = { Free: 0, Team: 12, Business: 24 }[v];
-  confirmDlg({
-    title: `${v === 'Free' ? 'Downgrade' : 'Upgrade'} to ${v}?`,
-    body: `${D().members.length} members × $${price}/month = <b>$${D().members.length * price}/month</b>, prorated from today and billed to Visa ending 4242.`,
-    ok: v === 'Free' ? 'Downgrade' : `Upgrade to ${v}`,
-    icon: 'gem',
-    run: () => {
-      mutate(() => {
-        D().plan = v;
-      });
-      toast(`You're now on the ${v} plan`);
-    },
-  });
-};
 
 /* auth */
 A.auth = el => {
@@ -2252,7 +2236,7 @@ A.onbFinish = () => {
     if (o.ws.trim()) {
       const c = ['#2F2E2A', '#5A67D8', '#23918A', '#C54B78'][D().workspaces.length % 4];
       D().ws = { name: o.ws.trim(), url: o.url || 'workspace', c };
-      if (!D().workspaces.some(w => w.name === D().ws.name)) D().workspaces.push({ id: uid('w'), name: D().ws.name, c, plan: 'Free' });
+      if (!D().workspaces.some(w => w.name === D().ws.name)) D().workspaces.push({ id: uid('w'), name: D().ws.name, c });
     }
     S.prefs.defaultTab = { kanban: 'board', list: 'list', timeline: 'timeline', table: 'table' }[o.team] || 'board';
     const tm = TEMPLATES.find(t => t.id === o.tmpl) || TEMPLATES[2];

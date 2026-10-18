@@ -219,7 +219,7 @@ export function popHtml(p) {
       inner = `<div class="mh">Workspaces</div>${D()
         .workspaces.map(
           w =>
-            `<button class="mi" data-a="switchWs" data-v="${w.id}">${wsLogo(w, 20)}<span class="grow">${esc(w.name)}</span><span class="faint" style="font-size:11px">${w.plan}</span>${w.name === D().ws.name ? `<span class="ck">${ic('check', 14)}</span>` : ''}</button>`,
+            `<button class="mi" data-a="switchWs" data-v="${w.id}">${wsLogo(w, 20)}<span class="grow">${esc(w.name)}</span>${w.name === D().ws.name ? `<span class="ck">${ic('check', 14)}</span>` : ''}</button>`,
         )
         .join(
           '',

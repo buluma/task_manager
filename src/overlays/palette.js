@@ -68,7 +68,7 @@ export function paletteItems() {
       name: 'Switch workspace',
       items: D()
         .workspaces.filter(w => !q || w.name.toLowerCase().includes(ql))
-        .map(w => ({ html: `${wsLogo(w, 20)}`, name: w.name, sub: w.plan + ' plan', run: () => A.switchWs({ dataset: { v: w.id } }) })),
+        .map(w => ({ html: `${wsLogo(w, 20)}`, name: w.name, run: () => A.switchWs({ dataset: { v: w.id } }) })),
     });
     return groups;
   }
