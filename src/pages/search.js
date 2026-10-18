@@ -34,7 +34,7 @@ export function pageSearch() {
       ? `<section style="margin-bottom:22px"><div class="eyebrow" style="margin-bottom:6px">${title} · ${r[k].length}</div><div class="panel" style="overflow:hidden">${html}</div></section>`
       : '';
   return `<div class="page" style="max-width:860px">
-    <div class="inwrap" style="margin-bottom:14px">${ic('search', 16)}<input class="input input-lg" id="search-page-q" data-in="searchQ" placeholder="Search tasks, projects, people, files, and comments" value="${esc(q)}" style="padding-left:34px;font-size:15px" aria-label="Search"></div>
+    <div class="inwrap" style="margin-bottom:14px">${ic('search', 16)}<input class="input input-lg" id="search-page-q" data-in="searchQ" placeholder="Search tasks, projects, people, and comments" value="${esc(q)}" style="padding-left:34px;font-size:15px" aria-label="Search"></div>
     <div class="tabs" style="margin-bottom:18px">${cats.map(([k, n]) => `<button class="tab ${cat === k ? 'on' : ''}" data-a="set" data-k="searchCat" data-v="${k}">${n}<span class="cnt">${k === 'all' ? total : r[k].length}</span></button>`).join('')}</div>
     ${
       !q

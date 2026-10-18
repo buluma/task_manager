@@ -53,7 +53,6 @@ export const S = {
     modals: [],
     pop: null,
     palette: null,
-    loading: false,
     offline: false,
     sel: new Set(),
     composer: null,

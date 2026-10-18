@@ -21,7 +21,7 @@ A.purgeTask = el => {
   const t = task(el.dataset.id);
   confirmDlg({
     title: 'Delete task permanently?',
-    body: `<b>${esc(t.title)}</b>, its subtasks, comments, and attachments will be deleted for everyone. This can't be undone.`,
+    body: `<b>${esc(t.title)}</b>, its subtasks and comments will be deleted for everyone. This can't be undone.`,
     ok: 'Delete permanently',
     danger: true,
     run: () => {

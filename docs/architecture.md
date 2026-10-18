@@ -22,7 +22,7 @@ src/
   core/                 utilities, constants, icons, store (state + lookups), theme
   data/seed.js          demo workspace data
   ui/                   shared render helpers, toasts, the select dropdown
-  shell/                render loop and router, sidebar/topbar layout, skeletons, view engine
+  shell/                render loop and router, sidebar/topbar layout, view engine
   components/           task list renderer
   pages/                one module per route
   views/                project views: board, table, calendar, timeline, overview

@@ -33,7 +33,6 @@ const fixture = () => ({
     tasks: [],
     activity: [],
     comments: [],
-    files: [],
   },
   prefs: { weekStart: 1 },
   views: {},
@@ -161,7 +160,7 @@ test('unsupported methods are 405', async () => {
   assert.equal((await call('POST', '/api/projects/gr', {})).status, 405);
 });
 
-test('DELETE ?purge=1 permanently removes an archived project with its tasks, comments and files', async () => {
+test('DELETE ?purge=1 permanently removes an archived project with its tasks and comments', async () => {
   await call('POST', '/api/projects', { name: 'Doomed', key: 'DM' });
   await call('POST', '/api/tasks', { title: 'in doomed', project: 'DM' });
   await call('POST', '/api/tasks', { title: 'safe', project: 'GR' });
@@ -169,10 +168,6 @@ test('DELETE ?purge=1 permanently removes an archived project with its tasks, co
   const doomed = s.state.data.projects.find(p => p.key === 'DM');
   const inDoomed = s.state.data.tasks.find(t => t.project === doomed.id);
   s.state.data.comments = [{ id: 'c1', task: inDoomed.id }];
-  s.state.data.files = [
-    { id: 'f1', project: doomed.id },
-    { id: 'f2', project: 'p1' },
-  ];
   fs.writeFileSync(dataFile, JSON.stringify(s));
   await server.close();
   server = createApp({ dataFile, distDir: dir, now: () => new Date(2026, 9, 17, 12, 0, 0) });
@@ -196,10 +191,6 @@ test('DELETE ?purge=1 permanently removes an archived project with its tasks, co
     ['safe'],
   );
   assert.deepEqual(d.comments, []);
-  assert.deepEqual(
-    d.files.map(f => f.id),
-    ['f2'],
-  );
   assert.equal(
     d.activity.some(a => a.project === doomed.id),
     false,

@@ -254,7 +254,6 @@ export function seed() {
           start: due == null ? null : dOff(due - (x.len || 4)),
           labels,
           subtasks: [],
-          attachments: [],
           deps: [],
           desc: '',
           estimate: x.est || null,
@@ -281,10 +280,6 @@ export function seed() {
       { id: 's2', title: 'Tablet layout', done: true },
       { id: 's3', title: 'Mobile layout', done: true },
       { id: 's4', title: 'Annotate interactions', done: false },
-    ],
-    attachments: [
-      { id: 'a1', name: 'homepage-wireframes-v3.fig', type: 'fig', size: '4.2 MB', by: 'm2', at: minsAgo(300) },
-      { id: 'a2', name: 'nav-audit-findings.pdf', type: 'pdf', size: '860 KB', by: 'm2', at: minsAgo(8000) },
     ],
   });
   t('p1', 'Finalize navigation', 'progress', 'm3', 'high', 0, ['design', 'frontend'], {
@@ -473,20 +468,6 @@ export function seed() {
     { id: 'n9', type: 'update', by: 'm3', task: 't18', text: 'completed', snippet: 'Fix broken anchor links on pricing', at: minsAgo(90), read: true },
     { id: 'n10', type: 'update', by: null, task: 't28', text: 'is due today', snippet: 'Triage beta tester feedback', at: minsAgo(20), read: false },
   ];
-  const files = [
-    { id: 'f1', project: 'p1', name: 'homepage-wireframes-v3.fig', type: 'fig', size: '4.2 MB', by: 'm2', at: minsAgo(300), task: 't3' },
-    { id: 'f2', project: 'p1', name: 'nav-audit-findings.pdf', type: 'pdf', size: '860 KB', by: 'm2', at: minsAgo(8000), task: 't3' },
-    { id: 'f3', project: 'p1', name: 'brand-photography-set.zip', type: 'zip', size: '128 MB', by: 'm4', at: minsAgo(3000) },
-    { id: 'f4', project: 'p1', name: 'hero-exploration.png', type: 'img', size: '2.1 MB', by: 'm4', at: minsAgo(1400) },
-    { id: 'f5', project: 'p1', name: 'content-inventory.xlsx', type: 'sheet', size: '310 KB', by: 'm5', at: minsAgo(9000) },
-    { id: 'f6', project: 'p1', name: 'sitemap-v2.pdf', type: 'pdf', size: '540 KB', by: 'm1', at: minsAgo(12000) },
-    { id: 'f7', project: 'p1', name: 'interview-notes.docx', type: 'doc', size: '96 KB', by: 'm1', at: minsAgo(20000) },
-    { id: 'f8', project: 'p1', name: 'analytics-events.json', type: 'code', size: '12 KB', by: 'm6', at: minsAgo(700) },
-    { id: 'f9', project: 'p2', name: 'onboarding-flow.fig', type: 'fig', size: '6.8 MB', by: 'm4', at: minsAgo(500) },
-    { id: 'f10', project: 'p2', name: 'beta-feedback.xlsx', type: 'sheet', size: '220 KB', by: 'm1', at: minsAgo(900) },
-    { id: 'f11', project: 'p3', name: 'campaign-brief.pdf', type: 'pdf', size: '1.1 MB', by: 'm5', at: minsAgo(4000) },
-    { id: 'f12', project: 'p4', name: 'launch-plan.docx', type: 'doc', size: '180 KB', by: 'm1', at: minsAgo(6000) },
-  ];
   const events = [
     { id: 'e1', title: 'Design review', date: dOff(1), time: '10:00', project: 'p1' },
     { id: 'e2', title: 'Sprint planning', date: dOff(5), time: '09:30', project: 'p2' },
@@ -499,11 +480,6 @@ export function seed() {
   tmp.updated = minsAgo(38);
   return {
     ws: { name: 'Gr8r Studio', url: 'gr8rstudio', c: '#1D1C1A', brand: true },
-    workspaces: [
-      { id: 'w1', name: 'Gr8r Studio', c: '#1D1C1A', brand: true },
-      { id: 'w2', name: 'Personal', c: '#3D8E5F' },
-      { id: 'w3', name: 'Acme Labs', c: '#3B82C4' },
-    ],
     me: 'm1',
     members,
     projects,
@@ -511,7 +487,6 @@ export function seed() {
     comments,
     activity,
     notifs,
-    files,
     events,
     projOrder: projects.map(p => p.id),
     savedViews: [{ id: 'v1', project: 'p1', name: 'High priority', type: 'list', filters: [{ f: 'priority', op: 'is', v: ['urgent', 'high'] }] }],
@@ -524,7 +499,6 @@ export function seed() {
 export function emptyWorkspace() {
   return {
     ws: { name: 'My Workspace', url: 'my-workspace', c: '#1D1C1A', brand: true },
-    workspaces: [{ id: 'w1', name: 'My Workspace', c: '#1D1C1A' }],
     me: 'm1',
     members: [{ id: 'm1', name: 'Me', email: '', role: 'Owner', team: 'product', title: '', c: '#5A67D8', status: 'active', last: 0, tz: '' }],
     projects: [
@@ -551,7 +525,6 @@ export function emptyWorkspace() {
     comments: [],
     activity: [],
     notifs: [],
-    files: [],
     events: [],
     projOrder: ['p1'],
     savedViews: [],

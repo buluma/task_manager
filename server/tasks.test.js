@@ -52,7 +52,7 @@ test('POST creates a backlog task with defaults, the next key, and persists with
   assert.equal(t.key, 'GR-1');
   assert.equal(t.title, 'buy milk');
   assert.deepEqual([t.status, t.priority, t.assignee, t.project, t.cycle], ['backlog', 'none', 'm1', 'p1', null]);
-  assert.deepEqual([t.labels, t.subtasks, t.deps, t.attachments], [[], [], [], []]);
+  assert.deepEqual([t.labels, t.subtasks, t.deps], [[], [], []]);
   assert.ok(t.id && t.created && t.updated && t.order === 1);
   const s = stored();
   assert.equal(s.rev, 2);

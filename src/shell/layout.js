@@ -5,7 +5,6 @@ import { PSTAT } from '../core/constants.js';
 import { D, S, allTasks, isOpen, mem, pColor, proj, team, teamsList, visibleProjects } from '../core/store.js';
 import { av } from '../ui/helpers.js';
 import { ROUTE_NAMES } from './render.js';
-import { skeleton } from './skeletons.js';
 import { pageHome } from '../pages/home.js';
 import { pageOverview } from '../pages/overview.js';
 import { pageMyTasks } from '../pages/my-tasks.js';
@@ -31,7 +30,7 @@ export function renderShell() {
     ${u.mnav ? '<div class="side-scrim" data-a="closeMnav"></div>' : ''}
     <main class="main" id="main">
       ${renderTopbar()}
-      <div class="content ${u.fx.route ? 'fx-route' : ''}" id="main-content" tabindex="-1" data-keep="c:${u.route}:${u.params.id || ''}:${u.params.tab || ''}:${u.params.sec || ''}">${u.loading ? skeleton() : renderPage()}</div>
+      <div class="content ${u.fx.route ? 'fx-route' : ''}" id="main-content" tabindex="-1" data-keep="c:${u.route}:${u.params.id || ''}:${u.params.tab || ''}:${u.params.sec || ''}">${renderPage()}</div>
     </main>
     ${renderBottomNav()}
   </div>`;

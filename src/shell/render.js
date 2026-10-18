@@ -1,5 +1,5 @@
 /* =====================================================================
-   SHELL: render loop, router, sidebar, topbar, skeletons, filter engine
+   SHELL: render loop, router, sidebar, topbar, filter engine
    ===================================================================== */
 import { $, $$ } from '../core/utils.js';
 import { D, S, mem, proj, team } from '../core/store.js';
@@ -68,7 +68,6 @@ export function go(route, params = {}, opt = {}) {
   if (!opt.keepDrawer && S.ui.drawer && innerWidth < 900) S.ui.drawer = null;
   // Pages render instantly; motion (not a fake wait) carries the transition.
   clearTimeout(go._t);
-  S.ui.loading = false;
   if (!same) fxSet(opt.tab ? { tab: true, tabs: true } : { route: true, tabs: true });
   render();
   const c = $('.content');
@@ -185,7 +184,7 @@ export function render() {
   if (document.title !== title) {
     document.title = title;
     const live = document.getElementById('sr-live');
-    if (live && !S.ui.loading) live.textContent = title.split(' · ').slice(0, -1).join(', ');
+    if (live) live.textContent = title.split(' · ').slice(0, -1).join(', ');
   }
   afterRender();
 }
