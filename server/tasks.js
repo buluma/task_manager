@@ -16,7 +16,7 @@ export const bad = msg => new ApiError(400, msg);
    while a request is being applied (app.js mutate) and is never stored. */
 export const actorOf = data => data.actor ?? data.me;
 
-const STATUS_NAMES = { backlog: 'Backlog', todo: 'To Do', progress: 'In Progress', review: 'Review', done: 'Done', cancelled: 'Cancelled' };
+export const STATUS_NAMES = { backlog: 'Backlog', todo: 'To Do', progress: 'In Progress', review: 'Review', done: 'Done', cancelled: 'Cancelled' };
 const prioName = (data, id) => scaleOf(data).find(p => p.id === id)?.name;
 /* Days between occurrences of a repeating task, as in the app (actions.js). */
 const RECUR_DAYS = { Daily: 1, Weekly: 7, 'Every 2 weeks': 14, Monthly: 30 };
@@ -162,6 +162,13 @@ const newTaskId = data => {
   return id;
 };
 
+/* Tells the owner what an agent just did, in the shape the app's Inbox already shows. Nothing is raised for the
+   owner's own writes. */
+export function notifyOwner(data, t, type, text, snippet, now) {
+  if (!data.actor || data.actor === data.me) return;
+  (data.notifs ??= []).push({ id: 'n' + rand(), type, by: data.actor, task: t.id, text, snippet, at: now, read: false });
+}
+
 function log(data, verb, t, extra, now) {
   data.activity.unshift({ id: 'a' + rand(), by: actorOf(data), verb, task: t.id, project: t.project, at: now, extra });
   t.updated = now;
@@ -272,8 +279,12 @@ export function patchTask(data, prefs, today, key, input, now) {
         t.completedAt = now;
         t.prevStatus = old;
         log(data, 'completed', t, '', now);
+        notifyOwner(data, t, 'update', 'completed', `${STATUS_NAMES[old]} → ${STATUS_NAMES[nv]}`, now);
         if (t.recur && t.due && !t.archived) next = spawnNext(data, t, now);
-      } else log(data, 'moved', t, `from ${STATUS_NAMES[old]} to ${STATUS_NAMES[nv]}`, now);
+      } else {
+        log(data, 'moved', t, `from ${STATUS_NAMES[old]} to ${STATUS_NAMES[nv]}`, now);
+        notifyOwner(data, t, 'update', `moved to ${STATUS_NAMES[nv]}`, `${STATUS_NAMES[old]} → ${STATUS_NAMES[nv]}`, now);
+      }
     } else if (k === 'project') {
       // Like the app: re-key from the target project's counter, so the old key stops resolving.
       const p = data.projects.find(p => p.id === nv);

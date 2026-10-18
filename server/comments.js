@@ -1,6 +1,6 @@
 /* Comments on tasks, mirroring postComment / delComment in the app. Text is plain text, as in the app, which
    escapes and formats it when it renders. */
-import { ApiError, actorOf, bad, findTask, rand } from './tasks.js';
+import { ApiError, actorOf, bad, findTask, notifyOwner, rand } from './tasks.js';
 
 const MAX_TEXT = 20000;
 
@@ -31,6 +31,7 @@ export function addComment(data, key, input, now) {
   if (input.at === undefined) {
     data.activity.unshift({ id: 'a' + rand(), by: actorOf(data), verb: 'commented on', task: t.id, project: t.project, at: now, extra: '' });
     t.updated = now;
+    notifyOwner(data, t, 'comment', 'commented on', text.length > 140 ? text.slice(0, 139) + '…' : text, now);
   }
   return c;
 }
