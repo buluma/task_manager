@@ -17,7 +17,6 @@ export const SET_NAV = [
     [
       ['workspace', 'Workspace', 'building-2'],
       ['appearance', 'Appearance', 'palette'],
-      ['language', 'Language', 'languages'],
       ['datetime', 'Date & time', 'clock'],
     ],
   ],
@@ -127,35 +126,9 @@ export function settingsBody(sec, title) {
         )}
       </div>`
       );
-    case 'language':
-      return (
-        H('Language and regional formats.') +
-        srow(
-          'Language',
-          'The language used throughout the interface.',
-          sel('lang', ['English (US)', 'English (UK)', 'Deutsch', 'Español', 'Français', '日本語'], P.lang),
-        ) +
-        srow('Spellcheck', 'Check spelling in descriptions and comments.', tog('spell', P.spell !== false))
-      );
     case 'datetime':
       return (
         H('How dates and times appear across the workspace.') +
-        srow(
-          'Time zone',
-          'Used for due dates and reminders.',
-          sel(
-            'tz',
-            [
-              '(GMT-08:00) Pacific Time',
-              '(GMT-05:00) Eastern Time',
-              '(GMT+00:00) London',
-              '(GMT+01:00) Berlin',
-              '(GMT+03:00) Nairobi',
-              '(GMT+08:00) Singapore',
-            ],
-            P.tz,
-          ),
-        ) +
         srow(
           'Date format',
           `Preview: <b>${fmtDate(dOff(8))}</b>`,
@@ -181,18 +154,6 @@ export function settingsBody(sec, title) {
               ['6', 'Saturday'],
             ],
             P.weekStart,
-          ),
-        ) +
-        srow(
-          'Time format',
-          '',
-          sel(
-            'timeFmt',
-            [
-              ['12', '12-hour (2:30 PM)'],
-              ['24', '24-hour (14:30)'],
-            ],
-            P.timeFmt || '12',
           ),
         )
       );

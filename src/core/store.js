@@ -14,8 +14,6 @@ export const DEFAULT_PREFS = {
   density: 'comfortable',
   weekStart: 1,
   dateFmt: 'MMM d',
-  lang: 'English (US)',
-  tz: '(GMT+03:00) Nairobi',
   motion: 'system',
   home: 'home',
   openTasks: 'drawer',
