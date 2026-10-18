@@ -430,7 +430,7 @@ A.toggleDone = el => {
   const wasDone = t.status === 'done';
   S.ui.pop = null;
   updateTask(t.id, { status: wasDone ? (t.prevStatus && t.prevStatus !== 'done' ? t.prevStatus : 'todo') : 'done' });
-  if (!wasDone && !S.ui.offline) toast(`Completed “${t.title}”`, { action: 'Undo', onAction: () => updateTask(t.id, { status: t.prevStatus || 'todo' }) });
+  if (!wasDone) toast(`Completed “${t.title}”`, { action: 'Undo', onAction: () => updateTask(t.id, { status: t.prevStatus || 'todo' }) });
 };
 A.toggleFavTask = el => {
   const t = task(el.dataset.id);
@@ -801,10 +801,6 @@ A.previewFile = el => {
 };
 export function handleFiles(files, ctx) {
   if (!files || !files.length) return;
-  if (S.ui.offline) {
-    toast("Upload failed — you're offline.", { kind: 'err', action: 'Try again', onAction: () => {} });
-    return;
-  }
   S.ui.uploads = S.ui.uploads || [];
   [...files].forEach(file => {
     const up = { id: uid('u'), name: file.name, size: fsize(file.size), project: ctx.project, task: ctx.task, pct: 0 };
@@ -1761,57 +1757,6 @@ A.shortcuts = () => {
   S.ui.pop = null;
   S.ui.palette = null;
   openModal({ type: 'shortcuts' });
-};
-A.startOnboarding = () => {
-  S.ui.pop = null;
-  S.ui.auth = 'onboarding';
-  S.ui.onb = 0;
-  render();
-};
-A.toggleOffline = () => {
-  S.ui.offline = !S.ui.offline;
-  S.ui.pop = null;
-  render();
-  toast(S.ui.offline ? 'Offline mode on — edits will fail to save' : 'Back online', { kind: S.ui.offline ? 'err' : 'ok' });
-};
-A.retryOnline = el => {
-  el.classList.add('is-loading');
-  setTimeout(() => {
-    S.ui.offline = false;
-    render();
-    toast('Reconnected. All changes are synced.');
-  }, 700);
-};
-A.demoToast = el => {
-  const v = el.dataset.v;
-  if (v === 'err') toast("Your changes couldn't be saved.", { kind: 'err', action: 'Try again', onAction: () => toast('Saved') });
-  else if (v === 'retry') {
-    toast('Retrying…', { kind: 'info', ms: 1200 });
-    setTimeout(() => toast('Loaded successfully'), 1300);
-  } else toast('Moved “Create homepage wireframes” to Review', { action: 'Undo', onAction: () => toast('Undone', { kind: 'info' }) });
-};
-A.demoConfirm = () =>
-  confirmDlg({
-    title: 'Archive Marketing Website?',
-    body: 'The project will be hidden from the sidebar. You can restore it any time.',
-    ok: 'Archive project',
-    icon: 'archive',
-    run: () => toast('This was a preview — nothing was archived', { kind: 'info' }),
-  });
-A.demoLoad = el => {
-  el.classList.add('is-loading');
-  setTimeout(() => {
-    el.classList.remove('is-loading');
-    toast('Loaded');
-  }, 1400);
-};
-A.reloadPage = () => {
-  S.ui.loading = true;
-  render();
-  setTimeout(() => {
-    S.ui.loading = false;
-    render();
-  }, 1400);
 };
 
 /* modals */
