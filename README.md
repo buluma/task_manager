@@ -107,6 +107,7 @@ GR8R_HOST=$(tailscale ip -4) npm start     # http://<tailnet-ip>:8787, data in ~
 | `POST /api/priorities`                                           | add a level: `name`, `w` (1-99) and optionally `id`                                                                                                                                                                                             |
 | `PATCH /api/priorities/high`                                     | rename or reweight a level (`none` always weighs 0)                                                                                                                                                                                             |
 | `DELETE /api/priorities/high?replace=medium`                     | remove a level; its tasks move to `replace` (default `none`)                                                                                                                                                                                    |
+| `GET/POST /api/agents`                                           | list agents, or register one (`name`); send `X-Gr8r-Agent: <name or id>` on a write to log it to that agent (attribution, not authentication)                                                                                                   |
 | `GET/PUT /api/state`                                             | the whole workspace, guarded by a revision number (`baseRev`)                                                                                                                                                                                   |
 
 The priority scale lives in the workspace state, so levels added through the API show up in the app's pickers, filters and grouping within a few seconds. Edit the scale in the app under Settings → Priorities, or through the API. The `urgent` level keeps its special icon and the other levels spread over one to three bars by rank.
@@ -123,6 +124,8 @@ gr8r add "write report" --priority high --cycle current
 gr8r list --cycle current
 gr8r set GR-3 --status progress
 gr8r done GR-3
+gr8r agent add Claude
+gr8r comment GR-3 "tests pass" --as Claude
 gr8r pr link GR-3 https://github.com/OWNER/REPO/pull/7
 gr8r project add "Website" --key WEB --color teal
 gr8r priority add Blocker --weight 5

@@ -6,6 +6,8 @@ import { loadRepoEnv } from '../server/env.js';
 loadRepoEnv();
 
 const TOKEN = process.env.GR8R_TOKEN;
+/* The agent writes are attributed to: --as NAME, else $GR8R_AGENT, else the workspace owner. Set in main(). */
+let AGENT;
 const BASE = (process.env.GR8R_URL || 'http://127.0.0.1:8787').replace(/\/$/, '');
 /* A host that silently drops packets would otherwise hang the CLI forever. */
 const TIMEOUT_MS = Number(process.env.GR8R_TIMEOUT_MS) || 10000;
@@ -33,6 +35,8 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   project set KEY [--name N] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE|none] [--lead MEMBER]
   project rm KEY      archive          project restore KEY    bring it back
   project rm KEY --purge    delete an archived project and its tasks for good
+  agent add NAME                 register an agent, so its writes show under its own name
+  agent list
   priorities
   priority add NAME --weight 1-99 [--id ID]
   priority set ID [--name N] [--weight 1-99]
@@ -40,6 +44,7 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
 
   status: backlog todo progress review done cancelled     priority: see \`gr8r priorities\` (default urgent high medium low none)
   project status: planning active risk hold complete
+  --as NAME (or $GR8R_AGENT) on any command logs the write to that agent instead of you.
   Add --json to any command for machine-readable output.`;
 
 const OPTIONS = {
@@ -60,6 +65,7 @@ const OPTIONS = {
   completed: { type: 'string' },
   recur: { type: 'string' },
   at: { type: 'string' },
+  as: { type: 'string' },
   name: { type: 'string' },
   key: { type: 'string' },
   color: { type: 'string' },
@@ -81,7 +87,11 @@ async function api(method, route, body) {
   try {
     res = await fetch(BASE + route, {
       method,
-      headers: { ...(body && { 'content-type': 'application/json' }), ...(TOKEN && { authorization: `Bearer ${TOKEN}` }) },
+      headers: {
+        ...(body && { 'content-type': 'application/json' }),
+        ...(TOKEN && { authorization: `Bearer ${TOKEN}` }),
+        ...(AGENT && { 'x-gr8r-agent': AGENT }),
+      },
       body: body && JSON.stringify(body),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -145,6 +155,7 @@ async function main(argv) {
     positionals: [cmd, ...rest],
   } = parseArgs({ args: argv, options: OPTIONS, allowPositionals: true });
   if (!cmd || cmd === 'help' || v.help) return console.log(HELP);
+  AGENT = v.as ?? process.env.GR8R_AGENT;
   const out = (data, text) => console.log(v.json ? JSON.stringify(data, null, 2) : text);
   const key = () => {
     if (rest.length !== 1) throw new CliError(`${cmd} needs exactly one task key`);
@@ -251,6 +262,18 @@ async function main(argv) {
       if (existing) return out(existing, `${prUrl} is already linked to ${taskKey.toUpperCase()}`);
       const { comment } = await api('POST', route, { text });
       return out(comment, `linked ${taskKey.toUpperCase()}  ${prUrl}`);
+    }
+    case 'agent': {
+      const [sub, ...args] = rest;
+      if (sub === 'list' && !args.length) {
+        const { agents } = await api('GET', '/api/agents');
+        return out(agents, agents.length ? agents.map(a => `${a.id.padEnd(16)} ${a.name}`).join('\n') : 'no agents');
+      }
+      if (sub === 'add' && args.length) {
+        const { agent } = await api('POST', '/api/agents', { name: args.join(' ') });
+        return out(agent, `added agent ${agent.name}  ${agent.id}`);
+      }
+      throw new CliError(`agent needs: add NAME | list\n\n${HELP}`);
     }
     case 'projects': {
       const { projects } = await api('GET', `/api/projects${v.archived ? '?archived=1' : ''}`);

@@ -1,7 +1,7 @@
 /* Project operations on the app's state object, mirroring createProject / archiveProject in actions.js.
    Like tasks.js, every function validates before it mutates. Deleting archives, so the app can restore it. */
 import { PCOLORS, PSTAT } from '../src/core/constants.js';
-import { ApiError, bad, isDate, rand, removeTasks } from './tasks.js';
+import { ApiError, actorOf, bad, isDate, rand, removeTasks } from './tasks.js';
 
 const CREATE = ['name', 'key', 'desc', 'color', 'icon', 'status', 'due', 'lead'];
 const EDITABLE = ['name', 'desc', 'color', 'icon', 'status', 'due', 'lead', 'archived'];
@@ -113,7 +113,7 @@ export function createProject(data, today, input, now) {
   };
   data.projects.push(p);
   (data.projOrder ??= []).unshift(p.id);
-  data.activity.unshift({ id: 'a' + rand(), by: data.me, verb: 'created project', task: null, project: p.id, at: now, extra: '' });
+  data.activity.unshift({ id: 'a' + rand(), by: actorOf(data), verb: 'created project', task: null, project: p.id, at: now, extra: '' });
   return p;
 }
 
@@ -133,7 +133,7 @@ export function patchProject(data, ref, input, now) {
     if (k === 'status')
       data.activity.unshift({
         id: 'a' + rand(),
-        by: data.me,
+        by: actorOf(data),
         verb: 'changed status of project',
         task: null,
         project: p.id,

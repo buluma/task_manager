@@ -1,6 +1,6 @@
 /* Subtasks and dependencies of a task, mirroring addSub / toggleSub / rmSub and the dependency picker in the app.
    Dependencies are stored as task ids (as the app does) and spoken as task keys on the API. */
-import { ApiError, bad, findTask, rand } from './tasks.js';
+import { ApiError, actorOf, bad, findTask, rand } from './tasks.js';
 
 const MAX_TITLE = 500;
 
@@ -15,7 +15,7 @@ const cleanTitle = title => {
   return title.trim();
 };
 const act = (data, verb, t, extra, now) => {
-  data.activity.unshift({ id: 'a' + rand(), by: data.me, verb, task: t.id, project: t.project, at: now, extra });
+  data.activity.unshift({ id: 'a' + rand(), by: actorOf(data), verb, task: t.id, project: t.project, at: now, extra });
   t.updated = now;
 };
 const subOf = (t, sid) => {

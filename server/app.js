@@ -8,6 +8,7 @@ import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patch
 import { archiveProject, createProject, findProject, listProjects, patchProject, purgeProject } from './projects.js';
 import { addDep, addSubtask, deleteSubtask, listDeps, patchSubtask, removeDep } from './relations.js';
 import { addComment, deleteComment, listComments } from './comments.js';
+import { addAgent, findAgent, listAgents } from './agents.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
 
 const MAX_BODY = 10 * 1024 * 1024;
@@ -85,11 +86,15 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
     return json(res, 200, { rev: current.rev });
   }
 
-  /* Runs one task change against a copy of the state; it only becomes current once it is on disk. */
-  function mutate(change) {
+  /* Runs one task change against a copy of the state; it only becomes current once it is on disk. `actor` is the
+     member id the change is logged to (an agent), or undefined for the owner; it lives on the copy only while the
+     change runs. */
+  function mutateAs(actor, change) {
     if (!current) throw new ApiError(409, 'no workspace yet: open the app once so it can save its starting state');
     const state = structuredClone(current.state);
+    if (actor) state.data.actor = actor;
     const result = change(state.data, state.prefs, localIso(now()), now().getTime());
+    delete state.data.actor;
     const next = { rev: current.rev + 1, state };
     writeStored(dataFile, next);
     current = next;
@@ -114,6 +119,16 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
       return json(res, 200, { rev: current?.rev ?? 0 });
     }
     authorize(req, res);
+    // X-Gr8r-Agent attributes a write to a registered agent; it is not authentication (see agents.js).
+    const named = req.headers['x-gr8r-agent'];
+    const actor = named === undefined ? undefined : findAgent(needState().data, named).id;
+    const mutate = change => mutateAs(actor, change);
+    if (what === 'agents' && parts.length === 1) {
+      allow('GET', 'POST');
+      if (method === 'GET') return json(res, 200, { agents: listAgents(needState().data) });
+      const body = await readJson(req, 'agent');
+      return json(res, 201, { agent: mutate(d => addAgent(d, body)) });
+    }
     if (what === 'projects' && parts.length === 1) {
       allow('GET', 'POST');
       if (method === 'GET') return json(res, 200, { projects: listProjects(needState().data, url.searchParams) });

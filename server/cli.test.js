@@ -217,6 +217,23 @@ test('pr link records a GitHub PR as a comment, once, and rejects anything else'
   assert.match((await run(['pr', 'link', 'GR-9', pr])).stderr, /no task GR-9/);
 });
 
+test('agent add registers an agent, agent list shows it, and --as attributes a write to it', async () => {
+  const add = await run(['agent', 'add', 'Claude']);
+  assert.equal(add.code, 0, add.stderr);
+  assert.match(add.stdout, /added agent Claude\s+agent-claude/);
+  assert.match((await run(['agent', 'list'])).stdout, /agent-claude\s+Claude/);
+  assert.notEqual((await run(['agent', 'add', 'Claude'])).code, 0);
+  await run(['add', 'ship it']);
+  assert.equal((await run(['comment', 'GR-1', 'done by a bot', '--as', 'claude'])).code, 0);
+  assert.equal((await run(['comment', 'GR-1', 'done by me'])).code, 0);
+  const by = JSON.parse((await run(['comments', 'GR-1', '--json'])).stdout).map(c => c.by);
+  assert.deepEqual(by, ['agent-claude', 'm1']);
+  const ghost = await run(['comment', 'GR-1', 'x', '--as', 'ghost']);
+  assert.notEqual(ghost.code, 0);
+  assert.match(ghost.stderr, /unknown agent/);
+  assert.notEqual((await run(['agent', 'nope'])).code, 0);
+});
+
 test('comment adds, comments lists, comment rm deletes', async () => {
   await run(['add', 'host']);
   const add = await run(['comment', 'GR-1', 'looks', 'good', '--at', '2026-07-12']);
