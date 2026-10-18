@@ -51,7 +51,9 @@ export function ctxMenu(p) {
       `<div class="mh">${ST[p.id].name}</div>` +
       I('colAdd', 'plus', 'Add task') +
       I('colCollapse', 'fold-horizontal', 'Collapse column') +
-      (p.id !== 'done' ? I('colDoneAll', 'check-check', 'Mark all as done') : I('colArchive', 'archive', 'Archive completed')) +
+      (p.id === 'done' || p.id === 'cancelled'
+        ? I('colArchive', 'archive', p.id === 'done' ? 'Archive completed' : 'Archive cancelled')
+        : I('colDoneAll', 'check-check', 'Mark all as done')) +
       I('colSortPrio', 'arrow-down-wide-narrow', 'Sort by priority')
     );
   }

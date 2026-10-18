@@ -1158,8 +1158,8 @@ A.colDoneAll = el => {
   if (mutate(() => ts.forEach(t => applyPatch(t, { status: 'done' }))))
     toast(`Marked ${ts.length} tasks as done`, { action: 'Undo', onAction: () => restore(snap) });
 };
-A.colArchive = () => {
-  const ts = colTasks(S.ui.pop.key, 'done');
+A.colArchive = el => {
+  const ts = colTasks(S.ui.pop.key, el.dataset.id);
   S.ui.pop = null;
   const snap = snapshot();
   if (
@@ -1170,7 +1170,7 @@ A.colArchive = () => {
       }),
     )
   )
-    toast(`Archived ${ts.length} completed tasks`, { action: 'Undo', onAction: () => restore(snap) });
+    toast(`Archived ${ts.length} ${el.dataset.id === 'cancelled' ? 'cancelled' : 'completed'} tasks`, { action: 'Undo', onAction: () => restore(snap) });
 };
 A.colSortPrio = el => {
   const ts = colTasks(S.ui.pop.key, el.dataset.id).sort((a, b) => PR[b.priority].w - PR[a.priority].w);
