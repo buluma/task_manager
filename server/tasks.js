@@ -12,6 +12,9 @@ export class ApiError extends Error {
   }
 }
 export const bad = msg => new ApiError(400, msg);
+/* Who a write is logged to: the agent named on the request, else the workspace owner. `data.actor` exists only
+   while a request is being applied (app.js mutate) and is never stored. */
+export const actorOf = data => data.actor ?? data.me;
 
 const STATUS_NAMES = { backlog: 'Backlog', todo: 'To Do', progress: 'In Progress', review: 'Review', done: 'Done', cancelled: 'Cancelled' };
 const prioName = (data, id) => scaleOf(data).find(p => p.id === id)?.name;
@@ -160,7 +163,7 @@ const newTaskId = data => {
 };
 
 function log(data, verb, t, extra, now) {
-  data.activity.unshift({ id: 'a' + rand(), by: data.me, verb, task: t.id, project: t.project, at: now, extra });
+  data.activity.unshift({ id: 'a' + rand(), by: actorOf(data), verb, task: t.id, project: t.project, at: now, extra });
   t.updated = now;
 }
 
