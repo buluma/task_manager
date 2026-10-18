@@ -22,7 +22,6 @@ import './pages/overview.js';
 import './pages/my-tasks.js';
 import './pages/tasks.js';
 import './pages/inbox.js';
-import './pages/notifications.js';
 import './pages/favorites.js';
 import './pages/projects.js';
 import './pages/members.js';
@@ -71,7 +70,8 @@ import { toast } from './ui/toast.js';
     l.setAttribute('aria-live', 'polite');
     document.body.appendChild(l);
   }
-  const h = (location.hash || '').slice(1);
+  // #notifications was folded into the Inbox; keep old links working.
+  const h = (location.hash || '').slice(1).replace(/^notifications$/, 'inbox');
   const authRoutes = ['login', 'signup', 'forgot', 'reset', 'verify', 'onboarding'];
   if (authRoutes.includes(h)) S.ui.auth = h;
   else if (h && ROUTE_NAMES[h]) S.ui.route = h;

@@ -12,7 +12,6 @@ import { pageMyTasks } from '../pages/my-tasks.js';
 import { pageCycles } from '../pages/cycles.js';
 import { pageTasks } from '../pages/tasks.js';
 import { pageInbox } from '../pages/inbox.js';
-import { pageNotifications } from '../pages/notifications.js';
 import { pageFavorites } from '../pages/favorites.js';
 import { pageProjects } from '../pages/projects.js';
 import { pageMember, pageMembers, pageTeam, pageTeams } from '../pages/members.js';
@@ -48,7 +47,6 @@ export function renderPage() {
       mytasks: pageMyTasks,
       cycles: pageCycles,
       favorites: pageFavorites,
-      notifications: pageNotifications,
       search: pageSearch,
       overview: pageOverview,
       projects: pageProjects,
@@ -81,7 +79,6 @@ export function renderSidebar() {
   const u = S.ui,
     d = D();
   const unreadInbox = d.notifs.filter(n => !n.read && n.type !== 'update').length;
-  const unreadAll = d.notifs.filter(n => !n.read).length;
   const myOpen = allTasks().filter(t => t.assignee === d.me && isOpen(t) && t.due && diffD(parse(t.due), TODAY) <= 0).length;
   const projs = visibleProjects().filter(p => p.status !== 'complete');
   const inProj = u.route === 'project' ? u.params.id : null;
@@ -103,7 +100,6 @@ export function renderSidebar() {
       ${sItem('mytasks', 'My Tasks', 'circle-check', { ct: myOpen || '' })}
       ${sItem('cycles', 'Cycles', 'refresh-cw')}
       ${sItem('favorites', 'Favorites', 'star')}
-      ${sItem('notifications', 'Notifications', 'bell', { ct: unreadAll || '' })}
       <div class="sgroup">
         <div class="sgroup-h">Workspace</div>
         ${sItem('overview', 'Overview', 'layout-dashboard')}
@@ -197,7 +193,7 @@ export function renderTopbar() {
     <nav class="crumbs trunc" aria-label="Breadcrumb">${crumbs()}</nav>
     <span class="sp"></span>
     <button class="topsearch" data-a="openPalette" aria-label="Search and commands">${ic('search', 14)}<span class="lbltxt">Search or jump to…</span><span class="kbd">${MOD}K</span></button>
-    <button class="ibtn" data-a="go" data-r="notifications" data-tip="Notifications" aria-label="Notifications">${ic('bell', 16)}${D().notifs.some(n => !n.read) ? '<span style="position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--surface)"></span>' : ''}</button>
+    <button class="ibtn" data-a="go" data-r="inbox" data-tip="Inbox" aria-label="Inbox">${ic('bell', 16)}${D().notifs.some(n => !n.read) ? '<span style="position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--surface)"></span>' : ''}</button>
     <button class="btn btn-secondary btn-sm" data-a="pop" data-pop="create" aria-haspopup="menu" aria-label="Create new">${ic('plus', 14)}<span class="hide-m">New</span>${ic('chevron-down', 12, 'hide-m')}</button>
     <button class="ibtn hide-m" data-a="pop" data-pop="user" aria-label="Account menu" style="width:auto;padding:0 2px">${av(D().me, 'md', false)}</button>
   </header>`;

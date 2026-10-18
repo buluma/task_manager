@@ -1,21 +1,16 @@
 /* ---------- INBOX ---------- */
 import { MOD, ago, esc } from '../core/utils.js';
 import { ic } from '../core/icons.js';
+import { inboxCats } from '../core/inbox.js';
 import { D, S, commentsOf, mem, pColor, proj, task } from '../core/store.js';
 import { av, empty, fmtComment } from '../ui/helpers.js';
 import { cellAssignee, cellDue, cellPrio, cellStatus } from '../components/task-list.js';
 import { commentHtml } from '../overlays/drawer.js';
 
 export function pageInbox() {
-  const cats = [
-    ['all', 'All'],
-    ['needs', 'Needs you'],
-    ['mention', 'Mentions'],
-    ['assign', 'Assignments'],
-    ['comment', 'Comments'],
-    ['update', 'Updates'],
-  ];
-  const cat = S.ui.inboxCat;
+  const cats = inboxCats(D().members, D().notifs);
+  // The remembered tab may have been hidden since (it only shows once there is someone to mention).
+  const cat = cats.some(([k]) => k === S.ui.inboxCat) ? S.ui.inboxCat : 'all';
   let ns = D()
     .notifs.slice()
     .sort((a, b) => b.at - a.at);
@@ -32,7 +27,7 @@ export function pageInbox() {
           <button class="ibtn ibtn-sm" data-a="markAllRead" data-tip="Mark all as read" aria-label="Mark all as read">${ic('check-check', 15)}</button></div>
         <div class="tabs inbox-tabs" role="tablist">${cats.map(([k, n]) => `<button role="tab" class="tab ${cat === k ? 'on' : ''}" data-a="set" data-k="inboxCat" data-v="${k}">${n}${count(k) ? `<span class="cnt">${count(k)}</span>` : ''}</button>`).join('')}</div>
         <div class="inbox-list" data-keep="inbox-list">
-          ${ns.length ? ns.map(n => inboxItem(n, sel && sel.id === n.id)).join('') : empty('inbox', "You're all caught up.", S.ui.inboxUnread ? 'No unread notifications in this category.' : 'New mentions, assignments, and comments will show up here.', '', 'sm')}
+          ${ns.length ? ns.map(n => inboxItem(n, sel && sel.id === n.id)).join('') : empty('inbox', "You're all caught up.", S.ui.inboxUnread ? 'No unread notifications in this category.' : 'Comments, updates and requests from your agents will show up here.', '', 'sm')}
         </div>
       </div>
       <div class="inbox-prev" style="display:flex;flex-direction:column;min-height:0;overflow-y:auto">${sel ? inboxPreview(sel) : `<div class="fullstate"><div class="box"><div class="empty-state" style="padding:0"><div class="glyph">${ic('mail-open', 20)}</div><h2 class="es-h">Select a notification</h2><p>Read the conversation and reply without leaving your inbox.</p></div></div></div>`}</div>

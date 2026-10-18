@@ -1685,13 +1685,6 @@ A.toggleUnreadOnly = () => {
   S.ui.inboxUnread = !S.ui.inboxUnread;
   render();
 };
-A.openNotif = el => {
-  const n = D().notifs.find(x => x.id === el.dataset.id);
-  n.read = true;
-  save();
-  if (n.task) A.openTask({ dataset: { id: n.task } });
-  else if (n.project) go('project', { id: n.project, tab: 'overview' });
-};
 
 /* search & palette */
 A.openPalette = () => {

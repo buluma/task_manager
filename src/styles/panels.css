@@ -85,22 +85,6 @@
 .panel > .mini:first-child {
   border-top: 0;
 }
-.nrow {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 11px 14px;
-  cursor: pointer;
-}
-.nrow + .nrow {
-  border-top: 1px solid var(--divider);
-}
-.nrow.unread {
-  background: color-mix(in srgb, var(--accent) 3.5%, transparent);
-}
-.nrow:hover {
-  background: var(--surface-2);
-}
 /* Inbox list works as a secondary sidebar: no visible scrollbar (it narrowed the rows), and the
    tab labels start on the gutter with tighter spacing so the categories fit; if six do not, the strip scrolls sideways
    instead of clipping. */
