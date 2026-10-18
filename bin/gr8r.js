@@ -26,6 +26,7 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   comments KEY
   comment KEY TEXT [--at DATE]   add a comment (--at backdates it)
   comment rm KEY COMMENT_ID
+  pr link KEY URL                record a GitHub PR on a task (a comment; linking twice is a no-op)
   projects [--archived]
   project show KEY
   project add NAME [--key KEY] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE] [--lead MEMBER]
@@ -72,6 +73,8 @@ const OPTIONS = {
 };
 
 class CliError extends Error {}
+
+const PR_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+$/;
 
 async function api(method, route, body) {
   let res;
@@ -235,6 +238,19 @@ async function main(argv) {
       const [taskKey, ...words] = rest;
       const { comment } = await api('POST', `/api/tasks/${encodeURIComponent(taskKey)}/comments`, { text: words.join(' '), ...(v.at && { at: v.at }) });
       return out(comment, `commented on ${taskKey.toUpperCase()}  ${comment.id}`);
+    }
+    case 'pr': {
+      if (rest[0] !== 'link') throw new CliError(`unknown pr command: ${rest[0] ?? '(none)'}\n\n${HELP}`);
+      if (rest.length !== 3) throw new CliError('pr link needs a task key and a PR url');
+      const [, taskKey, prUrl] = rest;
+      if (!PR_URL.test(prUrl)) throw new CliError('not a GitHub PR url (https://github.com/OWNER/REPO/pull/N)');
+      const route = `/api/tasks/${encodeURIComponent(taskKey)}/comments`;
+      const text = `PR: ${prUrl}`;
+      const { comments } = await api('GET', route);
+      const existing = comments.find(c => c.text === text);
+      if (existing) return out(existing, `${prUrl} is already linked to ${taskKey.toUpperCase()}`);
+      const { comment } = await api('POST', route, { text });
+      return out(comment, `linked ${taskKey.toUpperCase()}  ${prUrl}`);
     }
     case 'projects': {
       const { projects } = await api('GET', `/api/projects${v.archived ? '?archived=1' : ''}`);

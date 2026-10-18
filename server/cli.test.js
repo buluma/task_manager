@@ -197,6 +197,26 @@ test("--completed sets a done task's completion date and none clears it", async 
   assert.equal(t.completedAt, null);
 });
 
+test('pr link records a GitHub PR as a comment, once, and rejects anything else', async () => {
+  await run(['add', 'ship it']);
+  const pr = 'https://github.com/buluma/task_manager/pull/12';
+  const first = await run(['pr', 'link', 'gr-1', pr]);
+  assert.equal(first.code, 0, first.stderr);
+  assert.match(first.stdout, /linked GR-1/);
+  const again = await run(['pr', 'link', 'GR-1', pr]);
+  assert.equal(again.code, 0, again.stderr);
+  assert.match(again.stdout, /already linked/);
+  const comments = JSON.parse((await run(['comments', 'GR-1', '--json'])).stdout);
+  assert.deepEqual(
+    comments.map(c => c.text),
+    [`PR: ${pr}`],
+  );
+  assert.notEqual((await run(['pr', 'link', 'GR-1', 'https://example.com/pull/1'])).code, 0);
+  assert.notEqual((await run(['pr', 'link', 'GR-1'])).code, 0);
+  assert.notEqual((await run(['pr', 'nope', 'GR-1', pr])).code, 0);
+  assert.match((await run(['pr', 'link', 'GR-9', pr])).stderr, /no task GR-9/);
+});
+
 test('comment adds, comments lists, comment rm deletes', async () => {
   await run(['add', 'host']);
   const add = await run(['comment', 'GR-1', 'looks', 'good', '--at', '2026-07-12']);
