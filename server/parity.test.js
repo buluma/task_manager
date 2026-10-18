@@ -5,8 +5,9 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
-import { createTask, patchTask, removeTasks } from './tasks.js';
+import { archiveTask, createTask, patchTask, purgeTask } from './tasks.js';
 import { addComment, deleteComment } from './comments.js';
+import { archiveProject, patchProject, purgeProject } from './projects.js';
 import { addSubtask, deleteSubtask, patchSubtask } from './relations.js';
 import { TEAMS_SEED } from '../src/core/constants.js';
 
@@ -18,6 +19,7 @@ const inert = new Proxy(function () {}, { get: (_, k) => (k === Symbol.toPrimiti
 Object.assign(globalThis, { document: inert, addEventListener() {}, matchMedia: inert, localStorage: { getItem: () => null, setItem() {}, removeItem() {} } });
 const app = await import('../src/actions/actions.js');
 await import('../src/actions/subtasks.js'); // wraps A.rmSub and adds BLUR.commitSubTitle
+await import('../src/actions/archive.js'); // A.restoreTask and A.purgeTask
 const { S, task } = await import('../src/core/store.js');
 const { emptyWorkspace } = await import('../src/data/seed.js');
 
@@ -179,12 +181,6 @@ test('create parity: a task with every field given', () => {
   assert.deepEqual(s, a);
 });
 
-test('delete parity: the task, links to it and its comments go', () => {
-  const a = viaApp(() => app.deleteTasks(['t1']));
-  const s = viaServer(d => removeTasks(d, ['t1']));
-  assert.deepEqual(s, a);
-});
-
 /* An app handler against the API route that does the same thing. */
 const handlerCase = (title, onApp, onServer, setup = () => {}) =>
   test(title, () => {
@@ -245,4 +241,55 @@ commentCase(
   'deleting',
   () => app.A.delComment({ dataset: { id: 'c1' } }),
   d => deleteComment(d, 'GR-1', 'c1'),
+);
+
+/* Archive: the app's archive, restore and delete buttons against the API. Confirm dialogs are answered by running
+   the dialog the handler opened. */
+const archiveCase = (name, ...rest) => handlerCase(`archive parity: ${name}`, ...rest);
+const confirm = () => S.ui.modals.pop().run();
+const archived = id => d =>
+  Object.assign(
+    d.projects.find(p => p.id === id),
+    { archived: true, archivedAt: 5 },
+  );
+
+archiveCase(
+  'archiving a task',
+  () => app.A.archiveTask({ dataset: { id: 't1' } }),
+  d => archiveTask(d, 'GR-1', NOW),
+);
+archiveCase(
+  'archiving a project',
+  () => {
+    app.A.archiveProject({ dataset: { id: 'p2' } });
+    confirm();
+  },
+  d => archiveProject(d, 'OPS', NOW),
+);
+archiveCase(
+  'restoring a project',
+  () => app.A.restoreProject({ dataset: { id: 'p2' } }),
+  d => patchProject(d, 'OPS', { archived: false }, NOW),
+  archived('p2'),
+);
+archiveCase(
+  'deleting an archived project for good',
+  () => {
+    app.A.delProject({ dataset: { id: 'p1' } });
+    confirm();
+  },
+  d => purgeProject(d, 'GR'),
+  d => {
+    archived('p1')(d);
+    d.activity.push({ id: 'a1', by: 'm1', verb: 'created project', task: null, project: 'p1', at: 4, extra: '' });
+  },
+);
+archiveCase(
+  'deleting an archived task for good: its links and comments go too',
+  () => {
+    app.A.purgeTask({ dataset: { id: 't1' } });
+    confirm();
+  },
+  d => purgeTask(d, 'GR-1'),
+  d => Object.assign(d.tasks[0], { archived: true, archivedAt: 5 }),
 );
