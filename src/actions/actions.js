@@ -4,6 +4,7 @@
 import { $, $$, TODAY, addD, dOff, esc, fmtDate, iso, parse, uid } from '../core/utils.js';
 import { PR, PSTAT, ST } from '../core/constants.js';
 import { adoptPriorities } from '../core/priorities.js';
+import { nextDue } from '../core/recur.js';
 import { seed } from '../data/seed.js';
 import { D, DEFAULT_PREFS, S, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
 import { fileType, fsize } from '../ui/helpers.js';
@@ -60,7 +61,6 @@ export function createTask(f) {
   logAct('created', t);
   return t;
 }
-export const RECUR_DAYS = { Daily: 1, Weekly: 7, 'Every 2 weeks': 14, Monthly: 30 };
 export function applyPatch(t, patch) {
   const msgs = [];
   for (const k of Object.keys(patch)) {
@@ -76,7 +76,7 @@ export function applyPatch(t, patch) {
         fxSet({ done: t.id });
       } else logAct('moved', t, `from ${ST[old].name} to ${ST[nv].name}`);
       if (nv === 'done' && t.recur && t.due) {
-        const nd = iso(addD(parse(t.due), RECUR_DAYS[t.recur] || 7));
+        const nd = nextDue(t.due, t.recur);
         const n = createTask({
           ...JSON.parse(JSON.stringify(t)),
           id: undefined,

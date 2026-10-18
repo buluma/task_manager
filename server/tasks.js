@@ -1,8 +1,10 @@
 /* Task operations on the app's state object, mirroring what the browser app does in actions.js
    (createTask, applyPatch, archive) so API-made changes look the same as UI-made ones.
    Every function validates before it mutates, so a rejected request leaves the state untouched. */
+import { STATUSES } from '../src/core/constants.js';
 import { cycleStart } from '../src/core/cycles.js';
 import { scaleOf } from '../src/core/priorities.js';
+import { RECUR_DAYS, nextDue } from '../src/core/recur.js';
 import { markdownToHtml } from './markdown.js';
 
 export class ApiError extends Error {
@@ -16,10 +18,8 @@ export const bad = msg => new ApiError(400, msg);
    while a request is being applied (app.js mutate) and is never stored. */
 export const actorOf = data => data.actor ?? data.me;
 
-export const STATUS_NAMES = { backlog: 'Backlog', todo: 'To Do', progress: 'In Progress', review: 'Review', done: 'Done', cancelled: 'Cancelled' };
+export const STATUS_NAMES = Object.fromEntries(STATUSES.map(s => [s.id, s.name]));
 const prioName = (data, id) => scaleOf(data).find(p => p.id === id)?.name;
-/* Days between occurrences of a repeating task, as in the app (actions.js). */
-const RECUR_DAYS = { Daily: 1, Weekly: 7, 'Every 2 weeks': 14, Monthly: 30 };
 const EDITABLE = [
   'title',
   'desc',
@@ -151,10 +151,6 @@ const needDone = status => {
   if (status !== 'done') throw bad('completed only applies to done tasks');
 };
 
-const addDays = (isoDate, n) => {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
-};
 const newTaskId = data => {
   let id;
   do id = 't' + rand();
@@ -241,7 +237,7 @@ export function createTask(data, prefs, today, input, now) {
 /* Like the app: completing a repeating task that has a due date schedules the next one, a copy that starts over. */
 function spawnNext(data, t, now) {
   const p = data.projects.find(x => x.id === t.project);
-  const due = addDays(t.due, RECUR_DAYS[t.recur] || 7);
+  const due = nextDue(t.due, t.recur);
   p.seq = (p.seq ?? 200) + 1;
   const next = {
     ...structuredClone(t),

@@ -22,7 +22,7 @@ CI (`.github/workflows/ci.yml`) runs lint, `format:check`, test and build. Node 
 
 **One state object, two writers.** The workspace is a single JSON object (`data`, `prefs`, `views`). The browser app owns it in `src/core/store.js` (`S`), caches it in localStorage and syncs the whole thing through `GET/PUT /api/state` with a revision number (`src/core/sync.js`); a 409 means someone else saved first and the tab stops writing until reloaded. The server (`server/app.js`) stores it as one file, `~/.gr8r/state.json`, and the task, project, priority, agent and notification APIs mutate it too.
 
-**The server re-implements the app's actions.** `server/tasks.js`, `projects.js`, `comments.js` and `relations.js` mirror `src/actions/actions.js` (their headers name the function they copy). When behaviour changes on one side it must change on the other: status names, recurrence (`RECUR_DAYS`), completion stamping, activity logging, defaults. Anything pure and shared lives in `src/core/` and is imported by both (`constants.js`, `priorities.js`, `cycles.js`). Each server write runs on a `structuredClone` of the state inside `mutate` in `app.js`, validates before it mutates, and is persisted before it becomes current.
+**The server re-implements the app's actions.** `server/tasks.js`, `projects.js`, `comments.js` and `relations.js` mirror `src/actions/actions.js` (their headers name the function they copy). When behaviour changes on one side it must change on the other: completion stamping, activity logging, defaults. Anything pure and shared lives in `src/core/` and is imported by both (`constants.js` for status names, `priorities.js`, `cycles.js`, `recur.js` for repeat intervals and the next due date); move more there when you touch a mirrored action. Each server write runs on a `structuredClone` of the state inside `mutate` in `app.js`, validates before it mutates, and is persisted before it becomes current.
 
 **Attribution.** `X-Gr8r-Agent` (`gr8r --as NAME`) sets a transient `data.actor` on the cloned state for the length of one request; `actorOf(data)` in `server/tasks.js` is what logs and comments use for `by`. It is deleted before saving, so never persist it. Defaults like a new task's assignee deliberately keep using `data.me`.
 
@@ -32,7 +32,7 @@ CI (`.github/workflows/ci.yml`) runs lint, `format:check`, test and build. Node 
 
 ## Adding or changing a task status
 
-A status is spread over several places, and missing one fails quietly: `STATUSES` in `src/core/constants.js` (the popovers, board, filters and counts all derive from it), `--st-<id>` in all three blocks of `src/styles/tokens.css`, the icon branch in `stIcon` (`src/ui/helpers.js`), `STATUS_NAMES` in `server/tasks.js`, and the CLI help in `bin/gr8r.js`. Use `isOpen(t)` from `src/core/store.js` instead of comparing to `'done'`, so done and cancelled both count as closed. The status popover's number hotkeys are a regex in `src/actions/keyboard.js`.
+A status is spread over several places, and missing one fails quietly: `STATUSES` in `src/core/constants.js` (the popovers, board, filters and counts all derive from it), `--st-<id>` in all three blocks of `src/styles/tokens.css`, the icon branch in `stIcon` (`src/ui/helpers.js`), and the CLI help in `bin/gr8r.js`. Use `isOpen(t)` from `src/core/store.js` instead of comparing to `'done'`, so done and cancelled both count as closed. The status popover's number hotkeys are a regex in `src/actions/keyboard.js`.
 
 ## The live server
 
