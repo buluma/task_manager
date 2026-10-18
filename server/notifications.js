@@ -2,7 +2,8 @@
    `notifs` list the app's Inbox page shows; writes by agents also raise some automatically (see notifyOwner). */
 import { ApiError, actorOf, bad, findTask, rand } from './tasks.js';
 
-const TYPES = ['mention', 'assign', 'comment', 'update'];
+/* `needs` is an agent asking for the owner: a question, an approval or a review. */
+const TYPES = ['needs', 'mention', 'assign', 'comment', 'update'];
 const MAX_TEXT = 500;
 const MAX_SNIPPET = 500;
 

@@ -130,3 +130,14 @@ test('GET lists newest first, ?unread=1 filters, and PATCH marks one read or unr
   assert.equal((await call('PATCH', `/api/notifications/${all[0].id}`, { read: 'yes' })).status, 400);
   assert.equal((await call('PATCH', '/api/notifications/nope', { read: true })).status, 404);
 });
+
+test('an agent can ask for the owner with the needs type, and it stays unread until marked', async () => {
+  const t = await task();
+  const r = await call('POST', '/api/notifications', { type: 'needs', task: 'GR-1', text: 'needs your approval on', snippet: 'plan A or B?' }, 'Claude');
+  assert.equal(r.status, 201);
+  assert.deepEqual(
+    { type: r.body.notification.type, by: r.body.notification.by, task: r.body.notification.task, read: r.body.notification.read },
+    { type: 'needs', by: 'agent-claude', task: t.id, read: false },
+  );
+  assert.match((await call('POST', '/api/notifications', { type: 'wat', text: 'x' })).body.error, /needs/);
+});
