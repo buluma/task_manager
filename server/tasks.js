@@ -1,6 +1,8 @@
 /* Task operations on the app's state object, mirroring what the browser app does in actions.js
-   (createTask, applyPatch, archive) so API-made changes look the same as UI-made ones.
-   Every function validates before it mutates, so a rejected request leaves the state untouched. */
+   (createTask, applyPatch) so API-made changes look the same as UI-made ones; archive and purge go through
+   src/core/archive.js, as the app's do. Every function validates before it mutates, so a rejected request leaves
+   the state untouched. */
+import { archiveTask as archive, removeTasks } from '../src/core/archive.js';
 import { STATUSES } from '../src/core/constants.js';
 import { cycleStart } from '../src/core/cycles.js';
 import { scaleOf } from '../src/core/priorities.js';
@@ -305,14 +307,6 @@ export function patchTask(data, prefs, today, key, input, now) {
   return { task: t, next };
 }
 
-/* Mirrors deleteTasks in the app: the tasks, dependency links pointing at them, and their comments. */
-export function removeTasks(data, ids) {
-  const gone = new Set(ids);
-  data.tasks = data.tasks.filter(t => !gone.has(t.id));
-  for (const t of data.tasks) if (t.deps) t.deps = t.deps.filter(d => !gone.has(d));
-  if (data.comments) data.comments = data.comments.filter(c => !gone.has(c.task));
-}
-
 /* Permanent delete. Only for tasks already archived, so removing one is always two deliberate steps. */
 export function purgeTask(data, key) {
   const t = findTask(data, key);
@@ -323,10 +317,6 @@ export function purgeTask(data, key) {
 
 export function archiveTask(data, key, now) {
   const t = findTask(data, key);
-  if (!t.archived) {
-    t.archived = true;
-    t.archivedAt = now;
-    log(data, 'archived', t, '', now);
-  }
+  archive(data, t, changeCtx(data, now));
   return t;
 }

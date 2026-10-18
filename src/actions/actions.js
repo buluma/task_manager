@@ -5,6 +5,7 @@ import { $, $$, TODAY, addD, dOff, esc, fmtDate, iso, parse, uid } from '../core
 import { PR, PSTAT, ST } from '../core/constants.js';
 import { adoptPriorities } from '../core/priorities.js';
 import { nextDue } from '../core/recur.js';
+import { archiveProject, archiveTask, removeProject, removeTasks, restoreProject } from '../core/archive.js';
 import { addComment, removeComment } from '../core/comments.js';
 import { addSub, removeSub, setSubDone } from '../core/subtasks.js';
 import { D, S, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
@@ -490,20 +491,17 @@ A.archiveTask = el => {
   const snap = snapshot();
   S.ui.pop = null;
   if (S.ui.drawer === t.id) S.ui.drawer = null;
-  mutate(() => {
-    t.archived = true;
-    t.archivedAt = Date.now();
-    logAct('archived', t);
-  });
+  mutate(() => archiveTask(D(), t, asMe()));
   toast(`Archived “${t.title}”`, { action: 'Undo', onAction: () => restore(snap) });
 };
-export function deleteTasks(ids) {
-  const set = new Set(ids);
-  D().tasks = D().tasks.filter(t => !set.has(t.id));
-  D().tasks.forEach(t => (t.deps = t.deps.filter(d => !set.has(d))));
-  D().comments = D().comments.filter(c => !set.has(c.task));
-  if (set.has(S.ui.drawer)) S.ui.drawer = null;
+/* Closes the drawer and drops the selection on tasks that no longer exist. */
+function forgetTasks(ids) {
+  if (ids.includes(S.ui.drawer)) S.ui.drawer = null;
   ids.forEach(i => S.ui.sel.delete(i));
+}
+export function deleteTasks(ids) {
+  removeTasks(D(), ids);
+  forgetTasks(ids);
 }
 A.delTask = el => {
   const t = task(el.dataset.id);
@@ -1275,12 +1273,7 @@ A.archiveProject = el => {
     icon: 'archive',
     run: () => {
       const snap = snapshot();
-      if (
-        mutate(() => {
-          p.archived = true;
-          p.archivedAt = Date.now();
-        })
-      ) {
+      if (mutate(() => archiveProject(p, Date.now()))) {
         if (S.ui.route === 'project' && S.ui.params.id === p.id) go('projects');
         toast(`Archived ${p.name}`, { action: 'Undo', onAction: () => restore(snap) });
       }
@@ -1289,10 +1282,7 @@ A.archiveProject = el => {
 };
 A.restoreProject = el => {
   const p = proj(el.dataset.id);
-  mutate(() => {
-    p.archived = false;
-    p.archivedAt = null;
-  });
+  mutate(() => restoreProject(p));
   toast(`Restored ${p.name}`);
 };
 A.delProject = el => {
@@ -1309,13 +1299,11 @@ A.delProject = el => {
       const snap = snapshot();
       if (
         mutate(() => {
-          const ids = tasksOf(p.id).map(t => t.id);
-          D()
+          const ids = D()
             .tasks.filter(t => t.project === p.id)
-            .forEach(t => ids.push(t.id));
-          deleteTasks(ids);
-          D().projects = D().projects.filter(x => x !== p);
-          D().projOrder = D().projOrder.filter(x => x !== p.id);
+            .map(t => t.id);
+          removeProject(D(), p);
+          forgetTasks(ids);
         })
       ) {
         if (S.ui.route === 'project' && S.ui.params.id === p.id) go('projects');
