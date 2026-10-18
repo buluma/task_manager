@@ -41,10 +41,6 @@ export const S = {
   views: saved?.views || {},
   ui: {
     fx: {},
-    auth: null,
-    authStep: 'login',
-    onb: 0,
-    onbData: { use: 'product', team: 'kanban', size: '2-10', ws: '', proj: 'Website Launch', tmpl: 'web', invites: '' },
     route: 'home',
     params: {},
     history: [],

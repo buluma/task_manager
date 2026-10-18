@@ -10,7 +10,6 @@ import { PTABS } from '../pages/project.js';
 import { tlAfter } from '../views/timeline.js';
 import { renderLayer } from '../overlays/drawer.js';
 import { placePop } from '../overlays/popovers.js';
-import { renderAuth } from '../pages/auth.js';
 
 export const ROUTE_NAMES = {
   home: 'Home',
@@ -107,7 +106,6 @@ export function tryFocus(key) {
 }
 export function pageTitle() {
   const u = S.ui;
-  if (u.auth) return 'Gr8r Studio';
   let t = ROUTE_NAMES[u.route] || 'Not found';
   if (u.route === 'project' && proj(u.params.id)) t = `${(PTABS.find(x => x[0] === u.params.tab) || [0, 'Saved view'])[1]} · ${proj(u.params.id).name}`;
   if (u.route === 'member' && mem(u.params.id)) t = mem(u.params.id).name;
@@ -135,9 +133,6 @@ export function render() {
   render._popSig = popSig;
   if (S.ui.sel.size && !render._selN) fx.bulk = true;
   render._selN = S.ui.sel.size;
-  const authSig = S.ui.auth ? S.ui.auth + (S.ui.auth === 'onboarding' ? S.ui.onb : '') : '';
-  if (authSig && authSig !== render._authSig) fx[S.ui.auth === 'onboarding' ? 'step' : 'auth'] = true;
-  render._authSig = authSig;
   const a = document.activeElement;
   const fid = a && a.id;
   let s0 = null,
@@ -150,7 +145,7 @@ export function render() {
     /* not supported here; safe to skip */
   }
   const keep = $$('[data-keep]').map(el => [el.dataset.keep, el.scrollTop, el.scrollLeft]);
-  $('#app').innerHTML = S.ui.auth ? renderAuth() : renderShell();
+  $('#app').innerHTML = renderShell();
   $('#layer').innerHTML = renderLayer();
   makeFocusable();
   keep.forEach(([k, t, l]) => {

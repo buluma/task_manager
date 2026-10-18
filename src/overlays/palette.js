@@ -45,7 +45,6 @@ export function commands() {
     { id: 'c-inv', name: 'Add member', icon: 'user-plus', run: () => A.invite() },
     { id: 'c-side', name: 'Toggle sidebar', icon: 'panel-left', kbd: '[', run: () => A.toggleSide() },
     { id: 'c-keys', name: 'Keyboard shortcuts', icon: 'keyboard', kbd: '?', run: () => A.shortcuts() },
-    { id: 'c-out', name: 'Sign out', icon: 'log-out', run: () => A.signOut() },
   ];
 }
 export function paletteItems() {
