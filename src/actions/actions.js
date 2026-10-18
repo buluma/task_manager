@@ -1562,22 +1562,6 @@ A.setSearch = el => {
 };
 
 /* workspace, account, prototype controls */
-A.switchWs = el => {
-  const w = D().workspaces.find(x => x.id === el.dataset.v);
-  S.ui.pop = null;
-  D().ws = { name: w.name, url: w.name.toLowerCase().replace(/[^a-z0-9]+/g, ''), c: w.c, brand: !!w.brand };
-  save();
-  go('home');
-  toast(`Switched to ${w.name}`);
-};
-A.newWorkspace = () => {
-  S.ui.pop = null;
-  S.ui.auth = 'onboarding';
-  S.ui.onb = 1;
-  S.ui.onbData.ws = '';
-  S.ui.onbData.url = '';
-  render();
-};
 A.signOut = () => {
   S.ui.pop = null;
   S.ui.palette = null;

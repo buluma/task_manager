@@ -81,7 +81,7 @@ export function renderSidebar() {
   return `<nav class="side" aria-label="Main">
     <div class="side-top">
       <div class="row" style="gap:2px">
-        <button class="ws grow" data-a="pop" data-pop="ws" aria-haspopup="menu" aria-label="Switch workspace">
+        <button class="ws grow" data-a="pop" data-pop="ws" aria-haspopup="menu" aria-label="Workspace menu">
           ${wsLogo(d.ws, 22)}
           <span class="ws-name trunc">${esc(d.ws.name)}</span>
           <span class="chev-d faint">${ic('chevrons-up-down', 13)}</span>
