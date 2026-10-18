@@ -1,7 +1,7 @@
 /* Agents: automated writers (scripts, assistants) registered as workspace members with `agent: true`, so what
    they do shows up in comments and activity under their own name instead of the owner's. Attribution only: the
    API still has one shared token. */
-import { ApiError, bad } from './tasks.js';
+import { bad } from './tasks.js';
 
 const MAX_NAME = 60;
 const GRAY = '#8a867e';
