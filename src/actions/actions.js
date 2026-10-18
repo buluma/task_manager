@@ -1357,71 +1357,40 @@ A.shareAdd = el => {
   });
   S.ui.shareQ = '';
   render();
-  toast(`${m.name} can now edit ${p.name}`);
+  toast(`Added ${m.name} to ${p.name}`);
 };
 A.shareInvite = () => {
   const m = S.ui.modals[S.ui.modals.length - 1];
   const p = proj(m.id);
   const v = ($('#share-in')?.value || '').trim();
-  const perm = $('#share-perm')?.value;
   if (!v) {
     $('#share-in')?.focus();
     return;
   }
   const ex = D().members.find(x => x.email.toLowerCase() === v.toLowerCase() || x.name.toLowerCase() === v.toLowerCase());
-  if (ex) {
-    if (!p.members.includes(ex.id))
-      mutate(() => {
-        p.members.push(ex.id);
-        p.perms = p.perms || {};
-        p.perms[ex.id] = perm;
-      });
-    S.ui.shareQ = '';
-    render();
-    toast(`Shared with ${ex.name}`);
+  if (!ex) {
+    toast('No member with that name or email. Add them from Members first.', { kind: 'err' });
     return;
   }
-  if (!/^\S+@\S+\.\S+$/.test(v)) {
-    toast('Enter a valid email address, like name@company.com', { kind: 'err' });
+  if (p.members.includes(ex.id)) {
+    toast(`${ex.name} is already on ${p.name}`, { kind: 'info' });
     return;
   }
-  const nm = v
-    .split('@')[0]
-    .replace(/[._-]+/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase());
   mutate(() => {
-    const id = uid('m');
-    D().members.push({ id, name: nm, email: v, role: 'Guest', team: p.team, title: 'Guest', c: '#6B7280', status: 'invited', last: null, tz: '—' });
-    p.members.push(id);
-    p.perms = p.perms || {};
-    p.perms[id] = perm;
+    p.members.push(ex.id);
   });
   S.ui.shareQ = '';
   render();
-  toast(`Invitation sent to ${v}`);
+  toast(`Added ${ex.name} to ${p.name}`);
 };
-IN.sharePerm = el => {
+A.shareRemove = el => {
   const p = proj(el.dataset.id);
   const mid = el.dataset.mid;
-  if (el.value === '__remove') {
-    const snap = snapshot();
-    mutate(() => {
-      p.members = p.members.filter(x => x !== mid);
-    });
-    toast(`Removed ${mem(mid).name}`, { action: 'Undo', onAction: () => restore(snap) });
-  } else {
-    mutate(() => {
-      p.perms = p.perms || {};
-      p.perms[mid] = el.value;
-    });
-    toast(`${mem(mid).name}: ${el.value}`, { ms: 1800 });
-  }
-};
-IN.shareAccess = el => {
-  const p = proj(el.dataset.id);
+  const snap = snapshot();
   mutate(() => {
-    p.access = el.value;
+    p.members = p.members.filter(x => x !== mid);
   });
+  toast(`Removed ${mem(mid).name}`, { action: 'Undo', onAction: () => restore(snap) });
 };
 A.invite = () => {
   S.ui.inviteDraft = '';
@@ -1465,7 +1434,7 @@ A.submitInvite = () => {
               team,
               title: role,
               c: '#6B7280',
-              status: 'invited',
+              status: 'active',
               last: null,
               tz: '—',
             });
@@ -1476,14 +1445,8 @@ A.submitInvite = () => {
     S.ui.modals.pop();
     S.ui.errors = {};
     render();
-    toast(`${list.length} invitation${list.length > 1 ? 's' : ''} sent`);
+    toast(`${list.length} member${list.length > 1 ? 's' : ''} added`);
   });
-};
-A.copyInviteLink = () => copy(`https://gr8rstudio.com/join/${D().ws.url}-7f3k2`, 'Invite link copied');
-A.resendInvite = el => {
-  S.ui.pop = null;
-  render();
-  toast(`Invite resent to ${mem(el.dataset.id).email}`);
 };
 A.viewProfile = el => go('member', { id: el.dataset.id });
 A.assignToMember = el => {
