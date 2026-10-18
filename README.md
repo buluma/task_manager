@@ -21,7 +21,8 @@ npm run format    # Prettier
 ## Docs
 
 - [Architecture](docs/architecture.md): project structure, layers and conventions.
-- [Personal server and CLI](docs/server.md): the sync server, the `gr8r` command, agents and the Inbox.
+- [Personal server](docs/server.md): the sync server and its configuration.
+- [CLI](docs/cli.md): every `gr8r` command, plus agents and the Inbox.
 - [HTTP API](docs/api.md): every route.
 
 ## CI and deploy
