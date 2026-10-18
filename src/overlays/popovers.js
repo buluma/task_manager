@@ -361,7 +361,7 @@ export function popHtml(p) {
       inner = STATUSES.map(s => `<button class="mi" data-a="bulkSet" data-f="status" data-v="${s.id}">${stIcon(s.id)}${s.name}</button>`).join('');
       break;
     case 'bulk-priority':
-      inner = PRIOS.map(s => `<button class="mi" data-a="bulkSet" data-f="priority" data-v="${s.id}">${prIcon(s.id)}${s.name}</button>`).join('');
+      inner = PRIOS.map(s => `<button class="mi" data-a="bulkSet" data-f="priority" data-v="${s.id}">${prIcon(s.id)}${esc(s.name)}</button>`).join('');
       break;
     case 'bulk-assignee':
       inner = [{ id: '', name: 'Unassigned' }, ...D().members]

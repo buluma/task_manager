@@ -154,7 +154,7 @@ export function miniRow(t, opt = {}) {
     <span data-tip="${ST[t.status].name}">${stIcon(t.status)}</span>
     <span class="tt">${esc(t.title)}</span>
     ${opt.noProj ? '' : `<span class="pj hide-m"><span class="pdot" style="--c:${pColor(p)}"></span><span class="trunc">${esc(p.name)}</span></span>`}
-    <span data-tip="${PR[t.priority].name} priority">${prIcon(t.priority)}</span>
+    <span data-tip="${esc(PR[t.priority].name)} priority">${prIcon(t.priority)}</span>
     <span style="width:74px;text-align:right" class="hide-m">${t.due ? dueHtml(t, false) : '<span class="faint" style="font-size:var(--fs-xs)">No date</span>'}</span>
     ${opt.av === false ? '' : av(t.assignee, 'sm')}
   </div>`;

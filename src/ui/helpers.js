@@ -44,7 +44,7 @@ export function prIcon(p, s = 14) {
   return `<svg width="${s}" height="${s}" viewBox="0 0 14 14" aria-hidden="true" style="flex-shrink:0">${bar(1.8, 4.5, n >= 1)}${bar(5.7, 7.5, n >= 2)}${bar(9.6, 10.5, n >= 3)}</svg>`;
 }
 export const stPill = st => `${stIcon(st)}<span>${ST[st].name}</span>`;
-export const prPill = p => `${prIcon(p)}<span>${PR[p || 'none'].name}</span>`;
+export const prPill = p => `${prIcon(p)}<span>${esc(PR[p || 'none'].name)}</span>`;
 export const lbl = id => (LB[id] ? `<span class="lbl" style="--c:${LB[id].c}"><i></i>${LB[id].name}</span>` : '');
 export const pIcon = (p, cls = '', s = 15) => `<span class="picon ${cls}" style="--c:${pColor(p)}">${ic(p.icon, s)}</span>`;
 export const pStatus = s => `<span class="pstatus" style="--c:${PSTAT[s].c}"><i></i>${PSTAT[s].name}</span>`;
