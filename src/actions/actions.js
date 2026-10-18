@@ -7,6 +7,7 @@ import { adoptPriorities } from '../core/priorities.js';
 import { nextDue } from '../core/recur.js';
 import { archiveProject, archiveTask, removeProject, removeTasks, restoreProject } from '../core/archive.js';
 import { addComment, removeComment } from '../core/comments.js';
+import { linkTo } from '../core/links.js';
 import { addSub, removeSub, setSubDone } from '../core/subtasks.js';
 import { D, S, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
 import { effectiveDark } from '../core/theme.js';
@@ -458,17 +459,10 @@ A.copyLink = el => {
   S.ui.pop = null;
   render();
   const d = el.dataset;
-  const path =
-    d.id && task(d.id)
-      ? `task/${task(d.id).key}`
-      : d.pid
-        ? `project/${proj(d.pid).key.toLowerCase()}`
-        : d.fid
-          ? `file/${d.fid}`
-          : d.id && proj(d.id)
-            ? `project/${proj(d.id).key.toLowerCase()}`
-            : '';
-  copy(`https://gr8rstudio.com/${D().ws.url}/${path}`);
+  const page = location.origin + location.pathname;
+  const t = d.id && task(d.id);
+  const p = proj(d.pid || d.id);
+  copy(t ? linkTo(page, 'task', t.key) : p ? linkTo(page, 'project', p.key) : page);
 };
 A.copyText = el => copy(el.dataset.text, 'Copied to clipboard');
 A.copyEmail = el => {
@@ -1078,14 +1072,7 @@ A.colArchive = el => {
   const ts = colTasks(S.ui.pop.key, el.dataset.id);
   S.ui.pop = null;
   const snap = snapshot();
-  if (
-    mutate(() =>
-      ts.forEach(t => {
-        t.archived = true;
-        t.archivedAt = Date.now();
-      }),
-    )
-  )
+  if (mutate(() => ts.forEach(t => archiveTask(D(), t, asMe()))))
     toast(`Archived ${ts.length} ${el.dataset.id === 'cancelled' ? 'cancelled' : 'completed'} tasks`, { action: 'Undo', onAction: () => restore(snap) });
 };
 A.colSortPrio = el => {

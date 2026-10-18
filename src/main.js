@@ -51,7 +51,8 @@ import './actions/subtasks.js';
 import './actions/archive.js';
 import './actions/priorities.js';
 import { rollNow } from './actions/cycles.js';
-import { S, D, cache } from './core/store.js';
+import { S, D, cache, canSee, proj } from './core/store.js';
+import { resolveLink } from './core/links.js';
 import { watchRemote } from './core/sync.js';
 import { A } from './actions/actions.js';
 import { ROUTE_NAMES, render, go } from './shell/render.js';
@@ -68,10 +69,15 @@ import { toast } from './ui/toast.js';
   }
   // #notifications was folded into the Inbox; keep old links working.
   const h = (location.hash || '').slice(1).replace(/^notifications$/, 'inbox');
+  // A copied link (#task/GR-12, #project/gr) opens on what it names; the hash is then dropped so a reload goes home.
+  const link = resolveLink(D(), location.hash);
+  if (link) history.replaceState(null, '', location.pathname + location.search);
   if (h && ROUTE_NAMES[h]) S.ui.route = h;
+  else if (link?.project && canSee(proj(link.project))) Object.assign(S.ui, { route: 'project', params: { id: link.project, tab: 'board' } });
   else S.ui.route = S.prefs.home || 'home';
   rollNow();
   render();
+  if (link?.task) A.openTask({ dataset: { id: link.task } });
 })();
 
 // Leave the app open past midnight Sunday and the new cycle still starts: re-check when the tab regains focus and hourly.
