@@ -37,7 +37,7 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   priority set ID [--name N] [--weight 1-99]
   priority rm ID [--replace ID]    tasks on it move to ID (default none)
 
-  status: backlog todo progress review done     priority: see \`gr8r priorities\` (default urgent high medium low none)
+  status: backlog todo progress review done cancelled     priority: see \`gr8r priorities\` (default urgent high medium low none)
   project status: planning active risk hold complete
   Add --json to any command for machine-readable output.`;
 

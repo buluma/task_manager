@@ -1,7 +1,7 @@
 /* ---------- CYCLES ---------- */
 import { esc, fmtDate } from '../core/utils.js';
 import { ic } from '../core/icons.js';
-import { D, allTasks, currentCycle } from '../core/store.js';
+import { D, allTasks, currentCycle, isOpen } from '../core/store.js';
 import { cycleEnd, cycleStats, pastCycles } from '../core/cycles.js';
 import { applyView, viewOf, viewToolbar } from '../shell/view-engine.js';
 import { listHtml } from '../components/task-list.js';
@@ -23,17 +23,16 @@ export function pageCycles() {
   const cur = currentCycle();
   const v = viewOf(key);
   const tasks = allTasks();
-  const open = t => t.status !== 'done';
   const inCycle = applyView(
-    tasks.filter(t => t.cycle === cur && open(t)),
+    tasks.filter(t => t.cycle === cur && isOpen(t)),
     v,
   );
   const done = applyView(
-    tasks.filter(t => t.cycle === cur && !open(t)),
+    tasks.filter(t => t.cycle === cur && !isOpen(t)),
     v,
   );
   const backlog = applyView(
-    tasks.filter(t => !t.cycle && open(t)),
+    tasks.filter(t => !t.cycle && isOpen(t)),
     v,
   );
   const { total, done: nDone, carried } = cycleStats(tasks, cur);

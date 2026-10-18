@@ -2,13 +2,13 @@
 import { ago, esc, fmtDate, minsAgo } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { PSTAT } from '../core/constants.js';
-import { S, TM, canSee, mem, progressOf, tasksOf, visibleProjects } from '../core/store.js';
+import { S, TM, canSee, isOpen, mem, progressOf, tasksOf, visibleProjects } from '../core/store.js';
 import { av, avStack, empty, pIcon, pStatus, progBar } from '../ui/helpers.js';
 
 export function projectCard(p) {
   const ts = tasksOf(p.id);
   const pr = progressOf(p.id);
-  const open = ts.filter(t => t.status !== 'done').length;
+  const open = ts.filter(t => isOpen(t)).length;
   const locked = !canSee(p);
   return `<div class="pcard" data-a="go" data-r="project" data-id="${p.id}" data-ctx="project" role="link" tabindex="0" aria-label="${esc(p.name)}">
     <div class="row">${pIcon(p)}<div class="grow" style="min-width:0"><div class="row" style="gap:6px"><b class="trunc" style="font-weight:600;font-size:14px">${esc(p.name)}</b>${p.fav ? `<span style="color:var(--amber)">${ic('star', 12)}</span>` : ''}${p.private ? `<span class="faint" data-tip="Private project">${ic('lock', 12)}</span>` : ''}</div></div>${pStatus(p.status)}</div>

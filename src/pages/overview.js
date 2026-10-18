@@ -2,7 +2,7 @@
 import { TODAY, diffD, esc, fmtDate, parse, relDate } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { STATUSES } from '../core/constants.js';
-import { D, allTasks, canSee, isOver, mem, pColor, progressOf, tasksOf, visibleProjects } from '../core/store.js';
+import { D, allTasks, canSee, isOpen, isOver, mem, pColor, progressOf, tasksOf, visibleProjects } from '../core/store.js';
 import { av, pIcon, pStatus, progBar, stIcon } from '../ui/helpers.js';
 
 export function pageOverview() {
@@ -17,7 +17,7 @@ export function pageOverview() {
     .slice(0, 6);
   const load = D()
     .members.filter(m => m.status === 'active')
-    .map(m => ({ m, ts: all.filter(t => t.assignee === m.id && t.status !== 'done') }))
+    .map(m => ({ m, ts: all.filter(t => t.assignee === m.id && isOpen(t)) }))
     .sort((a, b) => b.ts.length - a.ts.length);
   const maxL = Math.max(...load.map(l => l.ts.length), 1);
   return `<div class="page">
@@ -36,7 +36,7 @@ export function pageOverview() {
             const ts = tasksOf(p.id);
             const pr = progressOf(p.id);
             const ov = ts.filter(isOver).length;
-            return `<tr style="cursor:pointer" data-a="go" data-r="project" data-id="${p.id}" data-tab="overview"><td style="padding-left:14px"><span class="row">${pIcon(p, '', 14)}<span class="trunc" style="font-weight:500">${esc(p.name)}</span></span></td><td style="text-align:left"><span class="row">${av(p.lead, 'sm')}<span class="muted trunc">${esc(mem(p.lead)?.name.split(' ')[0])}</span></span></td><td style="text-align:left">${pStatus(p.status)}</td><td><span class="row">${progBar(pr, p.status === 'complete' ? 'green' : p.status === 'risk' ? 'red' : '')}<span class="num faint" style="font-size:11.5px;width:30px">${pr}%</span></span></td><td class="num">${ts.filter(t => t.status !== 'done').length}</td><td class="num" style="${ov ? 'color:var(--red)' : 'color:var(--text-3)'}">${ov}</td><td style="text-align:left" class="num muted">${fmtDate(p.due)}</td></tr>`;
+            return `<tr style="cursor:pointer" data-a="go" data-r="project" data-id="${p.id}" data-tab="overview"><td style="padding-left:14px"><span class="row">${pIcon(p, '', 14)}<span class="trunc" style="font-weight:500">${esc(p.name)}</span></span></td><td style="text-align:left"><span class="row">${av(p.lead, 'sm')}<span class="muted trunc">${esc(mem(p.lead)?.name.split(' ')[0])}</span></span></td><td style="text-align:left">${pStatus(p.status)}</td><td><span class="row">${progBar(pr, p.status === 'complete' ? 'green' : p.status === 'risk' ? 'red' : '')}<span class="num faint" style="font-size:11.5px;width:30px">${pr}%</span></span></td><td class="num">${ts.filter(t => isOpen(t)).length}</td><td class="num" style="${ov ? 'color:var(--red)' : 'color:var(--text-3)'}">${ov}</td><td style="text-align:left" class="num muted">${fmtDate(p.due)}</td></tr>`;
           })
           .join('')}
         </tbody></table></div>

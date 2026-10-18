@@ -72,3 +72,9 @@ test('pastCycles lists earlier cycles newest first, excluding the current one', 
   const tasks = [mk('a', '2026-09-28', 'done'), mk('b', '2026-10-12', 'todo', { past: ['2026-10-05', '2026-09-28'] }), mk('c', '2026-10-12')];
   assert.deepEqual(pastCycles(tasks, '2026-10-12'), ['2026-10-05', '2026-09-28']);
 });
+
+test('cancelled tasks are neither carried forward nor counted as planned work', () => {
+  const tasks = [mk('a', '2026-10-05', 'cancelled'), mk('b', '2026-10-12', 'cancelled'), mk('c', '2026-10-12', 'done')];
+  assert.equal(rollCycles(tasks, '2026-10-12'), 0);
+  assert.deepEqual(cycleStats(tasks, '2026-10-12'), { total: 1, done: 1, carried: 0 });
+});

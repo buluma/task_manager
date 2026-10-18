@@ -13,7 +13,7 @@ export class ApiError extends Error {
 }
 export const bad = msg => new ApiError(400, msg);
 
-const STATUS_NAMES = { backlog: 'Backlog', todo: 'To Do', progress: 'In Progress', review: 'Review', done: 'Done' };
+const STATUS_NAMES = { backlog: 'Backlog', todo: 'To Do', progress: 'In Progress', review: 'Review', done: 'Done', cancelled: 'Cancelled' };
 const prioName = (data, id) => scaleOf(data).find(p => p.id === id)?.name;
 /* Days between occurrences of a repeating task, as in the app (actions.js). */
 const RECUR_DAYS = { Daily: 1, Weekly: 7, 'Every 2 weeks': 14, Monthly: 30 };
