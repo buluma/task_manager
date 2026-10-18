@@ -102,7 +102,8 @@
   background: var(--surface-2);
 }
 /* Inbox list works as a secondary sidebar: no visible scrollbar (it narrowed the rows), and the
-   tab labels start on the gutter with tighter spacing so all five categories fit without clipping. */
+   tab labels start on the gutter with tighter spacing so the categories fit; if six do not, the strip scrolls sideways
+   instead of clipping. */
 .inbox-list {
   overflow-y: auto;
   flex: 1;
@@ -114,10 +115,17 @@
 .inbox-tabs {
   margin-top: 8px;
   padding: 0 var(--gutter);
-  gap: 16px;
+  gap: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.inbox-tabs::-webkit-scrollbar {
+  display: none;
 }
 .inbox-tabs .tab {
   padding: 0;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .inbox-tabs .tab.on::after {
   left: 0;

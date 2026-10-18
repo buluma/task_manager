@@ -35,7 +35,7 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   project set KEY [--name N] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE|none] [--lead MEMBER]
   project rm KEY      archive          project restore KEY    bring it back
   project rm KEY --purge    delete an archived project and its tasks for good
-  notify TEXT [--task KEY] [--snippet TEXT] [--type comment|update|mention|assign]   raise an Inbox item (use with --as)
+  notify TEXT [--task KEY] [--snippet TEXT] [--type needs|comment|update|mention|assign]   raise an Inbox item (use with --as; needs = asking for you)
   inbox [--unread]               list Inbox items      inbox read|unread ID   mark one
   agent add NAME                 register an agent, so its writes show under its own name
   agent list

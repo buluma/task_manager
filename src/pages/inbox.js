@@ -9,6 +9,7 @@ import { commentHtml } from '../overlays/drawer.js';
 export function pageInbox() {
   const cats = [
     ['all', 'All'],
+    ['needs', 'Needs you'],
     ['mention', 'Mentions'],
     ['assign', 'Assignments'],
     ['comment', 'Comments'],
@@ -54,7 +55,7 @@ export function notifIcon(n) {
 export function inboxItem(n, on) {
   const t = n.task ? task(n.task) : null;
   const p = n.project ? proj(n.project) : t ? proj(t.project) : null;
-  const typeIc = { mention: 'at-sign', assign: 'user-plus', comment: 'message-square', update: 'refresh-cw' }[n.type];
+  const typeIc = { needs: 'circle-alert', mention: 'at-sign', assign: 'user-plus', comment: 'message-square', update: 'refresh-cw' }[n.type];
   return `<div class="row" style="align-items:flex-start;gap:10px;padding:12px var(--gutter);border-bottom:1px solid var(--divider);cursor:pointer;position:relative;${on ? 'background:var(--surface-2);' : ''}" data-a="selNotif" data-id="${n.id}" role="button" tabindex="0">
     ${!n.read ? '<span style="position:absolute;left:6px;top:22px;width:6px;height:6px;border-radius:50%;background:var(--accent)" aria-label="Unread"></span>' : ''}
     ${notifIcon(n)}
