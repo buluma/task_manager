@@ -290,6 +290,7 @@ export function patchTask(data, prefs, today, key, input, now) {
     else if (k === 'due') log(data, 'changed due date of', t, nv ? `to ${nv}` : '(cleared)', now);
     else if (k === 'start') log(data, 'changed start date of', t, nv ? `to ${nv}` : '(cleared)', now);
     else if (k === 'labels') log(data, 'updated labels on', t, '', now);
+    else if (k === 'recur') log(data, 'set repeat on', t, nv ? nv.toLowerCase() : 'off', now);
     else if (k === 'title') log(data, 'renamed', t, `to “${nv}”`, now);
     else if (k === 'estimate') log(data, 'estimated', t, nv || 'none', now);
     else if (k === 'cycle') log(data, nv ? 'added to this cycle' : 'removed from its cycle', t, '', now);

@@ -73,23 +73,25 @@ export function applyPatch(t, patch) {
       } else logAct('moved', t, `from ${ST[old].name} to ${ST[nv].name}`);
       if (nv === 'done' && t.recur && t.due) {
         const nd = nextDue(t.due, t.recur);
-        const n = createTask({
-          ...JSON.parse(JSON.stringify(t)),
+        // The next occurrence is a new task, as the server makes it: stamped now, last in the order, never completed.
+        const copy = JSON.parse(JSON.stringify(t));
+        for (const k of ['completedAt', 'prevStatus', 'created', 'order']) delete copy[k];
+        createTask({
+          ...copy,
           id: undefined,
           key: undefined,
           status: 'todo',
           due: nd,
           start: nd,
           subtasks: t.subtasks.map(s => ({ ...s, done: false })),
-          completedAt: null,
         });
-        delete n.prevStatus;
         msgs.push(`Next “${t.title}” scheduled for ${fmtDate(nd)}`);
       }
     } else if (k === 'assignee') logAct('assigned', t, nv ? `to ${mem(nv)?.name}` : '(unassigned)');
     else if (k === 'priority') logAct('changed priority of', t, `to ${PR[nv].name}`);
-    else if (k === 'due') logAct('changed due date of', t, nv ? `to ${fmtDate(nv)}` : '(cleared)');
-    else if (k === 'start') logAct('changed start date of', t, nv ? `to ${fmtDate(nv)}` : '(cleared)');
+    // Logged as YYYY-MM-DD, as the server does: the activity text is stored, so a display format would be frozen into it.
+    else if (k === 'due') logAct('changed due date of', t, nv ? `to ${nv}` : '(cleared)');
+    else if (k === 'start') logAct('changed start date of', t, nv ? `to ${nv}` : '(cleared)');
     else if (k === 'project') {
       const p = proj(nv);
       t.key = nextKey(p);
