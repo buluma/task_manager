@@ -34,7 +34,6 @@ import './views/board.js';
 import './views/table.js';
 import './views/calendar.js';
 import './views/timeline.js';
-import './views/files.js';
 import './overlays/drawer.js';
 import './overlays/modals.js';
 import './overlays/popovers.js';

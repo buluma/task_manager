@@ -1,5 +1,5 @@
 /* =====================================================================
-   PROJECT PAGE + VIEWS: overview, board, list, table, calendar, timeline, files, activity
+   PROJECT PAGE + VIEWS: overview, board, list, table, calendar, timeline, activity
    ===================================================================== */
 import { esc } from '../core/utils.js';
 import { ic } from '../core/icons.js';
@@ -14,7 +14,6 @@ import { boardHtml } from '../views/board.js';
 import { tableHtml } from '../views/table.js';
 import { calendarHtml } from '../views/calendar.js';
 import { timelineHtml, tlControls } from '../views/timeline.js';
-import { filesHtml } from '../views/files.js';
 
 export const PTABS = [
   ['overview', 'Overview', 'layout-dashboard'],
@@ -23,7 +22,6 @@ export const PTABS = [
   ['table', 'Table', 'table-2'],
   ['calendar', 'Calendar', 'calendar'],
   ['timeline', 'Timeline', 'chart-gantt'],
-  ['files', 'Files', 'paperclip'],
   ['activity', 'Activity', 'activity'],
 ];
 
@@ -48,7 +46,6 @@ export function pageProject() {
       body = taskViewBody(sv.type, applyView(ts, viewOf(k)), k, p);
     }
   } else if (tab === 'overview') body = projOverview(p);
-  else if (tab === 'files') body = filesHtml(p.id);
   else if (tab === 'activity') body = projActivity(p);
   else body = taskViewBody(tab, applyView(ts, viewOf(key)), key, p);
 

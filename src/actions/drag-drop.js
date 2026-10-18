@@ -5,7 +5,7 @@ import { D, S, proj, save, task } from '../core/store.js';
 import { mutate, toast } from '../ui/toast.js';
 import { fxSet, render } from '../shell/render.js';
 import { viewOf } from '../shell/view-engine.js';
-import { applyPatch, handleFiles, updateTask } from './actions.js';
+import { applyPatch, updateTask } from './actions.js';
 
 export let DRAG = null;
 export function clearDropMarks() {
@@ -49,16 +49,6 @@ document.addEventListener('dragend', () => {
   clearDropMarks();
 });
 document.addEventListener('dragover', e => {
-  const hasFiles = e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
-  if (hasFiles) {
-    const dz = e.target.closest?.('[data-dropzone],[data-dropzone-task],.drawer');
-    if (dz) {
-      e.preventDefault();
-      $$('.dropzone.over').forEach(x => x !== dz && x.classList.remove('over'));
-      dz.classList?.add('over');
-    }
-    return;
-  }
   if (!DRAG) return;
   if (DRAG.type === 'card') {
     const col = e.target.closest('[data-drop-col]');
@@ -110,24 +100,7 @@ document.addEventListener('dragover', e => {
     DRAG.before = it.dataset.projDrop;
   }
 });
-document.addEventListener('dragleave', e => {
-  const dz = e.target.closest?.('.dropzone');
-  if (dz && !dz.contains(e.relatedTarget)) dz.classList.remove('over');
-});
 document.addEventListener('drop', e => {
-  const files = e.dataTransfer?.files;
-  if (files && files.length && !DRAG) {
-    const dz = e.target.closest?.('[data-dropzone],[data-dropzone-task],.drawer');
-    if (!dz) return;
-    e.preventDefault();
-    clearDropMarks();
-    if (dz.dataset.dropzone) handleFiles(files, { project: dz.dataset.dropzone });
-    else {
-      const t = task(dz.dataset.dropzoneTask || S.ui.drawer);
-      if (t) handleFiles(files, { project: t.project, task: t.id });
-    }
-    return;
-  }
   if (!DRAG) return;
   e.preventDefault();
   const d = DRAG;
