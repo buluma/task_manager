@@ -2,7 +2,7 @@
    dependency routes mirror the dependency picker in the app. Dependencies are stored as task ids (as the app
    does) and spoken as task keys on the API. */
 import { addSub, removeSub, renameSub, setSubDone } from '../src/core/subtasks.js';
-import { ApiError, actorOf, bad, findTask, rand } from './tasks.js';
+import { ApiError, actorOf, bad, changeCtx, findTask, rand } from './tasks.js';
 
 const MAX_TITLE = 500;
 
@@ -20,7 +20,6 @@ const act = (data, verb, t, extra, now) => {
   data.activity.unshift({ id: 'a' + rand(), by: actorOf(data), verb, task: t.id, project: t.project, at: now, extra });
   t.updated = now;
 };
-const subCtx = (data, now) => ({ by: actorOf(data), now, newId: prefix => prefix + rand() });
 const subOf = (t, sid) => {
   const s = (t.subtasks || []).find(x => x.id === sid);
   if (!s) throw new ApiError(404, `no subtask ${sid} on ${t.key}`);
@@ -30,7 +29,7 @@ const subOf = (t, sid) => {
 export function addSubtask(data, key, input, now) {
   const { title } = strictBody(input, ['title']);
   const clean = cleanTitle(title);
-  return addSub(data, findTask(data, key), clean, subCtx(data, now));
+  return addSub(data, findTask(data, key), clean, changeCtx(data, now));
 }
 
 export function patchSubtask(data, key, sid, input, now) {
@@ -41,7 +40,7 @@ export function patchSubtask(data, key, sid, input, now) {
   const t = findTask(data, key);
   const s = subOf(t, sid);
   if (title !== undefined) renameSub(t, s, title, now);
-  if ('done' in f) setSubDone(data, t, s, f.done, subCtx(data, now));
+  if ('done' in f) setSubDone(data, t, s, f.done, changeCtx(data, now));
   t.updated = now;
   return s;
 }

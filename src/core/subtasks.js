@@ -1,12 +1,8 @@
 /* ---------- subtasks ----------
    Shared by the app (actions.js, actions/subtasks.js) and the server (server/relations.js), so a subtask change
-   records the same thing from either side. Callers find the task and check their input first. `ctx` says who
-   acts and when, and makes ids in each side's own way: { by, now, newId(prefix) }. */
-
-const log = (data, ctx, verb, t, extra) => {
-  data.activity.unshift({ id: ctx.newId('a'), by: ctx.by, verb, task: t.id, project: t.project, at: ctx.now, extra });
-  t.updated = ctx.now;
-};
+   records the same thing from either side. Callers find the task and check their input first; `ctx` is as in
+   activity.js. */
+import { logActivity as log } from './activity.js';
 
 export function addSub(data, t, title, ctx) {
   let id;
