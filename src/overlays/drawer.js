@@ -3,6 +3,7 @@
    ===================================================================== */
 import { MOD, TODAY, ago, diffD, esc, fmtDate, parse, relDate } from '../core/utils.js';
 import { ic } from '../core/icons.js';
+import { prLinkOf } from '../core/pr-links.js';
 import { D, S, commentsOf, isOver, mem, pColor, proj, task } from '../core/store.js';
 import { FT, av, filePrev, fileType, fmtComment, lbl, progBar } from '../ui/helpers.js';
 import { fxc } from '../shell/render.js';
@@ -31,6 +32,7 @@ export function drawerHtml(t) {
   const p = proj(t.project);
   const u = S.ui;
   const cs = commentsOf(t.id);
+  const pr = prLinkOf(cs);
   const sd = t.subtasks.filter(s => s.done).length;
   const acts = D().activity.filter(a => a.task === t.id);
   const tab = u.drawerTab;
@@ -52,6 +54,7 @@ export function drawerHtml(t) {
       <span class="sp"></span>
       <button class="btn btn-sm ${t.status === 'done' ? 'btn-secondary' : 'btn-ghost'}" data-a="toggleDone" data-id="${t.id}" style="${t.status === 'done' ? 'color:var(--green)' : ''}">${ic(t.status === 'done' ? 'circle-check' : 'circle', 14)}<span class="hide-m">${t.status === 'done' ? 'Completed' : 'Mark complete'}</span></button>
       <button class="ibtn ibtn-sm" data-a="toggleFavTask" data-id="${t.id}" data-tip="${t.fav ? 'Unfavorite' : 'Favorite'}" aria-pressed="${t.fav}" aria-label="Favorite" style="${t.fav ? 'color:var(--amber)' : ''}">${ic('star', 15)}</button>
+      ${pr ? `<a class="ibtn ibtn-sm" href="${esc(pr.url)}" target="_blank" rel="noopener noreferrer" data-tip="Open PR #${pr.number} · ${esc(pr.repo)}" aria-label="Open pull request #${pr.number}">${ic('git-pull-request', 15)}</a>` : ''}
       <button class="ibtn ibtn-sm" data-a="copyLink" data-id="${t.id}" data-tip="Copy link" aria-label="Copy link">${ic('link', 15)}</button>
       <button class="ibtn ibtn-sm hide-m" data-a="toggleDrawerFull" data-tip="${u.drawerFull ? 'Side panel' : 'Full page'}" aria-label="Toggle full page">${ic(u.drawerFull ? 'minimize-2' : 'maximize-2', 15)}</button>
       <button class="ibtn ibtn-sm" data-a="ctxBtn" data-ctx="task" data-id="${t.id}" aria-label="More">${ic('ellipsis', 15)}</button>
