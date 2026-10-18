@@ -123,6 +123,7 @@ gr8r add "write report" --priority high --cycle current
 gr8r list --cycle current
 gr8r set GR-3 --status progress
 gr8r done GR-3
+gr8r pr link GR-3 https://github.com/OWNER/REPO/pull/7
 gr8r project add "Website" --key WEB --color teal
 gr8r priority add Blocker --weight 5
 gr8r priority rm low --replace medium
