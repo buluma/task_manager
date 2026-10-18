@@ -223,6 +223,11 @@
 .mini:hover {
   background: var(--surface-2);
 }
+/* The status and priority icons are inline svgs in a span; as inline content they sit on a text baseline
+   and ride high, so lay the wrappers out as flex boxes to centre them on the row. */
+.mini > span[data-tip] {
+  display: inline-flex;
+}
 .mini .tt {
   flex: 1;
   min-width: 0;
