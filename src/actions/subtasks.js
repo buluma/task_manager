@@ -3,6 +3,7 @@
    ===================================================================== */
 import { $, esc } from '../core/utils.js';
 import { S, logAct, save, task } from '../core/store.js';
+import { renameSub } from '../core/subtasks.js';
 import { mutate, toast } from '../ui/toast.js';
 import { render } from '../shell/render.js';
 import { A, BLUR, IN, createTask } from './actions.js';
@@ -38,11 +39,7 @@ BLUR.commitSubTitle = el => {
   const t = task(el.dataset.id);
   const s = subOf(t, el.dataset.sid);
   const v = el.value.trim();
-  if (s && v && v !== s.title)
-    mutate(() => {
-      s.title = v;
-      t.updated = Date.now();
-    });
+  if (s && v && v !== s.title) mutate(() => renameSub(t, s, v, Date.now()));
 };
 IN.subNote = el => {
   const t = task(el.dataset.id);

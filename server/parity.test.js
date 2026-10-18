@@ -1,11 +1,13 @@
 /* The server re-implements the app's task actions (see the headers of tasks.js). These tests run the same change
    through both, on the same state at the same moment, and compare the results, so the two cannot drift apart
-   without a test failing. Only the app functions that do not need the DOM can be called here: createTask,
-   applyPatch and deleteTasks in src/actions/actions.js. */
+   without a test failing. The app side is the real code: createTask, applyPatch and deleteTasks, and the subtask
+   handlers in the action tables, whose render calls land on inert DOM stubs. */
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import { createTask, patchTask, removeTasks } from './tasks.js';
+import { addSubtask, deleteSubtask, patchSubtask } from './relations.js';
+import { TEAMS_SEED } from '../src/core/constants.js';
 
 // actions.js pulls in the whole UI: give it the Vite-only icon module and the few browser globals it touches on import.
 registerHooks({
@@ -14,21 +16,27 @@ registerHooks({
 const inert = new Proxy(function () {}, { get: (_, k) => (k === Symbol.toPrimitive ? () => '' : inert), apply: () => inert });
 Object.assign(globalThis, { document: inert, addEventListener() {}, matchMedia: inert, localStorage: { getItem: () => null, setItem() {}, removeItem() {} } });
 const app = await import('../src/actions/actions.js');
+await import('../src/actions/subtasks.js'); // wraps A.rmSub and adds BLUR.commitSubTitle
 const { S, task } = await import('../src/core/store.js');
+const { emptyWorkspace } = await import('../src/data/seed.js');
 
 const NOW = new Date(2026, 9, 18, 9, 0).getTime();
 const TODAY = '2026-10-18';
 const PREFS = { weekStart: 1 };
 
+// A real workspace underneath, so the handlers that re-render have everything the shell draws. Teams are given up
+// front because rendering seeds them on first use (teamsList in store.js).
 const fixture = () => ({
+  ...emptyWorkspace(),
+  teams: TEAMS_SEED.map(t => ({ ...t })),
   me: 'm1',
   members: [
-    { id: 'm1', name: 'Me' },
-    { id: 'm2', name: 'Ada' },
+    { ...emptyWorkspace().members[0], id: 'm1', name: 'Me' },
+    { ...emptyWorkspace().members[0], id: 'm2', name: 'Ada', role: 'Member' },
   ],
   projects: [
-    { id: 'p1', key: 'GR', name: 'Tasks', seq: 2, members: ['m1'], archived: false },
-    { id: 'p2', key: 'OPS', name: 'Ops', seq: 7, members: ['m1'], archived: false },
+    { ...emptyWorkspace().projects[0], id: 'p1', key: 'GR', name: 'Tasks', seq: 2 },
+    { ...emptyWorkspace().projects[0], id: 'p2', key: 'OPS', name: 'Ops', seq: 7 },
   ],
   projOrder: ['p1', 'p2'],
   tasks: [
@@ -82,7 +90,7 @@ const fixture = () => ({
   notifs: [],
 });
 
-/* Ids are random on both sides, so tasks are compared by key and activity rows without their id. */
+/* Ids are random on both sides, so tasks are compared by key and activity rows and subtasks without their id. */
 function normalize(data) {
   const keyOf = id => data.tasks.find(t => t.id === id)?.key ?? id;
   const without = (o, k) => {
@@ -92,7 +100,7 @@ function normalize(data) {
   };
   return {
     ...data,
-    tasks: data.tasks.map(t => ({ ...without(t, 'id'), deps: t.deps.map(keyOf) })),
+    tasks: data.tasks.map(t => ({ ...without(t, 'id'), deps: t.deps.map(keyOf), subtasks: t.subtasks.map(s => without(s, 'id')) })),
     comments: data.comments.map(c => ({ ...c, task: keyOf(c.task) })),
     activity: data.activity.map(a => ({ ...without(a, 'id'), task: keyOf(a.task) })),
   };
@@ -175,3 +183,45 @@ test('delete parity: the task, links to it and its comments go', () => {
   const s = viaServer(d => removeTasks(d, ['t1']));
   assert.deepEqual(s, a);
 });
+
+/* Subtasks: the drawer's handlers against the subtask routes. GR-1 starts with one done subtask, s1. */
+const sub = { dataset: { id: 't1', sid: 's1' } };
+const subCase = (name, onApp, onServer, setup = () => {}) =>
+  test(`subtask parity: ${name}`, () => {
+    const a = viaApp(() => {
+      setup(S.data);
+      onApp();
+    });
+    const s = viaServer(d => {
+      setup(d);
+      onServer(d);
+    });
+    assert.deepEqual(s, a);
+  });
+
+subCase(
+  'adding',
+  () => app.KEY.addSub({ dataset: { id: 't1' }, value: ' Draft ' }),
+  d => addSubtask(d, 'GR-1', { title: ' Draft ' }, NOW),
+);
+subCase(
+  'reopening',
+  () => app.A.toggleSub(sub),
+  d => patchSubtask(d, 'GR-1', 's1', { done: false }, NOW),
+);
+subCase(
+  'completing',
+  () => app.A.toggleSub(sub),
+  d => patchSubtask(d, 'GR-1', 's1', { done: true }, NOW),
+  d => (d.tasks[0].subtasks[0].done = false),
+);
+subCase(
+  'renaming',
+  () => app.BLUR.commitSubTitle({ ...sub, value: 'Outline v2' }),
+  d => patchSubtask(d, 'GR-1', 's1', { title: 'Outline v2' }, NOW),
+);
+subCase(
+  'deleting',
+  () => app.A.rmSub(sub),
+  d => deleteSubtask(d, 'GR-1', 's1', NOW),
+);

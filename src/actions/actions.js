@@ -5,6 +5,7 @@ import { $, $$, TODAY, addD, dOff, esc, fmtDate, iso, parse, uid } from '../core
 import { PR, PSTAT, ST } from '../core/constants.js';
 import { adoptPriorities } from '../core/priorities.js';
 import { nextDue } from '../core/recur.js';
+import { addSub, removeSub, setSubDone } from '../core/subtasks.js';
 import { D, S, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
 import { effectiveDark } from '../core/theme.js';
 import { mutate, toast } from '../ui/toast.js';
@@ -731,32 +732,24 @@ BLUR.commitDrawerTitle = el => {
 };
 KEY.blur = el => el.blur();
 
-/* subtasks */
+/* subtasks: the changes themselves are in core/subtasks.js, shared with the server */
+const subCtx = () => ({ by: D().me, now: Date.now(), newId: uid });
 A.toggleSub = el => {
   const t = task(el.dataset.id);
   const s = t.subtasks.find(x => x.id === el.dataset.sid);
   if (!s.done) fxSet({ done: s.id });
-  mutate(() => {
-    s.done = !s.done;
-    logAct(s.done ? 'completed subtask on' : 'reopened subtask on', t, `“${s.title}”`);
-  });
+  mutate(() => setSubDone(D(), t, s, !s.done, subCtx()));
 };
 A.rmSub = el => {
   const t = task(el.dataset.id);
-  mutate(() => {
-    t.subtasks = t.subtasks.filter(x => x.id !== el.dataset.sid);
-  });
+  const s = t.subtasks.find(x => x.id === el.dataset.sid);
+  if (s) mutate(() => removeSub(t, s, Date.now()));
 };
 KEY.addSub = el => {
   const t = task(el.dataset.id);
   const v = el.value.trim();
   if (!v) return;
-  const nid = uid('s');
-  fxSet({ added: nid });
-  mutate(() => {
-    t.subtasks.push({ id: nid, title: v, done: false });
-    logAct('added subtask to', t, `“${v}”`);
-  });
+  mutate(() => fxSet({ added: addSub(D(), t, v, subCtx()).id }));
   setTimeout(() => $('#d-sub')?.focus(), 0);
 };
 A.expandRow = el => {
