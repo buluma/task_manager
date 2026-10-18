@@ -16,7 +16,7 @@ export function pageMembers() {
   const isAdmin = ['Owner', 'Admin'].includes(me().role);
   const tab = u.membersTab;
   return `<div class="page wide" style="max-width:1200px">
-    <div class="ph"><div><h1>Members</h1><p>${D().members.length} people in ${esc(D().ws.name)} · ${D().members.filter(m => m.status === 'invited').length} pending</p></div><div class="acts"><button class="btn btn-primary" data-a="invite">${ic('user-plus', 14)}Invite member</button></div></div>
+    <div class="ph"><div><h1>Members</h1><p>${D().members.length} people in ${esc(D().ws.name)} · ${D().members.filter(m => m.status === 'invited').length} pending</p></div><div class="acts"><button class="btn btn-primary" data-a="invite">${ic('user-plus', 14)}Add member</button></div></div>
     <div class="tabs" style="margin-bottom:14px">${[
       ['members', 'Members'],
       ['teams', 'Teams'],
@@ -59,7 +59,7 @@ export function permsTable() {
     ['Comment on tasks', 1, 1, 1, 1],
     ['Create and edit tasks', 1, 1, 1, 0],
     ['Create projects', 1, 1, 1, 0],
-    ['Invite members', 1, 1, 0, 0],
+    ['Add members', 1, 1, 0, 0],
     ['Manage roles', 1, 1, 0, 0],
     ['Workspace settings', 1, 1, 0, 0],
     ['Delete workspace', 1, 0, 0, 0],
