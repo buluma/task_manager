@@ -22,6 +22,20 @@ const TYPES = {
   '.json': 'application/json; charset=utf-8',
   '.woff2': 'font/woff2',
 };
+/* Views are HTML strings, so a missed esc() is an injection. This keeps one from running script: only bundled
+   files execute. Inline style attributes are everywhere, and Geist comes from Google Fonts. */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
 
 /* `token` (GR8R_TOKEN) guards the task, project and priority APIs. /api/rev and /api/state stay open because
    the browser app syncs through them without credentials, so the token stops casual API use, not a determined
@@ -241,9 +255,16 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
     }
     let file = path.join(distDir, rel);
     const inside = file === distDir || file.startsWith(distDir + path.sep);
-    if (!inside || !fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(distDir, 'index.html');
-    if (!fs.existsSync(file)) return json(res, 404, { error: 'not built: run npm run build' });
-    res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' });
+    if (!inside || !isFile(file)) file = path.join(distDir, 'index.html');
+    if (!isFile(file)) return json(res, 404, { error: 'not built: run npm run build' });
+    // Vite puts content-hashed files under assets/, so they never change; everything else revalidates.
+    const hashed = file.startsWith(path.join(distDir, 'assets') + path.sep);
+    res.writeHead(200, {
+      'content-type': TYPES[path.extname(file)] || 'application/octet-stream',
+      'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache',
+      'content-security-policy': CSP,
+      'x-content-type-options': 'nosniff',
+    });
     if (req.method === 'HEAD') return res.end();
     fs.createReadStream(file).pipe(res);
   }
@@ -258,6 +279,14 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
       else res.end();
     });
   });
+}
+
+function isFile(file) {
+  try {
+    return fs.statSync(file).isFile();
+  } catch {
+    return false;
+  }
 }
 
 function readStored(file) {
@@ -275,7 +304,20 @@ function readStored(file) {
 function writeStored(file, value) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(value));
+  // Sync the data before the rename and the directory after it, or a power cut can leave an empty state.json.
+  const fd = fs.openSync(tmp, 'w');
+  try {
+    fs.writeFileSync(fd, JSON.stringify(value));
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
   if (fs.existsSync(file)) fs.copyFileSync(file, `${file}.bak`);
   fs.renameSync(tmp, file);
+  const dir = fs.openSync(path.dirname(file), 'r');
+  try {
+    fs.fsyncSync(dir);
+  } finally {
+    fs.closeSync(dir);
+  }
 }
