@@ -124,15 +124,18 @@ export const visibleProjects = () =>
 export const canSee = p => !p.private || p.members.includes(D().me);
 export const tasksOf = pid => D().tasks.filter(t => t.project === pid && !t.archived);
 export const allTasks = () => D().tasks.filter(t => !t.archived && canSee(proj(t.project)));
-export const isOver = t => t.due && t.status !== 'done' && diffD(parse(t.due), TODAY) < 0;
+/* Done and cancelled are the two finished states; everything else is still open. */
+export const isOpen = t => t.status !== 'done' && t.status !== 'cancelled';
+export const isOver = t => t.due && isOpen(t) && diffD(parse(t.due), TODAY) < 0;
 export const commentsOf = tid => D().comments.filter(c => c.task === tid);
 export function progressOf(pid) {
-  const ts = tasksOf(pid);
+  const ts = tasksOf(pid).filter(t => t.status !== 'cancelled');
   if (!ts.length) return 0;
   return Math.round((ts.filter(t => t.status === 'done').length / ts.length) * 100);
 }
 export function taskProg(t) {
   if (t.status === 'done') return 100;
+  if (t.status === 'cancelled') return 0;
   if (t.subtasks.length) return Math.round((t.subtasks.filter(s => s.done).length / t.subtasks.length) * 100);
   return { backlog: 0, todo: 5, progress: 45, review: 80 }[t.status] || 0;
 }

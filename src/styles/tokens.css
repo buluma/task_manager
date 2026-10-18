@@ -47,6 +47,7 @@
   --st-progress: #c88a14;
   --st-review: #7652c2;
   --st-done: #2e8456;
+  --st-cancelled: #a29e96;
   /* elevation */
   --shadow-sm: 0 1px 2px rgba(28, 25, 20, 0.05);
   --shadow-card: 0 1px 2px rgba(28, 25, 20, 0.04), 0 0 0 1px var(--border);
@@ -131,6 +132,7 @@
     --st-progress: #d8a443;
     --st-review: #a98deb;
     --st-done: #5cba86;
+    --st-cancelled: #6f6c66;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-card: 0 0 0 1px var(--border);
     --shadow-pop: 0 16px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-strong);
@@ -171,6 +173,7 @@
   --st-progress: #d8a443;
   --st-review: #a98deb;
   --st-done: #5cba86;
+  --st-cancelled: #6f6c66;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-card: 0 0 0 1px var(--border);
   --shadow-pop: 0 16px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-strong);

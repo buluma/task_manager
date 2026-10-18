@@ -154,6 +154,16 @@ test('PATCH done stamps completion and records the previous status', async () =>
   assert.ok(stored().state.data.activity.some(a => a.verb === 'completed'));
 });
 
+test('PATCH cancelled is a valid status, logged as a move, and is not a completion', async () => {
+  await post({ title: 'alpha', status: 'progress' });
+  const t = (await call('PATCH', '/api/tasks/GR-1', { status: 'cancelled' })).body.task;
+  assert.equal(t.status, 'cancelled');
+  assert.equal(t.completedAt, undefined);
+  assert.ok(stored().state.data.activity.some(a => a.verb === 'moved' && a.extra === 'from In Progress to Cancelled'));
+  assert.equal((await call('PATCH', '/api/tasks/GR-1', { completed: '2026-07-12' })).status, 400);
+  assert.equal((await call('GET', '/api/tasks?status=cancelled')).body.tasks.length, 1);
+});
+
 test('PATCH cycle adds, moves and removes a task', async () => {
   await post({ title: 'alpha' });
   assert.equal((await call('PATCH', '/api/tasks/GR-1', { cycle: 'current' })).body.task.cycle, CUR);

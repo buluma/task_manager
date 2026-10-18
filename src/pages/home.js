@@ -1,7 +1,7 @@
 /* ---------- HOME ---------- */
 import { DAY, MONL, TODAY, WDL, diffD, esc, fmtDate, parse } from '../core/utils.js';
 import { ic } from '../core/icons.js';
-import { D, S, allTasks, canSee, isOver, pColor, progressOf, proj, visibleProjects } from '../core/store.js';
+import { D, S, allTasks, canSee, isOpen, isOver, pColor, progressOf, proj, visibleProjects } from '../core/store.js';
 import { av, avStack, empty, pIcon, pStatus, prIcon, progBar } from '../ui/helpers.js';
 import { sortTasks } from '../shell/view-engine.js';
 import { actHtml, miniRow } from '../components/task-list.js';
@@ -12,18 +12,18 @@ export function pageHome() {
   const all = allTasks();
   const mineAll = all.filter(t => t.assignee === D().me);
   const activeP = visibleProjects().filter(p => canSee(p) && p.status !== 'complete');
-  const open = all.filter(t => t.status !== 'done');
+  const open = all.filter(t => isOpen(t));
   const doneWk = all.filter(t => t.status === 'done' && t.completedAt && Date.now() - t.completedAt < 7 * DAY);
   const over = all.filter(isOver);
   const tab = S.ui.homeTab;
   const lists = {
     upcoming: sortTasks(
-      mineAll.filter(t => t.status !== 'done' && !isOver(t)),
+      mineAll.filter(t => isOpen(t) && !isOver(t)),
       { f: 'due', dir: 1 },
     ),
     overdue: mineAll.filter(isOver),
     completed: sortTasks(
-      mineAll.filter(t => t.status === 'done'),
+      mineAll.filter(t => !isOpen(t)),
       { f: 'updated', dir: 1 },
     ),
   };

@@ -5,6 +5,7 @@ export const STATUSES = [
   { id: 'progress', name: 'In Progress' },
   { id: 'review', name: 'Review' },
   { id: 'done', name: 'Done' },
+  { id: 'cancelled', name: 'Cancelled' },
 ];
 export const ST = Object.fromEntries(STATUSES.map(s => [s.id, s]));
 export const DEFAULT_PRIOS = [

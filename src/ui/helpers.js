@@ -2,7 +2,7 @@
 import { TODAY, diffD, esc, parse, relDate } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { LB, PR, PSTAT, ST, prBars } from '../core/constants.js';
-import { D, mem, pColor } from '../core/store.js';
+import { D, isOpen, mem, pColor } from '../core/store.js';
 
 export function av(id, cls = '', tip = true) {
   const m = mem(id);
@@ -28,6 +28,8 @@ export function stIcon(st, s = 14) {
     inner = `<circle cx="7" cy="7" r="${r}" fill="none" stroke="${c}" stroke-width="1.5"/><path d="M7 3.4A3.6 3.6 0 0 1 7 10.6Z" fill="${c}"/>`;
   else if (st === 'review')
     inner = `<circle cx="7" cy="7" r="${r}" fill="none" stroke="${c}" stroke-width="1.5"/><path d="M7 3.4A3.6 3.6 0 1 1 3.4 7L7 7Z" fill="${c}"/>`;
+  else if (st === 'cancelled')
+    inner = `<circle cx="7" cy="7" r="6.2" fill="${c}"/><path d="M4.9 4.9 9.1 9.1M9.1 4.9 4.9 9.1" fill="none" stroke="var(--surface)" stroke-width="1.6" stroke-linecap="round"/>`;
   else
     inner = `<circle cx="7" cy="7" r="6.2" fill="${c}"/><path d="M4.4 7.2 6.2 9 9.7 5.3" fill="none" stroke="var(--surface)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`;
   return `<svg width="${s}" height="${s}" viewBox="0 0 14 14" aria-hidden="true" style="flex-shrink:0">${inner}</svg>`;
@@ -49,7 +51,7 @@ export const pStatus = s => `<span class="pstatus" style="--c:${PSTAT[s].c}"><i>
 export function dueHtml(t, withIcon = true) {
   if (!t.due) return '';
   const n = diffD(parse(t.due), TODAY);
-  const cls = t.status === 'done' ? '' : n < 0 ? 'over' : n <= 1 ? 'soon' : '';
+  const cls = !isOpen(t) ? '' : n < 0 ? 'over' : n <= 1 ? 'soon' : '';
   return `<span class="due ${cls}">${withIcon ? ic('calendar', 12) : ''}${relDate(t.due)}</span>`;
 }
 export function progBar(v, cls = '') {

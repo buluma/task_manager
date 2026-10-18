@@ -18,7 +18,7 @@ export const cycleEnd = start => toIso(toMs(start) + 6 * DAY);
 export function rollCycles(tasks, current) {
   let moved = 0;
   for (const t of tasks) {
-    if (!t.cycle || t.cycle >= current || t.status === 'done' || t.archived) continue;
+    if (!t.cycle || t.cycle >= current || t.status === 'done' || t.status === 'cancelled' || t.archived) continue;
     (t.past ||= []).push(t.cycle);
     t.carried = (t.carried || 0) + 1;
     t.cycle = current;
@@ -29,7 +29,7 @@ export function rollCycles(tasks, current) {
 
 const planned = (t, id) => t.cycle === id || (t.past || []).includes(id);
 export function cycleStats(tasks, id) {
-  const inCycle = tasks.filter(t => planned(t, id) && !t.archived);
+  const inCycle = tasks.filter(t => planned(t, id) && !t.archived && t.status !== 'cancelled');
   return {
     total: inCycle.length,
     done: inCycle.filter(t => t.cycle === id && t.status === 'done').length,

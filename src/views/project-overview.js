@@ -2,7 +2,7 @@
 import { TODAY, dayBucket, diffD, esc, fmtDate, parse } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { STATUSES } from '../core/constants.js';
-import { D, TM, isOver, mem, pColor, progressOf, task, tasksOf } from '../core/store.js';
+import { D, TM, isOpen, isOver, mem, pColor, progressOf, task, tasksOf } from '../core/store.js';
 import { av, avStack, empty, pStatus, stIcon } from '../ui/helpers.js';
 import { sortTasks } from '../shell/view-engine.js';
 import { actHtml, miniRow } from '../components/task-list.js';
@@ -13,7 +13,7 @@ export function projOverview(p) {
   const cnt = STATUSES.map(s => ({ s, n: ts.filter(t => t.status === s.id).length }));
   const over = ts.filter(isOver);
   const soon = sortTasks(
-    ts.filter(t => t.status !== 'done' && t.due),
+    ts.filter(t => isOpen(t) && t.due),
     { f: 'due', dir: 1 },
   ).slice(0, 6);
   const acts = D()

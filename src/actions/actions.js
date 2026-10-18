@@ -5,7 +5,7 @@ import { $, $$, TODAY, addD, dOff, esc, fmtDate, iso, parse, uid } from '../core
 import { PR, PSTAT, ST } from '../core/constants.js';
 import { adoptPriorities } from '../core/priorities.js';
 import { seed } from '../data/seed.js';
-import { D, DEFAULT_PREFS, S, allTasks, canSee, commentsOf, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
+import { D, DEFAULT_PREFS, S, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
 import { fileType, fsize } from '../ui/helpers.js';
 import { effectiveDark } from '../core/theme.js';
 import { mutate, toast } from '../ui/toast.js';
@@ -216,7 +216,7 @@ A.goTasks = el => {
   v.mode = 'list';
   v.filters =
     f === 'open'
-      ? [{ f: 'status', op: 'not', v: ['done'] }]
+      ? [{ f: 'status', op: 'not', v: ['done', 'cancelled'] }]
       : f === 'done'
         ? [
             { f: 'status', op: 'is', v: ['done'] },
@@ -1567,7 +1567,7 @@ A.assignToMember = el => {
 A.removeMember = el => {
   const m = mem(el.dataset.id);
   S.ui.pop = null;
-  const n = allTasks().filter(t => t.assignee === m.id && t.status !== 'done').length;
+  const n = allTasks().filter(t => t.assignee === m.id && isOpen(t)).length;
   confirmDlg({
     title: `Remove ${m.name}?`,
     body: `${esc(m.name)} will lose access to ${esc(D().ws.name)} immediately.${n ? ` Their <b>${n} open task${n > 1 ? 's' : ''}</b> will become unassigned.` : ''}`,
