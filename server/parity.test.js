@@ -1,27 +1,15 @@
 /* The server re-implements the app's task actions (see the headers of tasks.js). These tests run the same change
    through both, on the same state at the same moment, and compare the results, so the two cannot drift apart
    without a test failing. The app side is the real code: createTask, applyPatch and deleteTasks, and the subtask
-   handlers in the action tables, whose render calls land on inert DOM stubs. */
+   handlers in the action tables, loaded by app-harness.js. */
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
+import { app, S, task, emptyWorkspace } from './app-harness.js';
 import { archiveTask, createTask, patchTask, purgeTask } from './tasks.js';
 import { addComment, deleteComment } from './comments.js';
 import { archiveProject, patchProject, purgeProject } from './projects.js';
 import { addSubtask, deleteSubtask, patchSubtask } from './relations.js';
 import { TEAMS_SEED } from '../src/core/constants.js';
-
-// actions.js pulls in the whole UI: give it the Vite-only icon module and the few browser globals it touches on import.
-registerHooks({
-  resolve: (spec, ctx, next) => (spec === 'virtual:icons' ? { url: 'data:text/javascript,export const ICONS = {}', shortCircuit: true } : next(spec, ctx)),
-});
-const inert = new Proxy(function () {}, { get: (_, k) => (k === Symbol.toPrimitive ? () => '' : inert), apply: () => inert });
-Object.assign(globalThis, { document: inert, addEventListener() {}, matchMedia: inert, localStorage: { getItem: () => null, setItem() {}, removeItem() {} } });
-const app = await import('../src/actions/actions.js');
-await import('../src/actions/subtasks.js'); // wraps A.rmSub and adds BLUR.commitSubTitle
-await import('../src/actions/archive.js'); // A.restoreTask and A.purgeTask
-const { S, task } = await import('../src/core/store.js');
-const { emptyWorkspace } = await import('../src/data/seed.js');
 
 const NOW = new Date(2026, 9, 18, 9, 0).getTime();
 const TODAY = '2026-10-18';
