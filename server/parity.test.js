@@ -4,11 +4,12 @@
    handlers in the action tables, loaded by app-harness.js. */
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { app, S, task, emptyWorkspace } from './app-harness.js';
+import { app, fields, S, task, emptyWorkspace } from './app-harness.js';
 import { archiveTask, createTask, patchTask, purgeTask } from './tasks.js';
 import { addComment, deleteComment } from './comments.js';
 import { archiveProject, patchProject, purgeProject } from './projects.js';
 import { addSubtask, deleteSubtask, patchSubtask } from './relations.js';
+import { createMembers, createTeam, deleteMember, deleteTeam, patchTeam } from './people.js';
 import { TEAMS_SEED } from '../src/core/constants.js';
 
 const NOW = new Date(2026, 9, 18, 9, 0).getTime();
@@ -89,8 +90,13 @@ function normalize(data) {
     delete c[k];
     return c;
   };
+  // New members and teams get random ids too: members are compared without theirs, and a team is named by its name.
+  const teamOf = id => data.teams?.find(t => t.id === id)?.name ?? id;
   return {
     ...data,
+    members: data.members.map(m => ({ ...without(m, 'id'), team: teamOf(m.team) })),
+    teams: data.teams?.map(t => without(t, 'id')),
+    projects: data.projects.map(p => ({ ...p, team: teamOf(p.team) })),
     tasks: data.tasks.map(t => ({ ...without(t, 'id'), deps: t.deps.map(keyOf), subtasks: t.subtasks.map(s => without(s, 'id')) })),
     comments: data.comments.map(c => ({ ...without(c, 'id'), task: keyOf(c.task) })),
     activity: data.activity.map(a => ({ ...without(a, 'id'), task: keyOf(a.task) })),
@@ -286,4 +292,61 @@ archiveCase(
   () => app.A.restoreTask({ dataset: { id: 't1' } }),
   d => patchTask(d, PREFS, TODAY, 'GR-1', { archived: false }, NOW),
   d => Object.assign(d.tasks[0], { archived: true, archivedAt: 5 }),
+);
+
+/* Members and teams: the members page and team dialog against the member and team routes. Me (m1) is the owner;
+   Ada (m2) a member; both start in the product team. */
+const peopleCase = (name, ...rest) => handlerCase(`people parity: ${name}`, ...rest);
+
+test('people parity: adding members from the add member dialog', () => {
+  Object.assign(fields, { '#inv-emails': { value: 'grace.hopper@navy.mil, lin@x.io' }, '#inv-role': { value: 'Admin' }, '#inv-team': { value: 'mkt' } });
+  mock.timers.enable({ apis: ['Date', 'setTimeout'], now: NOW });
+  let a;
+  try {
+    S.data = fixture();
+    app.A.submitInvite();
+    mock.timers.tick(600); // the dialog's loading delay
+    a = normalize(S.data);
+  } finally {
+    mock.timers.reset();
+  }
+  const s = viaServer(d => createMembers(d, { emails: ['grace.hopper@navy.mil', 'lin@x.io'], role: 'Admin', team: 'mkt' }));
+  assert.deepEqual(s, a);
+});
+peopleCase(
+  'removing a member',
+  () => {
+    app.A.removeMember({ dataset: { id: 'm2' } });
+    confirm();
+  },
+  d => deleteMember(d, 'm2'),
+  d => Object.assign(d.tasks[1], { assignee: 'm2' }),
+);
+peopleCase(
+  'creating a team with a member',
+  () => {
+    Object.assign(fields, { '#tm-name': { value: 'Ops' }, '#tm-desc': { value: '' } });
+    S.ui.modals = [{ type: 'team' }];
+    S.ui.tform = { name: '', desc: '', icon: 'server', color: 'green', members: ['m2'] };
+    app.A.submitTeam();
+  },
+  d => createTeam(d, { name: 'Ops', icon: 'server', color: 'green', members: ['m2'] }),
+);
+peopleCase(
+  'editing a team and its members',
+  () => {
+    Object.assign(fields, { '#tm-name': { value: 'Product & Design' }, '#tm-desc': { value: 'Ships' } });
+    S.ui.modals = [{ type: 'team', edit: 'product' }];
+    S.ui.tform = { name: '', desc: '', icon: 'target', color: 'amber', members: ['m1'] };
+    app.A.submitTeam();
+  },
+  d => patchTeam(d, 'product', { name: 'Product & Design', desc: 'Ships', icon: 'target', color: 'amber', members: ['m1'] }),
+);
+peopleCase(
+  'deleting a team',
+  () => {
+    app.A.delTeam({ dataset: { id: 'product' } });
+    confirm();
+  },
+  d => deleteTeam(d, 'product'),
 );
