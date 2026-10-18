@@ -2,6 +2,7 @@
 import { $, MOD, MONL, TODAY, WD, addD, dOff, diffD, esc, fmtDate, iso, parse } from '../core/utils.js';
 import { ic, wsLogo } from '../core/icons.js';
 import { LABELS, PRIOS, PSTAT, STATUSES } from '../core/constants.js';
+import { RECUR_DAYS } from '../core/recur.js';
 import { D, S, allTasks, canSee, me, mem, pColor, proj, task, visibleProjects } from '../core/store.js';
 import { av, avStack, prIcon, stIcon } from '../ui/helpers.js';
 import { focusKey, render } from '../shell/render.js';
@@ -154,7 +155,7 @@ export function popHtml(p) {
       break;
     case 'recur':
       inner = popList(
-        ['Does not repeat', 'Daily', 'Weekly', 'Every 2 weeks', 'Monthly'].map(x => ({
+        ['Does not repeat', ...Object.keys(RECUR_DAYS)].map(x => ({
           id: x,
           name: x,
           html: ic('repeat', 14),
@@ -361,7 +362,7 @@ export function popHtml(p) {
       inner = STATUSES.map(s => `<button class="mi" data-a="bulkSet" data-f="status" data-v="${s.id}">${stIcon(s.id)}${s.name}</button>`).join('');
       break;
     case 'bulk-priority':
-      inner = PRIOS.map(s => `<button class="mi" data-a="bulkSet" data-f="priority" data-v="${s.id}">${prIcon(s.id)}${s.name}</button>`).join('');
+      inner = PRIOS.map(s => `<button class="mi" data-a="bulkSet" data-f="priority" data-v="${s.id}">${prIcon(s.id)}${esc(s.name)}</button>`).join('');
       break;
     case 'bulk-assignee':
       inner = [{ id: '', name: 'Unassigned' }, ...D().members]

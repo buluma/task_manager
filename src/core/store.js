@@ -120,7 +120,8 @@ export const visibleProjects = () =>
     .projOrder.map(proj)
     .filter(Boolean)
     .filter(p => !p.archived);
-export const canSee = p => !p.private || p.members.includes(D().me);
+// A task or activity row can outlive its project (purge, a hand-made state); treat that as not visible.
+export const canSee = p => !!p && (!p.private || p.members.includes(D().me));
 export const tasksOf = pid => D().tasks.filter(t => t.project === pid && !t.archived);
 export const allTasks = () => D().tasks.filter(t => !t.archived && canSee(proj(t.project)));
 /* Done and cancelled are the two finished states; everything else is still open. */

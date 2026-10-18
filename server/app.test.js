@@ -1,4 +1,4 @@
-import { test, beforeEach, afterEach } from 'node:test';
+import { test, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -65,6 +65,20 @@ test('state survives a restart and the previous revision is kept as a backup', a
   assert.equal(body.rev, 2);
 });
 
+test('a save is flushed to disk before it replaces the previous file', async () => {
+  const log = [];
+  const { fsyncSync, renameSync } = fs;
+  mock.method(fs, 'fsyncSync', fd => (log.push('fsync'), fsyncSync(fd)));
+  mock.method(fs, 'renameSync', (a, b) => (log.push('rename'), renameSync(a, b)));
+  try {
+    assert.equal((await put({ baseRev: 0, state })).status, 200);
+  } finally {
+    mock.restoreAll();
+  }
+  // The temp file is synced before the rename, and the directory after it so the rename itself survives a crash.
+  assert.deepEqual(log, ['fsync', 'rename', 'fsync']);
+});
+
 test('rejects malformed JSON, wrong shape, wrong content type, and oversize bodies', async () => {
   assert.equal((await put('{nope')).status, 400);
   assert.equal((await put({ baseRev: 0, state: { nope: 1 } })).status, 400);
@@ -93,4 +107,26 @@ test('serves dist files and falls back to index.html, without escaping dist', as
   assert.equal(await (await fetch(`${base}/some/route`)).text(), '<h1>app</h1>');
   const sock = await fetch(`${base}/..%2fdata%2fstate.json`);
   assert.equal(await sock.text(), '<h1>app</h1>');
+});
+
+test('app pages carry a CSP that only runs scripts from this origin', async () => {
+  for (const p of ['/', '/some/route', '/a.js']) {
+    const h = (await fetch(`${base}${p}`)).headers;
+    const csp = h.get('content-security-policy') || '';
+    assert.match(csp, /script-src 'self'(;|$)/, p);
+    assert.match(csp, /object-src 'none'/, p);
+    assert.match(csp, /frame-ancestors 'none'/, p);
+    assert.equal(h.get('x-content-type-options'), 'nosniff', p);
+  }
+});
+
+test('hashed assets are cached for good, index.html is revalidated', async () => {
+  fs.mkdirSync(path.join(dir, 'dist', 'assets'));
+  fs.writeFileSync(path.join(dir, 'dist', 'assets', 'main-AbC123.js'), 'y');
+  assert.equal((await fetch(`${base}/assets/main-AbC123.js`)).headers.get('cache-control'), 'public, max-age=31536000, immutable');
+  assert.equal((await fetch(`${base}/`)).headers.get('cache-control'), 'no-cache');
+  assert.equal((await fetch(`${base}/some/route`)).headers.get('cache-control'), 'no-cache');
+  assert.equal((await fetch(`${base}/a.js`)).headers.get('cache-control'), 'no-cache');
+  // A missing asset falls back to index.html, which must not be cached as if it were the asset.
+  assert.equal((await fetch(`${base}/assets/gone-XyZ.js`)).headers.get('cache-control'), 'no-cache');
 });

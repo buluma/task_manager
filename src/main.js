@@ -90,17 +90,31 @@ window.addEventListener('gr8r:conflict', () =>
   toast('Changed on another device. Reload to get the latest.', { kind: 'err', action: 'Reload', onAction: () => location.reload(), ms: 600000 }),
 );
 
+const idle = () =>
+  !S.ui.auth && !S.ui.modals.length && !S.ui.composer && !S.ui.editCell && !S.ui.pop && !document.activeElement?.matches('input,textarea,[contenteditable]');
+
 // Adopt changes made elsewhere (CLI, another device) unless the user is mid-edit.
-watchRemote(
-  state => {
-    S.data = state.data;
-    adoptPriorities(S.data);
-    cache();
-    render();
-  },
-  () =>
-    !S.ui.auth && !S.ui.modals.length && !S.ui.composer && !S.ui.editCell && !S.ui.pop && !document.activeElement?.matches('input,textarea,[contenteditable]'),
-);
+watchRemote(state => {
+  S.data = state.data;
+  adoptPriorities(S.data);
+  cache();
+  render();
+}, idle);
+
+// A save lost the race and sync.js merged it with the other write. Adopt the result now, even mid-edit, or the
+// next save would undo the other write; only the redraw waits for idle. Say so only where theirs won a clash.
+window.addEventListener('gr8r:merged', ({ detail: { state, conflicts } }) => {
+  S.data = state.data;
+  S.prefs = state.prefs;
+  S.views = state.views;
+  adoptPriorities(S.data);
+  cache();
+  if (idle()) render();
+  if (!conflicts.length) return;
+  const keys = [...new Set(conflicts.filter(c => c[0] === 'data' && c[1] === 'tasks').map(c => S.data.tasks.find(t => t.id === c[2])?.key))].filter(Boolean);
+  const where = keys.length ? (keys.length > 3 ? `${keys.length} tasks` : keys.join(', ')) : `${conflicts.length} setting${conflicts.length === 1 ? '' : 's'}`;
+  toast(`Another device changed the same thing on ${where}; kept its version.`, { kind: 'info', ms: 10000 });
+});
 
 // Dev-only handle for debugging and screenshot tooling; stripped from production builds.
 if (import.meta.env.DEV) window.__gr8r = { S, D, A, go, render };

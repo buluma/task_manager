@@ -18,7 +18,7 @@ export function kcard(t, opt = {}) {
     <div class="meta">
       ${opt.showProj ? `<span class="m" data-tip="${esc(p.name)}"><span class="pdot" style="--c:${pColor(p)}"></span></span>` : ''}
       <span class="key">${t.key}</span>
-      <button class="m" data-a="pop" data-pop="priority" data-id="${t.id}" data-tip="${PR[t.priority].name}" aria-label="Priority: ${PR[t.priority].name}">${prIcon(t.priority, 13)}</button>
+      <button class="m" data-a="pop" data-pop="priority" data-id="${t.id}" data-tip="${esc(PR[t.priority].name)}" aria-label="Priority: ${esc(PR[t.priority].name)}">${prIcon(t.priority, 13)}</button>
       ${t.due ? `<button class="m" data-a="pop" data-pop="date" data-field="due" data-id="${t.id}" aria-label="Due date">${dueHtml(t)}</button>` : ''}
       ${t.recur ? `<span class="m" data-tip="Repeats ${t.recur.toLowerCase()}">${ic('repeat', 12)}</span>` : ''}
       ${cc ? `<span class="m" aria-label="${cc} comments">${ic('message-square', 12)}${cc}</span>` : ''}
