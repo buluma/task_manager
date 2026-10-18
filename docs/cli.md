@@ -59,7 +59,7 @@ Accepted values:
 | `project set KEY [options]`  | change `--name`, `--desc`, `--color`, `--icon`, `--status`, `--due` or `--lead`; the key never changes |
 | `project rm KEY`             | archive the project, keeping its tasks                                                                 |
 | `project restore KEY`        | bring an archived project back                                                                         |
-| `project rm KEY --purge`     | delete an archived project with its tasks, comments, files and activity for good                       |
+| `project rm KEY --purge`     | delete an archived project with its tasks, comments and activity for good                              |
 
 Project status is `planning`, `active`, `risk`, `hold` or `complete`. Colours are `indigo`, `blue`, `violet`, `teal`, `rose`, `amber`, `green` and `slate`.
 

@@ -154,7 +154,7 @@ export function archiveProject(data, ref, now) {
 }
 
 /* Permanent delete, like the app's: the project, every task in it (archived ones too) with their comments and
-   dependency links, and its files. Only for a project already archived. Returns how many tasks went with it. */
+   dependency links. Only for a project already archived. Returns how many tasks went with it. */
 export function purgeProject(data, ref) {
   const p = findProject(data, ref);
   if (!p.archived) throw new ApiError(409, `${p.key} is not archived: archive it first (DELETE without purge), then purge`);
@@ -162,7 +162,6 @@ export function purgeProject(data, ref) {
   removeTasks(data, ids);
   data.projects = data.projects.filter(x => x !== p);
   if (data.projOrder) data.projOrder = data.projOrder.filter(id => id !== p.id);
-  if (data.files) data.files = data.files.filter(f => f.project !== p.id);
   if (data.activity) data.activity = data.activity.filter(a => a.project !== p.id);
   return { project: p, tasks: ids.length };
 }

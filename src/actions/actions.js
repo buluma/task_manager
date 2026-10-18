@@ -38,7 +38,6 @@ export function createTask(f) {
       start: null,
       labels: [],
       subtasks: [],
-      attachments: [],
       deps: [],
       desc: '',
       estimate: null,
@@ -83,7 +82,6 @@ export function applyPatch(t, patch) {
           start: nd,
           subtasks: t.subtasks.map(s => ({ ...s, done: false })),
           completedAt: null,
-          attachments: [],
         });
         delete n.prevStatus;
         msgs.push(`Next “${t.title}” scheduled for ${fmtDate(nd)}`);
@@ -1277,7 +1275,7 @@ A.archiveProject = el => {
   S.ui.pop = null;
   confirmDlg({
     title: `Archive ${p.name}?`,
-    body: 'The project will be hidden from the sidebar and project lists. Tasks, files, and comments are kept, and you can restore it from Settings → Projects.',
+    body: 'The project will be hidden from the sidebar and project lists. Tasks and comments are kept, and you can restore it from Settings → Projects.',
     ok: 'Archive project',
     icon: 'archive',
     run: () => {
@@ -1308,7 +1306,7 @@ A.delProject = el => {
   const n = tasksOf(p.id).length;
   confirmDlg({
     title: `Delete ${p.name}?`,
-    body: `This permanently deletes the project and its <b>${n} task${n === 1 ? '' : 's'}</b>, files, and comments for everyone. This can't be undone.`,
+    body: `This permanently deletes the project and its <b>${n} task${n === 1 ? '' : 's'}</b> and comments for everyone. This can't be undone.`,
     ok: 'Delete project',
     danger: true,
     typeName: p.name,
@@ -1323,7 +1321,6 @@ A.delProject = el => {
           deleteTasks(ids);
           D().projects = D().projects.filter(x => x !== p);
           D().projOrder = D().projOrder.filter(x => x !== p.id);
-          D().files = D().files.filter(f => f.project !== p.id);
         })
       ) {
         if (S.ui.route === 'project' && S.ui.params.id === p.id) go('projects');
@@ -1621,10 +1618,7 @@ A.saveWorkspace = () => {
   loadingBtn('ws-save', 600, () => {
     if (
       mutate(() => {
-        const old = D().ws.name;
         D().ws.name = n;
-        const w = D().workspaces.find(x => x.name === old);
-        if (w) w.name = n;
       })
     )
       toast('Workspace settings saved');

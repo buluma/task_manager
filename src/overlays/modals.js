@@ -139,7 +139,7 @@ export const TEMPLATES = [
 export function projectModal(m, H) {
   const f = S.ui.pform;
   const err = S.ui.errors.pname;
-  return `${H(m.edit ? 'Project settings' : 'New project', m.edit ? '' : 'Projects hold tasks, files, and conversations for one body of work.')}
+  return `${H(m.edit ? 'Project settings' : 'New project', m.edit ? '' : 'Projects hold tasks and conversations for one body of work.')}
   <form class="modal-b" data-submit="submitProject">
     <div class="row" style="gap:10px;align-items:flex-start">
       <button type="button" class="picon lg" style="--c:${PCOLORS[f.color]};cursor:default;flex-shrink:0;margin-top:22px" aria-hidden="true" tabindex="-1">${ic(f.icon, 18)}</button>

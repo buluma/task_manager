@@ -14,7 +14,6 @@ import './ui/toast.js';
 import './ui/select.js';
 import './shell/render.js';
 import './shell/layout.js';
-import './shell/skeletons.js';
 import './shell/view-engine.js';
 import './components/task-list.js';
 import './pages/home.js';
