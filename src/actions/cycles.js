@@ -24,7 +24,6 @@ A.toggleCycle = el => {
 };
 
 A.quickAdd = () => {
-  if (S.ui.auth) return;
   openModal({ type: 'quick' });
 };
 A.quickSubmit = () => {

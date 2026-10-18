@@ -62,8 +62,7 @@
   width: 100%;
   height: 100%;
 }
-.brand .logo,
-.auth-card .logo {
+.brand .logo {
   color: var(--text);
 }
 svg.logo {

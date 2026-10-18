@@ -40,7 +40,6 @@ import './overlays/popovers.js';
 import './overlays/context-menu.js';
 import './overlays/palette.js';
 import './pages/settings.js';
-import './pages/auth.js';
 import './actions/actions.js';
 import './actions/events.js';
 import './actions/keyboard.js';
@@ -70,9 +69,7 @@ import { toast } from './ui/toast.js';
   }
   // #notifications was folded into the Inbox; keep old links working.
   const h = (location.hash || '').slice(1).replace(/^notifications$/, 'inbox');
-  const authRoutes = ['login', 'signup', 'forgot', 'reset', 'verify', 'onboarding'];
-  if (authRoutes.includes(h)) S.ui.auth = h;
-  else if (h && ROUTE_NAMES[h]) S.ui.route = h;
+  if (h && ROUTE_NAMES[h]) S.ui.route = h;
   else S.ui.route = S.prefs.home || 'home';
   rollNow();
   render();
@@ -88,8 +85,7 @@ window.addEventListener('gr8r:conflict', () =>
   toast('Changed on another device. Reload to get the latest.', { kind: 'err', action: 'Reload', onAction: () => location.reload(), ms: 600000 }),
 );
 
-const idle = () =>
-  !S.ui.auth && !S.ui.modals.length && !S.ui.composer && !S.ui.editCell && !S.ui.pop && !document.activeElement?.matches('input,textarea,[contenteditable]');
+const idle = () => !S.ui.modals.length && !S.ui.composer && !S.ui.editCell && !S.ui.pop && !document.activeElement?.matches('input,textarea,[contenteditable]');
 
 // Adopt changes made elsewhere (CLI, another device) unless the user is mid-edit.
 watchRemote(state => {

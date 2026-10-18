@@ -262,15 +262,3 @@ export function settingsBody(sec, title) {
   }
   return page404();
 }
-export function strengthMeter(pw) {
-  let s = 0;
-  if (pw.length >= 8) s++;
-  if (pw.length >= 12) s++;
-  if (/[0-9]/.test(pw) && /[a-zA-Z]/.test(pw)) s++;
-  if (/[^a-zA-Z0-9]/.test(pw)) s++;
-  const c = ['var(--red)', 'var(--red)', 'var(--amber)', 'var(--green)', 'var(--green)'][s];
-  const n = ['Too short', 'Weak', 'Fair', 'Good', 'Strong'][s];
-  return pw
-    ? `<div class="row" style="gap:8px"><div class="strength grow" aria-hidden="true">${[0, 1, 2, 3].map(i => `<i class="${i < s ? 'on' : ''}" style="--c:${c}"></i>`).join('')}</div><span style="font-size:11.5px;color:${c};width:60px;text-align:right">${n}</span></div>`
-    : '';
-}

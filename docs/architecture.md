@@ -18,7 +18,7 @@ src/
     tokens.css          colours, spacing, type, radius, the shared --gutter
     base.css  components.css  shell.css  panels.css  overlays.css  states.css  motion.css  responsive.css
     views/              list, board, table, calendar, timeline, projects
-    pages/              settings, auth & onboarding
+    pages/              home, inbox, projects, settings and the other pages
   core/                 utilities, constants, icons, store (state + lookups), theme
   data/seed.js          demo workspace data
   ui/                   shared render helpers, toasts, the select dropdown

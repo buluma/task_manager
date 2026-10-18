@@ -174,7 +174,6 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (typing || mod || e.altKey) return;
-  if (S.ui.auth) return;
   // number keys inside status popover
   if (S.ui.pop?.type === 'status' && /^[1-6]$/.test(e.key)) {
     A.popPick({ dataset: { v: STATUSES[+e.key - 1].id } });
