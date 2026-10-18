@@ -179,6 +179,19 @@ test('DELETE archives rather than removes, so the app can restore it', async () 
   assert.equal((await call('GET', '/api/tasks/GR-1')).body.task.archived, true);
 });
 
+test('PATCH archived: false restores an archived task and logs it; archived must be true or false; POST cannot set it', async () => {
+  await post({ title: 'alpha' });
+  await call('DELETE', '/api/tasks/GR-1');
+  const r = await call('PATCH', '/api/tasks/GR-1', { archived: false });
+  assert.equal(r.status, 200);
+  assert.deepEqual([r.body.task.archived, r.body.task.archivedAt], [false, null]);
+  assert.equal(stored().state.data.activity[0].verb, 'restored');
+  assert.equal((await call('PATCH', '/api/tasks/GR-1', { archived: 'no' })).status, 400);
+  assert.equal((await call('PATCH', '/api/tasks/GR-1', { archived: true })).body.task.archived, true);
+  assert.equal(stored().state.data.activity[0].verb, 'archived');
+  assert.equal((await post({ title: 'beta', archived: true })).status, 400);
+});
+
 test('GET /api/projects and /api/rev', async () => {
   const p = await call('GET', '/api/projects');
   assert.deepEqual(

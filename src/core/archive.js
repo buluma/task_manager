@@ -11,6 +11,13 @@ export function archiveTask(data, t, ctx) {
   logActivity(data, ctx, 'archived', t);
 }
 
+export function restoreTask(data, t, ctx) {
+  if (!t.archived) return;
+  t.archived = false;
+  t.archivedAt = null;
+  logActivity(data, ctx, 'restored', t);
+}
+
 /* The tasks, the dependency links pointing at them, and their comments. */
 export function removeTasks(data, ids) {
   const gone = new Set(ids);

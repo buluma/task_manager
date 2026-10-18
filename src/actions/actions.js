@@ -24,7 +24,7 @@ export const A = {},
   BLUR = {};
 
 /* The `ctx` the shared changes in core/ take (see core/activity.js): this user, now, and the app's ids. */
-const asMe = () => ({ by: D().me, now: Date.now(), newId: uid });
+export const asMe = () => ({ by: D().me, now: Date.now(), newId: uid });
 
 /* ---------- task mutations ---------- */
 export function nextKey(p) {

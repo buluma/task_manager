@@ -2,20 +2,14 @@
    ACTIONS · ARCHIVE: restore and purge
    ===================================================================== */
 import { esc } from '../core/utils.js';
-import { logAct, task } from '../core/store.js';
+import { restoreTask } from '../core/archive.js';
+import { D, task } from '../core/store.js';
 import { mutate, toast } from '../ui/toast.js';
-import { A, confirmDlg, deleteTasks } from './actions.js';
+import { A, asMe, confirmDlg, deleteTasks } from './actions.js';
 
 A.restoreTask = el => {
   const t = task(el.dataset.id);
-  if (
-    mutate(() => {
-      t.archived = false;
-      t.archivedAt = null;
-      logAct('restored', t);
-    })
-  )
-    toast(`Restored “${t.title}”`, { action: 'Open', onAction: () => A.openTask({ dataset: { id: t.id } }) });
+  if (mutate(() => restoreTask(D(), t, asMe()))) toast(`Restored “${t.title}”`, { action: 'Open', onAction: () => A.openTask({ dataset: { id: t.id } }) });
 };
 A.purgeTask = el => {
   const t = task(el.dataset.id);

@@ -2,7 +2,7 @@
    (createTask, applyPatch) so API-made changes look the same as UI-made ones; archive and purge go through
    src/core/archive.js, as the app's do. Every function validates before it mutates, so a rejected request leaves
    the state untouched. */
-import { archiveTask as archive, removeTasks } from '../src/core/archive.js';
+import { archiveTask as archive, removeTasks, restoreTask as restore } from '../src/core/archive.js';
 import { STATUSES } from '../src/core/constants.js';
 import { cycleStart } from '../src/core/cycles.js';
 import { scaleOf } from '../src/core/priorities.js';
@@ -40,6 +40,8 @@ const EDITABLE = [
   'recur',
   'descFormat',
 ];
+// A new task cannot start out archived; an existing one is archived or restored like any other field.
+const PATCHABLE = [...EDITABLE, 'archived'];
 
 export const rand = () => Math.random().toString(36).slice(2, 8);
 const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -117,6 +119,10 @@ function clean(data, prefs, today, input, allowed) {
       case 'recur':
         if (v !== null && !Object.hasOwn(RECUR_DAYS, v)) throw bad(`recur must be one of: ${Object.keys(RECUR_DAYS).join(', ')}, or null`);
         out.recur = v;
+        break;
+      case 'archived':
+        if (typeof v !== 'boolean') throw bad('archived must be true or false');
+        out.archived = v;
         break;
       case 'completed':
         if (v !== null && !isDate(v)) throw bad('completed must be YYYY-MM-DD or null');
@@ -265,12 +271,16 @@ function spawnNext(data, t, now) {
 export function patchTask(data, prefs, today, key, input, now) {
   const t = findTask(data, key);
   let next;
-  const { completed, ...fields } = clean(data, prefs, today, input, EDITABLE);
+  const { completed, ...fields } = clean(data, prefs, today, input, PATCHABLE);
   if (!Object.keys(fields).length && completed === undefined) throw bad('no fields to update');
   if (completed) needDone(fields.status ?? t.status);
   for (const [k, nv] of Object.entries(fields)) {
     const old = t[k];
     if (JSON.stringify(old) === JSON.stringify(nv)) continue;
+    if (k === 'archived') {
+      (nv ? archive : restore)(data, t, changeCtx(data, now));
+      continue;
+    }
     t[k] = nv;
     if (k === 'status') {
       if (nv === 'done') {

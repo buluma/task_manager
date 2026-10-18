@@ -21,7 +21,7 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   set KEY [--title T] [--project KEY] [--status S] [--priority P] [--due DATE|none] [--start DATE|none] [--cycle current|DATE|none]
           [--label L ... | --label none] [--desc TEXT [--markdown]] [--estimate E|none] [--completed DATE|none] [--recur ...|none]
   done KEY            mark complete
-  rm KEY              archive (restore it from the app's Archive page)
+  rm KEY              archive            restore KEY    bring an archived task back
   rm KEY --purge      delete an archived task for good
   subtask add KEY TITLE        subtask done|reopen|rm KEY SUBTASK_ID
   deps KEY                     dep add|rm KEY OTHER_KEY   (KEY waits for OTHER_KEY)
@@ -207,6 +207,10 @@ async function main(argv) {
     case 'rm': {
       const { task } = await api('DELETE', `/api/tasks/${key()}${v.purge ? '?purge=1' : ''}`);
       return out(task, `${v.purge ? 'deleted' : 'archived'} ${task.key}  ${task.title}`);
+    }
+    case 'restore': {
+      const { task } = await api('PATCH', `/api/tasks/${key()}`, { archived: false });
+      return out(task, `restored ${task.key}  ${task.title}`);
     }
     case 'subtask': {
       const [sub, taskKey, ...tail] = rest;
