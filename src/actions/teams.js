@@ -3,7 +3,8 @@
    ===================================================================== */
 import { $, uid } from '../core/utils.js';
 import { PCOLORS } from '../core/constants.js';
-import { D, S, mem, team, teamsList } from '../core/store.js';
+import { D, S, team, teamsList } from '../core/store.js';
+import { addTeam, removeTeam, setTeamMembers } from '../core/teams.js';
 import { mutate, toast } from '../ui/toast.js';
 import { go, render } from '../shell/render.js';
 import { openModal } from '../overlays/modals.js';
@@ -67,20 +68,10 @@ A.submitTeam = () => {
   }
   let t;
   const ok = mutate(() => {
-    if (m.edit) {
-      t = team(m.edit);
-      Object.assign(t, { name: f.name, desc: f.desc, icon: f.icon, c: PCOLORS[f.color] });
-      D().members.forEach(x => {
-        if (x.team === t.id && !f.members.includes(x.id)) x.team = '';
-      });
-    } else {
-      t = { id: uid('tm'), name: f.name, desc: f.desc || 'No description yet.', icon: f.icon, c: PCOLORS[f.color] };
-      teamsList().push(t);
-    }
-    f.members.forEach(id => {
-      const x = mem(id);
-      if (x) x.team = t.id;
-    });
+    const fields = { name: f.name, desc: f.desc, icon: f.icon, c: PCOLORS[f.color] };
+    if (m.edit) t = Object.assign(team(m.edit), fields);
+    else t = addTeam(D(), fields, uid);
+    setTeamMembers(D(), t, f.members);
   });
   if (!ok) return;
   S.ui.modals.pop();
@@ -105,17 +96,7 @@ A.delTeam = el => {
     icon: 'users',
     run: () => {
       const snap = snapshot();
-      if (
-        mutate(() => {
-          D().teams = teamsList().filter(x => x !== t);
-          D().members.forEach(x => {
-            if (x.team === t.id) x.team = '';
-          });
-          D().projects.forEach(p => {
-            if (p.team === t.id) p.team = '';
-          });
-        })
-      ) {
+      if (mutate(() => removeTeam(D(), t))) {
         if (S.ui.route === 'team') go('teams');
         toast(`Deleted ${t.name}`, { action: 'Undo', onAction: () => restore(snap) });
       }

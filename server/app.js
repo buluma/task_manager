@@ -11,6 +11,20 @@ import { addComment, deleteComment, listComments } from './comments.js';
 import { createNotification, listNotifications, setRead } from './notifications.js';
 import { addAgent, findAgent, listAgents } from './agents.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
+import {
+  addMilestone,
+  createMembers,
+  createTeam,
+  deleteMember,
+  deleteMilestone,
+  deleteTeam,
+  listMembers,
+  listMilestones,
+  listTeams,
+  patchMember,
+  patchMilestone,
+  patchTeam,
+} from './people.js';
 
 const MAX_BODY = 10 * 1024 * 1024;
 const TYPES = {
@@ -175,6 +189,42 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
       }
       const body = await readJson(req, 'project');
       return json(res, 200, { project: mutate((d, p, today, t) => patchProject(d, key, body, t)) });
+    }
+    if (what === 'projects' && parts[2] === 'milestones' && parts.length === 3) {
+      allow('GET', 'POST');
+      if (method === 'GET') return json(res, 200, { milestones: listMilestones(needState().data, key) });
+      const body = await readJson(req, 'milestone');
+      return json(res, 201, { milestone: mutate(d => addMilestone(d, key, body)) });
+    }
+    if (what === 'projects' && parts[2] === 'milestones' && parts.length === 4) {
+      allow('PATCH', 'DELETE');
+      if (method === 'DELETE') return json(res, 200, { milestone: mutate(d => deleteMilestone(d, key, parts[3])) });
+      const body = await readJson(req, 'milestone');
+      return json(res, 200, { milestone: mutate(d => patchMilestone(d, key, parts[3], body)) });
+    }
+    if (what === 'members' && parts.length === 1) {
+      allow('GET', 'POST');
+      if (method === 'GET') return json(res, 200, { members: listMembers(needState().data) });
+      const body = await readJson(req, 'member');
+      return json(res, 201, { members: mutate(d => createMembers(d, body)) });
+    }
+    if (what === 'members' && parts.length === 2) {
+      allow('PATCH', 'DELETE');
+      if (method === 'DELETE') return json(res, 200, { member: mutate(d => deleteMember(d, key)) });
+      const body = await readJson(req, 'member');
+      return json(res, 200, { member: mutate(d => patchMember(d, key, body)) });
+    }
+    if (what === 'teams' && parts.length === 1) {
+      allow('GET', 'POST');
+      if (method === 'GET') return json(res, 200, { teams: listTeams(needState().data) });
+      const body = await readJson(req, 'team');
+      return json(res, 201, { team: mutate(d => createTeam(d, body)) });
+    }
+    if (what === 'teams' && parts.length === 2) {
+      allow('PATCH', 'DELETE');
+      if (method === 'DELETE') return json(res, 200, { team: mutate(d => deleteTeam(d, key)) });
+      const body = await readJson(req, 'team');
+      return json(res, 200, { team: mutate(d => patchTeam(d, key, body)) });
     }
     if (what === 'priorities' && parts.length === 1) {
       allow('GET', 'POST');

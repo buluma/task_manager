@@ -315,3 +315,27 @@ test('subtask add, done, reopen, rm and dep add, deps, dep rm work from the shel
   assert.notEqual((await run(['subtask', 'add', 'GR-1'])).code, 0);
   assert.notEqual((await run(['subtask', 'frob', 'GR-1'])).code, 0);
 });
+
+test('member, team and milestone commands manage people and dates from the shell', async () => {
+  const added = await run(['member', 'add', 'grace.hopper@navy.mil', '--role', 'Admin']);
+  assert.equal(added.code, 0, added.stderr);
+  assert.match(added.stdout, /added m\S+\s+Admin\s+Grace Hopper {2}<grace.hopper@navy.mil>/);
+  assert.match((await run(['members'])).stdout, /Grace Hopper/);
+
+  const team = await run(['team', 'add', 'Ops', '--color', 'green', '--member', 'm1']);
+  assert.equal(team.code, 0, team.stderr);
+  assert.match((await run(['teams'])).stdout, /Ops/);
+  const set = await run(['member', 'set', 'grace.hopper@navy.mil', '--team', 'Ops', '--title', 'Admiral']);
+  assert.equal(set.code, 0, set.stderr);
+  assert.match(set.stdout, /\[tm\S+\]/);
+  assert.equal((await run(['team', 'rm', 'Ops'])).code, 0);
+  assert.equal((await run(['member', 'rm', 'grace.hopper@navy.mil'])).code, 0);
+  assert.notEqual((await run(['member', 'rm', 'm1'])).code, 0);
+
+  const ms = await run(['milestone', 'add', 'GR', 'Beta', 'launch', '--date', '2026-11-01']);
+  assert.equal(ms.code, 0, ms.stderr);
+  assert.match((await run(['milestones', 'GR'])).stdout, /2026-11-01 {2}Beta launch/);
+  assert.match((await run(['milestone', 'set', 'GR', 'Beta', 'launch', '--date', '2026-11-08'])).stdout, /2026-11-08/);
+  assert.equal((await run(['milestone', 'rm', 'GR', 'Beta', 'launch'])).code, 0);
+  assert.match((await run(['milestones', 'GR'])).stdout, /no milestones/);
+});

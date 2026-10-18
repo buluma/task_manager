@@ -64,6 +64,23 @@ Accepted values:
 
 Project status is `planning`, `active`, `risk`, `hold` or `complete`. Colours are `indigo`, `blue`, `violet`, `teal`, `rose`, `amber`, `green` and `slate`.
 
+## Members, teams and milestones
+
+| Command                                           | Does                                                                                                               |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `members`                                         | list everyone in the workspace, agents included                                                                    |
+| `member add EMAIL... [--role R] [--team T]`       | add people by email (`--role` `Admin`, `Member` or `Guest`, default `Member`); known addresses are skipped         |
+| `member set ID\|EMAIL [options]`                  | change `--name`, `--title`, `--role` or `--team` (`none` for no team); the owner keeps the Owner role              |
+| `member rm ID\|EMAIL`                             | remove someone: their tasks are unassigned and they leave every project; the owner can't be removed                |
+| `teams`                                           | list teams                                                                                                         |
+| `team add NAME [options]`                         | create a team: `--desc`, `--icon`, `--color` (as for projects), `--member ID` (repeatable)                         |
+| `team set ID\|NAME [options]`                     | change `--name`, `--desc`, `--icon` or `--color`; `--member ID ...` sets who is in it (`--member none` empties it) |
+| `team rm ID\|NAME`                                | delete a team; its members and projects are kept, with no team                                                     |
+| `milestones KEY`                                  | a project's milestones                                                                                             |
+| `milestone add KEY NAME --date DATE`              | add a milestone (names are unique within a project)                                                                |
+| `milestone set KEY NAME [--name N] [--date DATE]` | rename or move a milestone                                                                                         |
+| `milestone rm KEY NAME`                           | remove a milestone                                                                                                 |
+
 ## Priorities
 
 | Command                                      | Does                                                                |

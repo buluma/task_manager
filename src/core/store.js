@@ -1,6 +1,7 @@
 /* ---------- store ---------- */
 import { TODAY, diffD, iso, parse, uid } from './utils.js';
-import { PCOLORS, TEAMS_SEED } from './constants.js';
+import { PCOLORS } from './constants.js';
+import { teamsOf } from './teams.js';
 import { adoptPriorities } from './priorities.js';
 import { emptyWorkspace } from '../data/seed.js';
 import { pull, push, syncing } from './sync.js';
@@ -141,11 +142,7 @@ export function logAct(verb, t, extra = '') {
 
 /* ---------- teams (workspace data, seeded on first use) ---------- */
 export const NO_TEAM = { id: '', name: 'No team', icon: 'users', c: '#8A867E', desc: '' };
-export function teamsList() {
-  const d = D();
-  if (!d.teams) d.teams = TEAMS_SEED.map(t => ({ ...t }));
-  return d.teams;
-}
+export const teamsList = () => teamsOf(D());
 export function team(id) {
   return teamsList().find(t => t.id === id) || null;
 }

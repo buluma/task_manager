@@ -7,7 +7,10 @@ registerHooks({
   resolve: (spec, ctx, next) => (spec === 'virtual:icons' ? { url: 'data:text/javascript,export const ICONS = {}', shortCircuit: true } : next(spec, ctx)),
 });
 const inert = new Proxy(function () {}, { get: (_, k) => (k === Symbol.toPrimitive ? () => '' : inert), apply: () => inert });
-Object.assign(globalThis, { document: inert, addEventListener() {}, matchMedia: inert, localStorage: { getItem: () => null, setItem() {}, removeItem() {} } });
+/* Form inputs a handler reads with $('#id'): a test puts { value } here, keyed by selector, before calling it. */
+export const fields = {};
+const document = new Proxy(inert, { get: (_, k) => (k === 'querySelector' ? sel => fields[sel] ?? inert : inert) });
+Object.assign(globalThis, { document, addEventListener() {}, matchMedia: inert, localStorage: { getItem: () => null, setItem() {}, removeItem() {} } });
 
 // Every module that adds handlers to the action tables, as main.js loads them (main.js itself starts timers).
 export const app = await import('../src/actions/actions.js');

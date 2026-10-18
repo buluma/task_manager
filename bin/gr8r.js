@@ -39,6 +39,12 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   inbox [--unread]               list Inbox items      inbox read|unread ID   mark one
   agent add NAME                 register an agent, so its writes show under its own name
   agent list
+  members                        member add EMAIL... [--role Admin|Member|Guest] [--team T]
+  member set ID|EMAIL [--name N] [--title T] [--role R] [--team T|none]      member rm ID|EMAIL
+  teams                          team add NAME [--desc TEXT] [--icon I] [--color C] [--member ID ...]
+  team set ID|NAME [--name N] [--desc TEXT] [--icon I] [--color C] [--member ID ... | --member none]   team rm ID|NAME
+  milestones KEY                 milestone add KEY NAME --date DATE
+  milestone set KEY NAME [--name N] [--date DATE]                            milestone rm KEY NAME
   priorities
   priority add NAME --weight 1-99 [--id ID]
   priority set ID [--name N] [--weight 1-99]
@@ -80,6 +86,10 @@ const OPTIONS = {
   weight: { type: 'string' },
   id: { type: 'string' },
   replace: { type: 'string' },
+  role: { type: 'string' },
+  team: { type: 'string' },
+  member: { type: 'string', multiple: true },
+  date: { type: 'string' },
   json: { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
 };
@@ -137,6 +147,7 @@ const strip = html =>
     .replace(/ ?\n ?/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+const memberRow = m => `${m.id.padEnd(16)} ${(m.role || '').padEnd(7)} ${m.name}${m.email ? `  <${m.email}>` : ''}${m.team ? `  [${m.team}]` : ''}`;
 const projectRow = p => `${p.key.padEnd(8)} ${p.name}${p.archived ? '  [archived]' : ''}`;
 const prioRow = p => `${p.id.padEnd(10)} ${String(p.w).padEnd(3)} ${p.name.padEnd(12)} ${p.tasks} task${p.tasks === 1 ? '' : 's'}`;
 const row = t =>
@@ -339,6 +350,94 @@ async function main(argv) {
         }
         default:
           throw new CliError(`unknown project command: ${sub ?? '(none)'}\n\n${HELP}`);
+      }
+    }
+    case 'members': {
+      const { members } = await api('GET', '/api/members');
+      return out(members, members.map(memberRow).join('\n'));
+    }
+    case 'member': {
+      const [sub, ...args] = rest;
+      const one = () => {
+        if (args.length !== 1) throw new CliError(`member ${sub} needs exactly one member id or email`);
+        return encodeURIComponent(args[0]);
+      };
+      const team = v.team === undefined ? {} : { team: v.team === 'none' ? null : v.team };
+      switch (sub) {
+        case 'add': {
+          if (!args.length) throw new CliError('member add needs one or more email addresses');
+          const { members } = await api('POST', '/api/members', { emails: args, ...(v.role && { role: v.role }), ...team });
+          return out(members, members.length ? members.map(m => `added ${memberRow(m)}`).join('\n') : 'already members: nothing added');
+        }
+        case 'set': {
+          const { member } = await api('PATCH', `/api/members/${one()}`, { ...fields(v, ['name', 'title', 'role']), ...team });
+          return out(member, `updated ${memberRow(member)}`);
+        }
+        case 'rm': {
+          const { member } = await api('DELETE', `/api/members/${one()}`);
+          return out(member, `removed ${member.name}`);
+        }
+        default:
+          throw new CliError(`unknown member command: ${sub ?? '(none)'}\n\n${HELP}`);
+      }
+    }
+    case 'teams': {
+      const { teams } = await api('GET', '/api/teams');
+      return out(teams, teams.map(t => `${t.id.padEnd(12)} ${t.name}`).join('\n'));
+    }
+    case 'team': {
+      const [sub, ...args] = rest;
+      const one = () => {
+        if (args.length !== 1) throw new CliError(`team ${sub} needs exactly one team id or name (quote a name with spaces)`);
+        return encodeURIComponent(args[0]);
+      };
+      const body = () => ({
+        ...fields(v, ['name', 'desc', 'icon', 'color']),
+        ...(v.member && { members: v.member.length === 1 && v.member[0] === 'none' ? [] : v.member }),
+      });
+      switch (sub) {
+        case 'add': {
+          if (!args.length) throw new CliError('team add needs a name');
+          const { team } = await api('POST', '/api/teams', { ...body(), name: args.join(' ') });
+          return out(team, `created ${team.id}  ${team.name}`);
+        }
+        case 'set': {
+          const { team } = await api('PATCH', `/api/teams/${one()}`, body());
+          return out(team, `updated ${team.id}  ${team.name}`);
+        }
+        case 'rm': {
+          const { team } = await api('DELETE', `/api/teams/${one()}`);
+          return out(team, `deleted ${team.name} (its members and projects are kept, with no team)`);
+        }
+        default:
+          throw new CliError(`unknown team command: ${sub ?? '(none)'}\n\n${HELP}`);
+      }
+    }
+    case 'milestones': {
+      if (rest.length !== 1) throw new CliError('milestones needs a project key');
+      const { milestones } = await api('GET', `/api/projects/${encodeURIComponent(rest[0])}/milestones`);
+      return out(milestones, milestones.length ? milestones.map(m => `${m.date}  ${m.name}`).join('\n') : 'no milestones');
+    }
+    case 'milestone': {
+      const [sub, projectKey, ...name] = rest;
+      if (!projectKey || !name.length) throw new CliError(`milestone ${sub ?? ''} needs a project key and a milestone name`);
+      const route = `/api/projects/${encodeURIComponent(projectKey)}/milestones`;
+      const named = `${route}/${encodeURIComponent(name.join(' '))}`;
+      switch (sub) {
+        case 'add': {
+          const { milestone } = await api('POST', route, { name: name.join(' '), date: v.date });
+          return out(milestone, `added ${milestone.date}  ${milestone.name}`);
+        }
+        case 'set': {
+          const { milestone } = await api('PATCH', named, fields(v, ['name', 'date']));
+          return out(milestone, `updated ${milestone.date}  ${milestone.name}`);
+        }
+        case 'rm': {
+          const { milestone } = await api('DELETE', named);
+          return out(milestone, `removed ${milestone.name}`);
+        }
+        default:
+          throw new CliError(`unknown milestone command: ${sub ?? '(none)'}\n\n${HELP}`);
       }
     }
     case 'priorities': {

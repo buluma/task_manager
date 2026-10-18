@@ -8,6 +8,7 @@ import { nextDue } from '../core/recur.js';
 import { archiveProject, archiveTask, removeProject, removeTasks, restoreProject } from '../core/archive.js';
 import { addComment, removeComment } from '../core/comments.js';
 import { linkTo } from '../core/links.js';
+import { addMembers, removeMember } from '../core/members.js';
 import { addSub, removeSub, setSubDone } from '../core/subtasks.js';
 import { D, S, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
 import { effectiveDark } from '../core/theme.js';
@@ -1385,29 +1386,7 @@ A.submitInvite = () => {
     return;
   }
   loadingBtn('inv-submit', 600, () => {
-    if (
-      !mutate(() =>
-        list.forEach(e => {
-          if (!D().members.some(m => m.email === e))
-            D().members.push({
-              id: uid('m'),
-              name: e
-                .split('@')[0]
-                .replace(/[._-]+/g, ' ')
-                .replace(/\b\w/g, c => c.toUpperCase()),
-              email: e,
-              role,
-              team,
-              title: role,
-              c: '#6B7280',
-              status: 'active',
-              last: null,
-              tz: '—',
-            });
-        }),
-      )
-    )
-      return;
+    if (!mutate(() => addMembers(D(), list, { role, team }, uid))) return;
     S.ui.modals.pop();
     S.ui.errors = {};
     render();
@@ -1431,15 +1410,7 @@ A.removeMember = el => {
     icon: 'user-minus',
     run: () => {
       const snap = snapshot();
-      if (
-        mutate(() => {
-          D().members = D().members.filter(x => x !== m);
-          D().tasks.forEach(t => {
-            if (t.assignee === m.id) t.assignee = null;
-          });
-          D().projects.forEach(p => (p.members = p.members.filter(x => x !== m.id)));
-        })
-      ) {
+      if (mutate(() => removeMember(D(), m))) {
         if (S.ui.route === 'member') go('members');
         toast(`Removed ${m.name}`, { action: 'Undo', onAction: () => restore(snap) });
       }
