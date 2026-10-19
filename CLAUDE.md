@@ -43,3 +43,4 @@ This checkout is also the running production server (launchd job `com.buluma.gr8
 - Never edit `state.json` by hand. Use the API or CLI (tasks, projects, priorities, members, teams, milestones); for anything they don't cover, the app's own `PUT /api/state` (read the state, change it, send it back with `baseRev`) is the supported route.
 - Before a live write: `launchctl kickstart gui/$(id -u)/com.buluma.gr8r-backup` and check `tail -1 ~/.gr8r/backup.log`, then rehearse on a copy with `GR8R_PORT=8799 GR8R_DATA=<copy> GR8R_TOKEN=<test> GR8R_ENV_FILE= node server/index.js`.
 - `.env` (gitignored) holds `GR8R_TOKEN` and `GR8R_URL`; never print the token.
+- `skills/gr8r/SKILL.md` is the agent skill for working the live server. `~/.claude/skills/gr8r/SKILL.md`, `~/.agents/skills/gr8r/SKILL.md` and `~/.codex/skills/gr8r/SKILL.md` are symlinks to it, so they follow `main`; update it in the same PR as a CLI or API change.
