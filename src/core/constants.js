@@ -49,6 +49,21 @@ export const LB = Object.fromEntries(LABELS.map(l => [l.id, l]));
 /* Labels are free text on a task. A built-in one (matched ignoring case, so an imported "Bug" is the red Bug) keeps
    its colour; any other is shown as written, in gray. */
 export const labelOf = id => LB[id] || LB[String(id).toLowerCase()] || { id, name: String(id), c: 'var(--gray)' };
+/* Labels that differ only in case are one label, so "Bug" and "bug" filter and toggle together. */
+export const sameLabel = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+/* What the label picker and filter offer: the built-in labels, then every other label used on a task, once each
+   (first spelling seen), by name. */
+export function labelOptions(tasks) {
+  const extra = new Map();
+  for (const t of tasks)
+    for (const l of t.labels || []) {
+      const k = String(l).toLowerCase();
+      if (!LB[k] && !extra.has(k)) extra.set(k, labelOf(l));
+    }
+  return [...LABELS, ...[...extra.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))];
+}
+/* Removes the label in any spelling if the task has it, otherwise adds it. */
+export const toggleLabel = (labels, id) => (labels.some(l => sameLabel(l, id)) ? labels.filter(l => !sameLabel(l, id)) : [...labels, id]);
 export const PSTAT = {
   planning: { name: 'Planning', c: 'var(--gray)' },
   active: { name: 'In Progress', c: 'var(--blue)' },

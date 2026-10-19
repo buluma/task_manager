@@ -81,3 +81,17 @@ test('Copy link copies a link to this server that opens the task or project', as
   assert.equal(await linkOf({ pid: p.id }), 'http://gr8r.example:8787/#project/gr');
   assert.equal(await linkOf({ id: p.id }), 'http://gr8r.example:8787/#project/gr');
 });
+
+test('the label picker and filter work on free-form labels, and on a built-in one spelled differently', async () => {
+  const { matchF, FIELDS } = await import('../src/shell/view-engine.js');
+  const t = { id: 't1', key: 'GR-1', project: 'p1', title: 'x', status: 'todo', subtasks: [], deps: [], labels: ['Bug', 'Improvement'], order: 1 };
+  S.data = { ...emptyWorkspace(), teams: TEAMS_SEED.map(x => ({ ...x })), tasks: [t] };
+  assert.ok(FIELDS.labels.opts().some(o => o.id === 'Improvement'));
+  assert.ok(matchF(t, { f: 'labels', v: ['bug'] }));
+  assert.ok(matchF(t, { f: 'labels', v: ['Improvement'] }));
+  S.ui.pop = { type: 'labels', id: 't1' };
+  app.A.popToggleLabel({ dataset: { v: 'bug' } });
+  assert.deepEqual(S.data.tasks[0].labels, ['Improvement']);
+  app.A.popToggleLabel({ dataset: { v: 'Feature' } });
+  assert.deepEqual(S.data.tasks[0].labels, ['Improvement', 'Feature']);
+});

@@ -2,7 +2,7 @@
    ACTIONS · INPUT HANDLERS · DRAG & DROP · KEYBOARD · INIT
    ===================================================================== */
 import { $, $$, TODAY, addD, dOff, esc, fmtDate, iso, parse, uid } from '../core/utils.js';
-import { PR, PSTAT } from '../core/constants.js';
+import { PR, PSTAT, toggleLabel } from '../core/constants.js';
 import { adoptPriorities } from '../core/priorities.js';
 import { archiveProject, archiveTask, removeProject, removeTasks, restoreProject } from '../core/archive.js';
 import { addComment, removeComment } from '../core/comments.js';
@@ -265,8 +265,7 @@ A.popToggleLabel = el => {
   const p = S.ui.pop;
   const t = tgt(p);
   const v = el.dataset.v;
-  const labels = t.labels.includes(v) ? t.labels.filter(x => x !== v) : [...t.labels, v];
-  updateTask(p.id, { labels });
+  updateTask(p.id, { labels: toggleLabel(t.labels, v) });
 };
 A.popToggleDep = el => {
   const p = S.ui.pop;

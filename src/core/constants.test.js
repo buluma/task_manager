@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { LB, PR, PRIOS, applyPriorities, labelOf } from './constants.js';
+import { LABELS, LB, PR, PRIOS, applyPriorities, labelOf, labelOptions, sameLabel, toggleLabel } from './constants.js';
 
 afterEach(() => applyPriorities(undefined));
 
@@ -49,4 +49,29 @@ test('labelOf finds a built-in label ignoring case, and gives any other label it
   assert.deepEqual(labelOf('bug'), LB.bug);
   assert.deepEqual(labelOf('Bug'), LB.bug);
   assert.deepEqual(labelOf('Improvement'), { id: 'Improvement', name: 'Improvement', c: 'var(--gray)' });
+});
+
+test('labelOptions lists the built-in labels, then every other label in use once, by name', () => {
+  const tasks = [{ labels: ['Improvement', 'Bug'] }, { labels: ['feature', 'Improvement'] }, { labels: ['ops'] }, { labels: [] }];
+  const opts = labelOptions(tasks);
+  assert.deepEqual(
+    opts.slice(0, LABELS.length).map(l => l.id),
+    LABELS.map(l => l.id),
+  );
+  // "Bug" is the built-in bug; the rest are added once each, sorted ignoring case.
+  assert.deepEqual(
+    opts.slice(LABELS.length).map(l => [l.id, l.c]),
+    [
+      ['feature', 'var(--gray)'],
+      ['Improvement', 'var(--gray)'],
+      ['ops', 'var(--gray)'],
+    ],
+  );
+});
+
+test('sameLabel and toggleLabel treat labels that differ only in case as one', () => {
+  assert.ok(sameLabel('Bug', 'bug'));
+  assert.ok(!sameLabel('Bug', 'Bugs'));
+  assert.deepEqual(toggleLabel(['Bug', 'ops'], 'bug'), ['ops']);
+  assert.deepEqual(toggleLabel(['ops'], 'Improvement'), ['ops', 'Improvement']);
 });
