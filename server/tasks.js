@@ -1,13 +1,14 @@
-/* Task operations on the app's state object, mirroring what the browser app does in actions.js
-   (createTask, applyPatch) so API-made changes look the same as UI-made ones; archive and purge go through
-   src/core/archive.js, as the app's do. Every function validates before it mutates, so a rejected request leaves
-   the state untouched. */
-import { archiveTask as archive, removeTasks, restoreTask as restore } from '../src/core/archive.js';
+/* The task API on the app's state object. Creating, changing, archiving and purging go through src/core/tasks.js
+   and archive.js, the same code the app runs, so API-made changes look the same as UI-made ones. What is left here
+   is the API's own part: validation, defaults, description rendering, completion dates and Inbox notifications.
+   Every function validates before it mutates, so a rejected request leaves the state untouched. */
+import { archiveTask as archive, removeTasks } from '../src/core/archive.js';
 import { STATUSES } from '../src/core/constants.js';
 import { cycleStart } from '../src/core/cycles.js';
 import { scaleOf } from '../src/core/priorities.js';
-import { RECUR_DAYS, nextDue } from '../src/core/recur.js';
+import { RECUR_DAYS } from '../src/core/recur.js';
 import { markdownToHtml } from '../src/core/markdown.js';
+import { addTask, changeTask } from '../src/core/tasks.js';
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -161,23 +162,11 @@ const needDone = status => {
   if (status !== 'done') throw bad('completed only applies to done tasks');
 };
 
-const newTaskId = data => {
-  let id;
-  do id = 't' + rand();
-  while (data.tasks.some(t => t.id === id));
-  return id;
-};
-
 /* Tells the owner what an agent just did, in the shape the app's Inbox already shows. Nothing is raised for the
    owner's own writes. */
 export function notifyOwner(data, t, type, text, snippet, now) {
   if (!data.actor || data.actor === data.me) return;
   (data.notifs ??= []).push({ id: 'n' + rand(), type, by: data.actor, task: t.id, text, snippet, at: now, read: false });
-}
-
-function log(data, verb, t, extra, now) {
-  data.activity.unshift({ id: 'a' + rand(), by: actorOf(data), verb, task: t.id, project: t.project, at: now, extra });
-  t.updated = now;
 }
 
 export function findTask(data, key) {
@@ -213,102 +202,23 @@ export function createTask(data, prefs, today, input, now) {
   if (completed) needDone(fields.status);
   const p = fields.project ? data.projects.find(p => p.id === fields.project) : data.projects.find(p => !p.archived);
   if (!p) throw bad('no project to add the task to');
-  p.seq = (p.seq ?? 200) + 1;
-  const id = newTaskId(data);
-  const t = {
-    status: 'backlog',
-    assignee: data.me,
-    priority: 'none',
-    due: null,
-    start: null,
-    labels: [],
-    subtasks: [],
-    deps: [],
-    desc: '',
-    estimate: null,
-    cycle: null,
-    fav: false,
-    recur: null,
-    ...fields,
-    id,
-    key: `${p.key}-${p.seq}`,
-    project: p.id,
-    created: now,
-    updated: now,
-    order: Math.max(0, ...data.tasks.map(x => x.order || 0)) + 1,
-  };
+  // The API's defaults for a new task: the backlog, assigned to the owner (also for agent writes).
+  const t = addTask(data, p, { status: 'backlog', assignee: data.me, cycle: null, ...fields }, changeCtx(data, now));
   if (completed) t.completedAt = completedStamp(completed);
-  data.tasks.push(t);
-  log(data, 'created', t, '', now);
   return t;
-}
-
-/* Like the app: completing a repeating task that has a due date schedules the next one, a copy that starts over. */
-function spawnNext(data, t, now) {
-  const p = data.projects.find(x => x.id === t.project);
-  const due = nextDue(t.due, t.recur);
-  p.seq = (p.seq ?? 200) + 1;
-  const next = {
-    ...structuredClone(t),
-    id: newTaskId(data),
-    key: `${p.key}-${p.seq}`,
-    status: 'todo',
-    due,
-    start: due,
-    subtasks: (t.subtasks || []).map(s => ({ ...s, done: false })),
-    created: now,
-    updated: now,
-    order: Math.max(0, ...data.tasks.map(x => x.order || 0)) + 1,
-  };
-  delete next.completedAt;
-  delete next.prevStatus;
-  data.tasks.push(next);
-  log(data, 'created', next, '', now);
-  return next;
 }
 
 /* Returns { task, next }: `next` is the occurrence scheduled by completing a repeating task, if any. */
 export function patchTask(data, prefs, today, key, input, now) {
   const t = findTask(data, key);
-  let next;
   const { completed, ...fields } = clean(data, prefs, today, input, PATCHABLE);
   if (!Object.keys(fields).length && completed === undefined) throw bad('no fields to update');
   if (completed) needDone(fields.status ?? t.status);
-  for (const [k, nv] of Object.entries(fields)) {
-    const old = t[k];
-    if (JSON.stringify(old) === JSON.stringify(nv)) continue;
-    if (k === 'archived') {
-      (nv ? archive : restore)(data, t, changeCtx(data, now));
-      continue;
-    }
-    t[k] = nv;
-    if (k === 'status') {
-      if (nv === 'done') {
-        t.completedAt = now;
-        t.prevStatus = old;
-        log(data, 'completed', t, '', now);
-        notifyOwner(data, t, 'update', 'completed', `${STATUS_NAMES[old]} → ${STATUS_NAMES[nv]}`, now);
-        if (t.recur && t.due && !t.archived) next = spawnNext(data, t, now);
-      } else {
-        log(data, 'moved', t, `from ${STATUS_NAMES[old]} to ${STATUS_NAMES[nv]}`, now);
-        notifyOwner(data, t, 'update', `moved to ${STATUS_NAMES[nv]}`, `${STATUS_NAMES[old]} → ${STATUS_NAMES[nv]}`, now);
-      }
-    } else if (k === 'project') {
-      // Like the app: re-key from the target project's counter, so the old key stops resolving.
-      const p = data.projects.find(p => p.id === nv);
-      p.seq = (p.seq ?? 200) + 1;
-      t.key = `${p.key}-${p.seq}`;
-      log(data, 'moved', t, `to ${p.name}`, now);
-    } else if (k === 'assignee') log(data, 'assigned', t, nv ? `to ${data.members.find(m => m.id === nv).name}` : '(unassigned)', now);
-    else if (k === 'priority') log(data, 'changed priority of', t, `to ${prioName(data, nv)}`, now);
-    else if (k === 'due') log(data, 'changed due date of', t, nv ? `to ${nv}` : '(cleared)', now);
-    else if (k === 'start') log(data, 'changed start date of', t, nv ? `to ${nv}` : '(cleared)', now);
-    else if (k === 'labels') log(data, 'updated labels on', t, '', now);
-    else if (k === 'recur') log(data, 'set repeat on', t, nv ? nv.toLowerCase() : 'off', now);
-    else if (k === 'title') log(data, 'renamed', t, `to “${nv}”`, now);
-    else if (k === 'estimate') log(data, 'estimated', t, nv || 'none', now);
-    else if (k === 'cycle') log(data, nv ? 'added to this cycle' : 'removed from its cycle', t, '', now);
-    t.updated = now;
+  const { changed, next } = changeTask(data, t, fields, changeCtx(data, now));
+  const status = changed.find(c => c.field === 'status');
+  if (status) {
+    const move = `${STATUS_NAMES[status.from]} → ${STATUS_NAMES[t.status]}`;
+    notifyOwner(data, t, 'update', t.status === 'done' ? 'completed' : `moved to ${STATUS_NAMES[t.status]}`, move, now);
   }
   if (completed !== undefined) {
     t.completedAt = completed ? completedStamp(completed) : null;

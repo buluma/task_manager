@@ -2,12 +2,12 @@
    ACTIONS · INPUT HANDLERS · DRAG & DROP · KEYBOARD · INIT
    ===================================================================== */
 import { $, $$, TODAY, addD, dOff, esc, fmtDate, iso, parse, uid } from '../core/utils.js';
-import { PR, PSTAT, ST } from '../core/constants.js';
+import { PR, PSTAT } from '../core/constants.js';
 import { adoptPriorities } from '../core/priorities.js';
-import { nextDue } from '../core/recur.js';
 import { archiveProject, archiveTask, removeProject, removeTasks, restoreProject } from '../core/archive.js';
 import { addComment, removeComment } from '../core/comments.js';
 import { linkTo } from '../core/links.js';
+import { addTask, changeTask, nextKey } from '../core/tasks.js';
 import { addMembers, removeMember } from '../core/members.js';
 import { addSub, removeSub, setSubDone } from '../core/subtasks.js';
 import { D, S, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
@@ -27,92 +27,20 @@ export const A = {},
 /* The `ctx` the shared changes in core/ take (see core/activity.js): this user, now, and the app's ids. */
 export const asMe = () => ({ by: D().me, now: Date.now(), newId: uid });
 
-/* ---------- task mutations ---------- */
-export function nextKey(p) {
-  p.seq = (p.seq ?? 200) + 1;
-  return p.key + '-' + p.seq;
-}
+/* ---------- task mutations: the changes themselves are in core/tasks.js, shared with the server ---------- */
+export { nextKey };
 export function createTask(f) {
-  const p = proj(f.project) || visibleProjects().find(canSee);
-  const maxO = Math.max(0, ...D().tasks.map(t => t.order));
-  const t = Object.assign(
-    {
-      project: p.id,
-      title: 'Untitled',
-      status: 'todo',
-      assignee: null,
-      priority: 'none',
-      due: null,
-      start: null,
-      labels: [],
-      subtasks: [],
-      deps: [],
-      desc: '',
-      estimate: null,
-      created: Date.now(),
-      updated: Date.now(),
-      order: maxO + 1,
-      fav: false,
-      recur: null,
-    },
-    f,
-    { project: p.id },
-  );
-  t.id = f.id || uid('t');
-  t.key = f.key || nextKey(p);
-  D().tasks.push(t);
+  const t = addTask(D(), proj(f.project) || visibleProjects().find(canSee), f, asMe());
   fxSet({ added: t.id });
-  logAct('created', t);
   return t;
 }
+/* Returns the toasts to show: the next occurrence, when completing a repeating task scheduled one. */
 export function applyPatch(t, patch) {
-  const msgs = [];
-  for (const k of Object.keys(patch)) {
-    const old = t[k],
-      nv = patch[k];
-    if (JSON.stringify(old) === JSON.stringify(nv)) continue;
-    t[k] = nv;
-    if (k === 'status') {
-      if (nv === 'done') {
-        t.completedAt = Date.now();
-        t.prevStatus = old;
-        logAct('completed', t);
-        fxSet({ done: t.id });
-      } else logAct('moved', t, `from ${ST[old].name} to ${ST[nv].name}`);
-      if (nv === 'done' && t.recur && t.due) {
-        const nd = nextDue(t.due, t.recur);
-        // The next occurrence is a new task, as the server makes it: stamped now, last in the order, never completed.
-        const copy = JSON.parse(JSON.stringify(t));
-        for (const k of ['completedAt', 'prevStatus', 'created', 'order']) delete copy[k];
-        createTask({
-          ...copy,
-          id: undefined,
-          key: undefined,
-          status: 'todo',
-          due: nd,
-          start: nd,
-          subtasks: t.subtasks.map(s => ({ ...s, done: false })),
-        });
-        msgs.push(`Next “${t.title}” scheduled for ${fmtDate(nd)}`);
-      }
-    } else if (k === 'assignee') logAct('assigned', t, nv ? `to ${mem(nv)?.name}` : '(unassigned)');
-    else if (k === 'priority') logAct('changed priority of', t, `to ${PR[nv].name}`);
-    // Logged as YYYY-MM-DD, as the server does: the activity text is stored, so a display format would be frozen into it.
-    else if (k === 'due') logAct('changed due date of', t, nv ? `to ${nv}` : '(cleared)');
-    else if (k === 'start') logAct('changed start date of', t, nv ? `to ${nv}` : '(cleared)');
-    else if (k === 'project') {
-      const p = proj(nv);
-      t.key = nextKey(p);
-      logAct('moved', t, `to ${p.name}`);
-    } else if (k === 'labels') logAct('updated labels on', t);
-    else if (k === 'title') logAct('renamed', t, `to “${nv}”`);
-    else if (k === 'recur') logAct('set repeat on', t, nv ? nv.toLowerCase() : 'off');
-    else if (k === 'estimate') logAct('estimated', t, nv || 'none');
-    else if (k === 'deps') logAct('updated dependencies of', t);
-    else if (k === 'cycle') logAct(nv ? 'added to this cycle' : 'removed from its cycle', t);
-    t.updated = Date.now();
-  }
-  return msgs;
+  const { changed, next } = changeTask(D(), t, patch, asMe());
+  if (t.status === 'done' && changed.some(c => c.field === 'status')) fxSet({ done: t.id });
+  if (!next) return [];
+  fxSet({ added: next.id });
+  return [`Next “${t.title}” scheduled for ${fmtDate(next.due)}`];
 }
 export function updateTask(id, patch) {
   if (id === '__form') {
