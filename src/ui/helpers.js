@@ -1,7 +1,7 @@
 /* ---------- small render helpers ---------- */
 import { TODAY, diffD, esc, parse, relDate } from '../core/utils.js';
 import { ic } from '../core/icons.js';
-import { LB, PR, PSTAT, ST, prBars } from '../core/constants.js';
+import { PR, PSTAT, ST, labelOf, prBars } from '../core/constants.js';
 import { D, isOpen, mem, pColor } from '../core/store.js';
 import { markMentions, markdownToHtml } from '../core/markdown.js';
 
@@ -46,7 +46,10 @@ export function prIcon(p, s = 14) {
 }
 export const stPill = st => `${stIcon(st)}<span>${ST[st].name}</span>`;
 export const prPill = p => `${prIcon(p)}<span>${esc(PR[p || 'none'].name)}</span>`;
-export const lbl = id => (LB[id] ? `<span class="lbl" style="--c:${LB[id].c}"><i></i>${LB[id].name}</span>` : '');
+export const lbl = id => {
+  const l = labelOf(id);
+  return `<span class="lbl" style="--c:${l.c}"><i></i>${esc(l.name)}</span>`;
+};
 export const pIcon = (p, cls = '', s = 15) => `<span class="picon ${cls}" style="--c:${pColor(p)}">${ic(p.icon, s)}</span>`;
 export const pStatus = s => `<span class="pstatus" style="--c:${PSTAT[s].c}"><i></i>${PSTAT[s].name}</span>`;
 export function dueHtml(t, withIcon = true) {

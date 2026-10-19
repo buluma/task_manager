@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { PR, PRIOS, applyPriorities } from './constants.js';
+import { LB, PR, PRIOS, applyPriorities, labelOf } from './constants.js';
 
 afterEach(() => applyPriorities(undefined));
 
@@ -43,4 +43,10 @@ test('an empty scale falls back to the defaults', () => {
   applyPriorities([{ id: 'p1', name: 'Only', w: 3 }]);
   applyPriorities([]);
   assert.equal(PRIOS.length, 5);
+});
+
+test('labelOf finds a built-in label ignoring case, and gives any other label its own name in gray', () => {
+  assert.deepEqual(labelOf('bug'), LB.bug);
+  assert.deepEqual(labelOf('Bug'), LB.bug);
+  assert.deepEqual(labelOf('Improvement'), { id: 'Improvement', name: 'Improvement', c: 'var(--gray)' });
 });

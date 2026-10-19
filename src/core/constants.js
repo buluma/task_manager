@@ -46,6 +46,9 @@ export const LABELS = [
   { id: 'growth', name: 'Growth', c: 'var(--orange)' },
 ];
 export const LB = Object.fromEntries(LABELS.map(l => [l.id, l]));
+/* Labels are free text on a task. A built-in one (matched ignoring case, so an imported "Bug" is the red Bug) keeps
+   its colour; any other is shown as written, in gray. */
+export const labelOf = id => LB[id] || LB[String(id).toLowerCase()] || { id, name: String(id), c: 'var(--gray)' };
 export const PSTAT = {
   planning: { name: 'Planning', c: 'var(--gray)' },
   active: { name: 'In Progress', c: 'var(--blue)' },
