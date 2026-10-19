@@ -81,6 +81,17 @@ Project status is `planning`, `active`, `risk`, `hold` or `complete`. Colours ar
 | `milestone set KEY NAME [--name N] [--date DATE]` | rename or move a milestone                                                                                         |
 | `milestone rm KEY NAME`                           | remove a milestone                                                                                                 |
 
+## Labels
+
+| Command                               | Does                                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `labels`                              | every label, with its colour and how many tasks use it                                                             |
+| `label add NAME [--color C]`          | add a label (colours: `violet`, `blue`, `teal`, `amber`, `rose`, `red`, `green`, `orange`, `gray`; default `gray`) |
+| `label set ID [--name N] [--color C]` | rename or recolour a label; tasks keep it                                                                          |
+| `label rm ID`                         | delete a label: it comes off every task                                                                            |
+
+Put a label on a task with `add`/`set --label ID`. A label's id is the name it was created with, and stays when it is renamed.
+
 ## Priorities
 
 | Command                                      | Does                                                                |

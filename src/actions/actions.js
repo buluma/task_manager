@@ -4,6 +4,7 @@
 import { $, $$, TODAY, addD, dOff, esc, fmtDate, iso, parse, uid } from '../core/utils.js';
 import { PR, PSTAT, toggleLabel } from '../core/constants.js';
 import { adoptPriorities } from '../core/priorities.js';
+import { adoptLabels } from '../core/labels.js';
 import { archiveProject, archiveTask, removeProject, removeTasks, restoreProject } from '../core/archive.js';
 import { addComment, removeComment } from '../core/comments.js';
 import { linkTo } from '../core/links.js';
@@ -69,6 +70,7 @@ export function snapshot() {
 export function restore(snap) {
   S.data = JSON.parse(snap);
   adoptPriorities(S.data);
+  adoptLabels(S.data);
   save();
   render();
 }

@@ -48,7 +48,7 @@ test('an empty scale falls back to the defaults', () => {
 test('labelOf finds a built-in label ignoring case, and gives any other label its own name in gray', () => {
   assert.deepEqual(labelOf('bug'), LB.bug);
   assert.deepEqual(labelOf('Bug'), LB.bug);
-  assert.deepEqual(labelOf('Improvement'), { id: 'Improvement', name: 'Improvement', c: 'var(--gray)' });
+  assert.deepEqual(labelOf('Improvement'), { id: 'Improvement', name: 'Improvement', color: 'gray', c: 'var(--gray)' });
 });
 
 test('labelOptions lists the built-in labels, then every other label in use once, by name', () => {

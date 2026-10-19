@@ -10,6 +10,7 @@ import { addComment, deleteComment } from './comments.js';
 import { archiveProject, createProject, patchProject, purgeProject } from './projects.js';
 import { addDep, addSubtask, deleteSubtask, patchSubtask, removeDep } from './relations.js';
 import { createMembers, createTeam, deleteMember, deleteTeam, patchTeam } from './people.js';
+import { changeLabel, createLabel, deleteLabel } from './labels.js';
 import { TEAMS_SEED } from '../src/core/constants.js';
 
 const NOW = new Date(2026, 9, 18, 9, 0).getTime();
@@ -401,4 +402,33 @@ projectCase(
     app.A.popPick({ dataset: { v: 'risk' } });
   },
   d => patchProject(d, 'OPS', { status: 'risk' }, NOW),
+);
+
+/* Labels: Settings › Labels against the label routes. GR-2 is labelled "ops", a label typed straight onto it. */
+const labelCase = (name, ...rest) => handlerCase(`label parity: ${name}`, ...rest);
+labelCase(
+  'adding',
+  () => {
+    Object.assign(fields, { '#label-name': { value: 'Chore' }, '#label-color': { value: 'teal' } });
+    app.A.addLabel();
+  },
+  d => createLabel(d, { name: 'Chore', color: 'teal' }),
+);
+labelCase(
+  'renaming a built-in label',
+  () => app.BLUR.labelName({ value: 'Defect', dataset: { id: 'bug', orig: 'Bug' } }),
+  d => changeLabel(d, 'bug', { name: 'Defect' }),
+);
+labelCase(
+  'recolouring a label typed onto a task',
+  () => app.IN.labelColor({ value: 'green', dataset: { id: 'ops' } }),
+  d => changeLabel(d, 'ops', { color: 'green' }),
+);
+labelCase(
+  'deleting a label in use',
+  () => {
+    app.A.delLabel({ dataset: { id: 'ops' } });
+    confirm();
+  },
+  d => deleteLabel(d, 'ops', NOW),
 );

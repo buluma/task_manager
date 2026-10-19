@@ -11,6 +11,7 @@ import { addComment, deleteComment, listComments } from './comments.js';
 import { createNotification, listNotifications, setRead } from './notifications.js';
 import { addAgent, findAgent, listAgents } from './agents.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
+import { changeLabel, createLabel, deleteLabel, listLabels } from './labels.js';
 import {
   addMilestone,
   createMembers,
@@ -225,6 +226,18 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
       if (method === 'DELETE') return json(res, 200, { team: mutate(d => deleteTeam(d, key)) });
       const body = await readJson(req, 'team');
       return json(res, 200, { team: mutate(d => patchTeam(d, key, body)) });
+    }
+    if (what === 'labels' && parts.length === 1) {
+      allow('GET', 'POST');
+      if (method === 'GET') return json(res, 200, { labels: listLabels(needState().data) });
+      const body = await readJson(req, 'label');
+      return json(res, 201, { label: mutate(d => createLabel(d, body)) });
+    }
+    if (what === 'labels' && parts.length === 2) {
+      allow('PATCH', 'DELETE');
+      if (method === 'DELETE') return json(res, 200, { removed: mutate((d, p, today, t) => deleteLabel(d, key, t)) });
+      const body = await readJson(req, 'label');
+      return json(res, 200, { label: mutate(d => changeLabel(d, key, body)) });
     }
     if (what === 'priorities' && parts.length === 1) {
       allow('GET', 'POST');

@@ -5,7 +5,8 @@ import { dOff, esc, fmtDate } from '../core/utils.js';
 import { ic, wsLogo } from '../core/icons.js';
 import { D, S, me } from '../core/store.js';
 import { av, pIcon, prIcon } from '../ui/helpers.js';
-import { PRIOS } from '../core/constants.js';
+import { LABEL_COLORS, PRIOS, sameLabel } from '../core/constants.js';
+import { labelList } from '../core/labels.js';
 import { MAX_WEIGHT } from '../core/priorities.js';
 import { permsTable, teamsGrid } from './members.js';
 import { page404 } from './errors.js';
@@ -27,6 +28,7 @@ export const SET_NAV = [
       ['teams', 'Teams', 'users-round'],
       ['projects', 'Projects', 'folder-kanban'],
       ['priorities', 'Priorities', 'signal-high'],
+      ['labels', 'Labels', 'tag'],
       ['permissions', 'Permissions', 'shield'],
     ],
   ],
@@ -204,6 +206,25 @@ export function settingsBody(sec, title) {
           ${p.id === 'none' ? `<span style="width:30px"></span>` : `<button class="ibtn ibtn-sm" data-a="delPriority" data-id="${p.id}" aria-label="Delete ${name}">${ic('trash-2', 14)}</button>`}</div>`;
         }).join('')}</div>
       <form data-submit="addPriority" class="sblock"><h2>Add a level</h2><div class="row" style="gap:10px;margin-top:12px"><input class="input grow" id="prio-name" placeholder="Name, e.g. Blocker" maxlength="40" aria-label="New level name"><select class="select" id="prio-w" style="width:auto;min-width:104px" aria-label="New level weight">${weights(3)}</select><button class="btn btn-primary">Add level</button></div><p class="hint" style="margin-top:8px">Weights go up to ${MAX_WEIGHT}. Deleting a level moves its tasks to No priority.</p></form>`
+      );
+    }
+    case 'labels': {
+      const used = id => d.tasks.filter(t => (t.labels || []).some(l => sameLabel(l, id))).length;
+      const colors = cur => LABEL_COLORS.map(c => `<option value="${c}" ${c === cur ? 'selected' : ''}>${c[0].toUpperCase() + c.slice(1)}</option>`).join('');
+      return (
+        H('Tag tasks across projects. Renaming a label keeps it on its tasks; deleting one takes it off them.') +
+        `<div class="panel" style="overflow:hidden">${labelList(d)
+          .map(l => {
+            const n = used(l.id);
+            const name = esc(l.name);
+            return `<div class="mini" style="min-height:52px;cursor:default;gap:12px"><span class="pdot" style="--c:var(--${l.color});margin:0 6px"></span>
+          <input class="input grow" value="${name}" maxlength="40" aria-label="Name of ${name}" data-blur="labelName" data-id="${esc(l.id)}" data-orig="${name}">
+          <select class="select" style="width:auto;min-width:104px" aria-label="Colour of ${name}" data-in="labelColor" data-id="${esc(l.id)}">${colors(l.color)}</select>
+          <span class="faint" style="min-width:64px;text-align:right;font-size:12px">${n} task${n === 1 ? '' : 's'}</span>
+          <button class="ibtn ibtn-sm" data-a="delLabel" data-id="${esc(l.id)}" aria-label="Delete ${name}">${ic('trash-2', 14)}</button></div>`;
+          })
+          .join('')}</div>
+      <form data-submit="addLabel" class="sblock"><h2>Add a label</h2><div class="row" style="gap:10px;margin-top:12px"><input class="input grow" id="label-name" placeholder="Name, e.g. Chore" maxlength="40" aria-label="New label name"><select class="select" id="label-color" style="width:auto;min-width:104px" aria-label="New label colour">${colors('gray')}</select><button class="btn btn-primary">Add label</button></div><p class="hint" style="margin-top:8px">Labels typed onto tasks through the CLI or API show up here too.</p></form>`
       );
     }
     case 'permissions':

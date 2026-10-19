@@ -339,3 +339,14 @@ test('member, team and milestone commands manage people and dates from the shell
   assert.equal((await run(['milestone', 'rm', 'GR', 'Beta', 'launch'])).code, 0);
   assert.match((await run(['milestones', 'GR'])).stdout, /no milestones/);
 });
+
+test('labels, label add, set and rm manage the workspace labels from the shell', async () => {
+  const added = await run(['label', 'add', 'Tech', 'debt', '--color', 'amber']);
+  assert.equal(added.code, 0, added.stderr);
+  assert.match(added.stdout, /added Tech debt {2}amber/);
+  assert.match((await run(['labels'])).stdout, /Tech debt\s+amber\s+Tech debt {2}\(0 tasks\)/);
+  assert.match((await run(['label', 'set', 'Tech debt', '--name', 'Debt', '--color', 'rose'])).stdout, /updated Tech debt {2}rose {2}Debt/);
+  await run(['add', 'tidy', '--label', 'Tech debt']);
+  assert.match((await run(['label', 'rm', 'tech debt'])).stdout, /removed the label from 1 task/);
+  assert.notEqual((await run(['label', 'add', 'x', '--color', 'plaid'])).code, 0);
+});
