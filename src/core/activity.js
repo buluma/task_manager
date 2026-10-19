@@ -5,3 +5,8 @@ export function logActivity(data, ctx, verb, t, extra = '') {
   data.activity.unshift({ id: ctx.newId('a'), by: ctx.by, verb, task: t.id, project: t.project, at: ctx.now, extra });
   t.updated = ctx.now;
 }
+
+/* A project's own row (created, status changes): no task, and nothing to bump. */
+export function logProjectActivity(data, ctx, verb, p, extra = '') {
+  data.activity.unshift({ id: ctx.newId('a'), by: ctx.by, verb, task: null, project: p.id, at: ctx.now, extra });
+}

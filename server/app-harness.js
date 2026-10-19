@@ -10,7 +10,14 @@ const inert = new Proxy(function () {}, { get: (_, k) => (k === Symbol.toPrimiti
 /* Form inputs a handler reads with $('#id'): a test puts { value } here, keyed by selector, before calling it. */
 export const fields = {};
 const document = new Proxy(inert, { get: (_, k) => (k === 'querySelector' ? sel => fields[sel] ?? inert : inert) });
-Object.assign(globalThis, { document, addEventListener() {}, matchMedia: inert, localStorage: { getItem: () => null, setItem() {}, removeItem() {} } });
+Object.assign(globalThis, {
+  document,
+  addEventListener() {},
+  matchMedia: inert,
+  innerWidth: 1280,
+  innerHeight: 800,
+  localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+});
 
 // Every module that adds handlers to the action tables, as main.js loads them (main.js itself starts timers).
 export const app = await import('../src/actions/actions.js');

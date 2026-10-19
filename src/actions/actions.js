@@ -8,6 +8,7 @@ import { archiveProject, archiveTask, removeProject, removeTasks, restoreProject
 import { addComment, removeComment } from '../core/comments.js';
 import { linkTo } from '../core/links.js';
 import { addTask, changeTask, nextKey } from '../core/tasks.js';
+import { addProject, changeProject } from '../core/projects.js';
 import { addMembers, removeMember } from '../core/members.js';
 import { addSub, removeSub, setSubDone } from '../core/subtasks.js';
 import { D, S, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
@@ -229,18 +230,7 @@ A.popPick = el => {
   }
   if (p.type === 'pstatus') {
     const pr = proj(p.id);
-    mutate(() => {
-      pr.status = v;
-      D().activity.unshift({
-        id: uid('a'),
-        by: D().me,
-        verb: 'changed status of project',
-        task: null,
-        project: pr.id,
-        at: Date.now(),
-        extra: 'to ' + PSTAT[v].name,
-      });
-    });
+    mutate(() => changeProject(D(), pr, { status: v }, asMe()));
     S.ui.pop = null;
     render();
     toast(`${pr.name} marked ${PSTAT[v].name}`);
@@ -1073,44 +1063,10 @@ A.pformSet = el => {
   }
   render();
 };
-export function makeKey(name) {
-  let k = name
-    .split(/\s+/)
-    .map(w => w[0] || '')
-    .join('')
-    .toUpperCase()
-    .replace(/[^A-Z]/g, '')
-    .slice(0, 3);
-  if (k.length < 2)
-    k =
-      name
-        .replace(/[^A-Za-z]/g, '')
-        .slice(0, 3)
-        .toUpperCase() || 'PRJ';
-  while (D().projects.some(p => p.key === k)) k += 'X';
-  return k;
-}
+/* The app's defaults for a new project: planning, due in a month, starting today. */
 export function createProject(f, tmplId) {
-  const p = {
-    id: uid('p'),
-    key: makeKey(f.name),
-    name: f.name,
-    icon: f.icon,
-    color: f.color,
-    status: 'planning',
-    team: f.team,
-    lead: f.lead,
-    due: f.due || dOff(30),
-    start: dOff(0),
-    fav: false,
-    members: [...new Set([D().me, f.lead])],
-    desc: f.desc || 'No description yet.',
-    milestones: [],
-    last: 0,
-  };
-  D().projects.push(p);
-  D().projOrder.unshift(p.id);
-  D().activity.unshift({ id: uid('a'), by: D().me, verb: 'created project', task: null, project: p.id, at: Date.now(), extra: '' });
+  const fields = { name: f.name, icon: f.icon, color: f.color, status: 'planning', team: f.team, lead: f.lead, due: f.due || dOff(30), start: dOff(0) };
+  const p = addProject(D(), { ...fields, desc: f.desc || 'No description yet.' }, asMe());
   const tm = TEMPLATES.find(t => t.id === tmplId);
   (tm?.tasks || []).forEach((title, i) =>
     createTask({
@@ -1138,20 +1094,7 @@ A.submitProject = () => {
   }
   if (m.edit) {
     const p = proj(m.edit);
-    if (
-      mutate(() =>
-        Object.assign(p, {
-          name: f.name,
-          desc: f.desc,
-          icon: f.icon,
-          color: f.color,
-          team: f.team,
-          lead: f.lead,
-          due: f.due,
-          members: [...new Set([...p.members, f.lead])],
-        }),
-      )
-    ) {
+    if (mutate(() => changeProject(D(), p, { name: f.name, desc: f.desc, icon: f.icon, color: f.color, team: f.team, lead: f.lead, due: f.due }, asMe()))) {
       S.ui.modals.pop();
       render();
       toast('Project updated');
