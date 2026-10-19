@@ -8,7 +8,7 @@ import { app, fields, S, task, emptyWorkspace } from './app-harness.js';
 import { archiveTask, createTask, patchTask, purgeTask } from './tasks.js';
 import { addComment, deleteComment } from './comments.js';
 import { archiveProject, patchProject, purgeProject } from './projects.js';
-import { addSubtask, deleteSubtask, patchSubtask } from './relations.js';
+import { addDep, addSubtask, deleteSubtask, patchSubtask, removeDep } from './relations.js';
 import { createMembers, createTeam, deleteMember, deleteTeam, patchTeam } from './people.js';
 import { TEAMS_SEED } from '../src/core/constants.js';
 
@@ -349,4 +349,18 @@ peopleCase(
     confirm();
   },
   d => deleteTeam(d, 'product'),
+);
+
+/* Dependencies: the dependency picker (updateTask with a new deps list) against the dependency routes. GR-2 starts
+   out waiting for GR-1. */
+const depCase = (name, ...rest) => handlerCase(`dependency parity: ${name}`, ...rest);
+depCase(
+  'adding',
+  () => app.updateTask('t1', { deps: ['t2'] }),
+  d => addDep(d, 'GR-1', { on: 'GR-2' }, NOW),
+);
+depCase(
+  'removing',
+  () => app.updateTask('t2', { deps: [] }),
+  d => removeDep(d, 'GR-2', 'GR-1', NOW),
 );

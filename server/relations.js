@@ -1,8 +1,8 @@
-/* Subtasks and dependencies of a task. Subtask changes go through src/core/subtasks.js, as the app's do; the
-   dependency routes mirror the dependency picker in the app. Dependencies are stored as task ids (as the app
-   does) and spoken as task keys on the API. */
+/* Subtasks and dependencies of a task. Changes go through src/core/subtasks.js and tasks.js, as the app's do.
+   Dependencies are stored as task ids (as the app does) and spoken as task keys on the API. */
 import { addSub, removeSub, renameSub, setSubDone } from '../src/core/subtasks.js';
-import { ApiError, actorOf, bad, changeCtx, findTask, rand } from './tasks.js';
+import { changeTask } from '../src/core/tasks.js';
+import { ApiError, bad, changeCtx, findTask } from './tasks.js';
 
 const MAX_TITLE = 500;
 
@@ -15,10 +15,6 @@ const cleanTitle = title => {
   if (typeof title !== 'string' || !title.trim()) throw bad('title must be a non-empty string');
   if (title.trim().length > MAX_TITLE) throw bad(`title must be at most ${MAX_TITLE} characters`);
   return title.trim();
-};
-const act = (data, verb, t, extra, now) => {
-  data.activity.unshift({ id: 'a' + rand(), by: actorOf(data), verb, task: t.id, project: t.project, at: now, extra });
-  t.updated = now;
 };
 const subOf = (t, sid) => {
   const s = (t.subtasks || []).find(x => x.id === sid);
@@ -67,8 +63,7 @@ export function addDep(data, key, input, now) {
   const other = findTask(data, on);
   if (other.id === t.id) throw bad('a task cannot depend on itself');
   if ((t.deps || []).includes(other.id)) throw bad(`${t.key} already depends on ${other.key}`);
-  (t.deps ??= []).push(other.id);
-  act(data, 'updated dependencies of', t, '', now);
+  changeTask(data, t, { deps: [...(t.deps || []), other.id] }, changeCtx(data, now));
   return depView(data, t);
 }
 
@@ -76,7 +71,6 @@ export function removeDep(data, key, onKey, now) {
   const t = findTask(data, key);
   const other = findTask(data, onKey);
   if (!(t.deps || []).includes(other.id)) throw new ApiError(404, `${t.key} does not depend on ${other.key}`);
-  t.deps = t.deps.filter(id => id !== other.id);
-  act(data, 'updated dependencies of', t, '', now);
+  changeTask(data, t, { deps: t.deps.filter(id => id !== other.id) }, changeCtx(data, now));
   return depView(data, t);
 }
