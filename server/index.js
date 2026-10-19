@@ -3,18 +3,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from './app.js';
 import { loadRepoEnv } from './env.js';
+import { hostList, listenAll } from './listen.js';
 
 loadRepoEnv();
 
-/* Defaults to loopback. For tailnet-only access set GR8R_HOST to this machine's Tailscale IP
-   (`tailscale ip -4`); never 0.0.0.0, which would also expose it on the local network. */
-const host = process.env.GR8R_HOST || '127.0.0.1';
+/* Defaults to loopback. For tailnet access set GR8R_HOST to this machine's Tailscale IP (`tailscale ip -4`), or
+   to a list with 127.0.0.1 as well when `tailscale serve` adds HTTPS in front (see listen.js); never 0.0.0.0, which
+   would also expose it on the local network. */
+const hosts = hostList(process.env.GR8R_HOST);
 const port = Number(process.env.GR8R_PORT) || 8787;
 const dataFile = process.env.GR8R_DATA || path.join(os.homedir(), '.gr8r', 'state.json');
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 
 const token = process.env.GR8R_TOKEN || undefined;
 
-createApp({ dataFile, distDir, token }).listen(port, host, () =>
-  console.log(`gr8r listening on http://${host}:${port}, data in ${dataFile}${token ? ', API token required' : ''}`),
-);
+await listenAll(createApp({ dataFile, distDir, token }), port, hosts);
+console.log(`gr8r listening on ${hosts.map(h => `http://${h}:${port}`).join(' and ')}, data in ${dataFile}${token ? ', API token required' : ''}`);

@@ -10,7 +10,7 @@ Gr8r Studio is a personal task manager. One server holds the whole workspace; th
 ## Where things are
 
 - Repo: `/Users/shadowwalker/Documents/GitHub/task_manager` (Node, no runtime dependencies). `docs/api.md` there lists every route and `docs/cli.md` every command. This skill lives in that repo as `skills/gr8r/SKILL.md`; the copies under `~/.claude`, `~/.agents` and `~/.codex` are symlinks to it, so edit it there, through a PR.
-- Server: `http://100.100.245.3:8787`, bound to the Tailscale address only. Tailscale must be up. It runs under launchd as `com.buluma.gr8r-server`, from that repo checkout.
+- Server: `http://100.100.245.3:8787` (what the CLI uses), and `https://shadownet-m1.tailb95e.ts.net:8443` for browsers (`tailscale serve` in front of 127.0.0.1:8787; HTTPS is what makes Copy link and other secure-page features work). Tailnet only. Tailscale must be up. It runs under launchd as `com.buluma.gr8r-server`, from that repo checkout.
 - Data: `~/.gr8r/state.json` (one JSON file, revision-numbered). Never edit it by hand while the server runs; go through the API or CLI.
 - Config: the repo's gitignored `.env` holds `GR8R_TOKEN` and `GR8R_URL`. The CLI and server load it themselves, so `gr8r ...` works from any directory with nothing exported. **Never print, log, paste or commit the token.** Use `grep '^GR8R_TOKEN=' .env | cut -d= -f2-` into a variable if you need it for curl, and never echo it.
 - CLI: `gr8r` (npm-linked from the repo's `bin/gr8r.js`). `gr8r help` prints the full usage.
@@ -78,7 +78,7 @@ Add `--json` to any command for machine-readable output. Values:
 - **PR links** live only as `PR: URL` comments (there is no links field). The app's task drawer shows a PR icon for the newest one. A poller that syncs PR state to task status is planned, not built (task `CRN-2`).
 - **Members and teams.** Roles you can give are `Admin`, `Member` and `Guest`; the owner keeps `Owner` and cannot be removed (409). Removing a member unassigns all their tasks and takes them off every project; ask the user first. A member is in at most one team: joining one leaves the old, and `team set --member ...` sets exactly who is in it. Deleting a team keeps its people and projects, teamless. None of this is logged in the activity feed (the app doesn't log it either).
 - **Milestones** are `{ name, date }` on a project, named uniquely within it. The app only shows them (overview, timeline); the CLI and API are the only way to change them.
-- **Links.** The app's Copy link gives `http://100.100.245.3:8787/#task/KEY` or `#project/key`, which open that task or project.
+- **Links.** The app's Copy link gives `<the address you opened the app on>/#task/KEY` or `#project/key`, which open that task or project.
 - The `gr8r` project is planned to be renamed Cairn (tasks in project `CRN`), not done yet. Check `gr8r help` if a command or path has moved.
 
 ## HTTP API, when the CLI is not enough

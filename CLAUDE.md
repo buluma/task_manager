@@ -36,7 +36,7 @@ A status is spread over several places, and missing one fails quietly: `STATUSES
 
 ## The live server
 
-This checkout is also the running production server (launchd job `com.buluma.gr8r-server`, bound to the Tailscale address, data in `~/.gr8r/state.json`).
+This checkout is also the running production server (launchd job `com.buluma.gr8r-server`, started by `~/.gr8r/run-server.sh`, listening on the Tailscale address and 127.0.0.1, data in `~/.gr8r/state.json`). Browsers use `https://shadownet-m1.tailb95e.ts.net:8443`, which `tailscale serve` proxies to 127.0.0.1:8787 (`tailscale serve status`); `http://100.100.245.3:8787` still works for the CLI.
 
 - The server serves `dist/` from disk, so `npm run build` on any branch changes the live app immediately. To look at a branch without that, build elsewhere: `npx vite build --outDir <dir>` and `npx vite preview --outDir <dir>`.
 - Server code only changes on restart: `launchctl kickstart -k gui/$(id -u)/com.buluma.gr8r-server`. Build first, then restart, from `main`.
