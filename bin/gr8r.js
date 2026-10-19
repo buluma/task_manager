@@ -45,6 +45,7 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   team set ID|NAME [--name N] [--desc TEXT] [--icon I] [--color C] [--member ID ... | --member none]   team rm ID|NAME
   milestones KEY                 milestone add KEY NAME --date DATE
   milestone set KEY NAME [--name N] [--date DATE]                            milestone rm KEY NAME
+  labels                         label add NAME [--color C]     label set ID [--name N] [--color C]     label rm ID
   priorities
   priority add NAME --weight 1-99 [--id ID]
   priority set ID [--name N] [--weight 1-99]
@@ -438,6 +439,34 @@ async function main(argv) {
         }
         default:
           throw new CliError(`unknown milestone command: ${sub ?? '(none)'}\n\n${HELP}`);
+      }
+    }
+    case 'labels': {
+      const { labels } = await api('GET', '/api/labels');
+      return out(labels, labels.map(l => `${l.id.padEnd(16)} ${l.color.padEnd(7)} ${l.name}  (${l.tasks} task${l.tasks === 1 ? '' : 's'})`).join('\n'));
+    }
+    case 'label': {
+      const [sub, ...args] = rest;
+      const id = () => {
+        if (args.length !== 1) throw new CliError(`label ${sub} needs exactly one label id (quote one with spaces)`);
+        return encodeURIComponent(args[0]);
+      };
+      switch (sub) {
+        case 'add': {
+          if (!args.length) throw new CliError('label add needs a name');
+          const { label } = await api('POST', '/api/labels', { name: args.join(' '), ...fields(v, ['color']) });
+          return out(label, `added ${label.name}  ${label.color}`);
+        }
+        case 'set': {
+          const { label } = await api('PATCH', `/api/labels/${id()}`, fields(v, ['name', 'color']));
+          return out(label, `updated ${label.id}  ${label.color}  ${label.name}`);
+        }
+        case 'rm': {
+          const res = await api('DELETE', `/api/labels/${id()}`);
+          return out(res, `removed the label from ${res.removed} task${res.removed === 1 ? '' : 's'}`);
+        }
+        default:
+          throw new CliError(`unknown label command: ${sub ?? '(none)'}\n\n${HELP}`);
       }
     }
     case 'priorities': {

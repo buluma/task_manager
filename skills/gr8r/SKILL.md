@@ -1,6 +1,6 @@
 ---
 name: gr8r
-description: Work ShadowWalker's personal task server (Gr8r Studio) through its `gr8r` CLI and HTTP API. Use when asked to add, list, update, complete, cancel, move, archive, restore, comment on, plan or clean up tasks, projects, priorities, subtasks or dependencies on that server; to manage members, teams or project milestones; to link GitHub PRs to tasks, register agents, raise or read Inbox items; to bulk import or fix task data; or to check, restart or troubleshoot the gr8r server. Triggers on "gr8r", "my tasks", "task server", "add a task", "task manager API/CLI".
+description: Work ShadowWalker's personal task server (Gr8r Studio) through its `gr8r` CLI and HTTP API. Use when asked to add, list, update, complete, cancel, move, archive, restore, comment on, label, plan or clean up tasks, projects, priorities, labels, subtasks or dependencies on that server; to manage members, teams or project milestones; to link GitHub PRs to tasks, register agents, raise or read Inbox items; to bulk import or fix task data; or to check, restart or troubleshoot the gr8r server. Triggers on "gr8r", "my tasks", "task server", "add a task", "task manager API/CLI".
 ---
 
 # gr8r: tasks, projects, people and the Inbox from the shell
@@ -47,6 +47,7 @@ gr8r notify TEXT [--task KEY] [--snippet TEXT] [--type needs|comment|update|ment
 gr8r inbox [--unread]         gr8r inbox read|unread ID
 gr8r projects [--archived]    gr8r project show|add|set|rm|restore ...   (rm --purge deletes for good)
 gr8r priorities               gr8r priority add NAME --weight 1-99 [--id ID] | set ID | rm ID [--replace ID]
+gr8r labels                   gr8r label add NAME [--color C] | set ID [--name N] [--color C] | rm ID
 gr8r members                  gr8r member add EMAIL... [--role Admin|Member|Guest] [--team T]
 gr8r member set ID|EMAIL [--name N] [--title T] [--role R] [--team T|none]      gr8r member rm ID|EMAIL
 gr8r teams                    gr8r team add NAME [--desc TEXT] [--icon I] [--color C] [--member ID ...]
@@ -77,6 +78,7 @@ Add `--json` to any command for machine-readable output. Values:
 - **Inbox.** When an agent comments on or moves a task, the owner gets an Inbox item automatically (comments as `comment`, moves and completions as `update`). The owner's own writes and backdated (`--at`) comments raise nothing. Raise one by hand with `gr8r notify`. Use `--type needs` when you are blocked on ShadowWalker (a question, approval or review): it shows on the Inbox "Needs you" tab and lights the sidebar badge. `update` items do not light the badge.
 - **PR links** live only as `PR: URL` comments (there is no links field). The app's task drawer shows a PR icon for the newest one. A poller that syncs PR state to task status is planned, not built (task `CRN-2`).
 - **Members and teams.** Roles you can give are `Admin`, `Member` and `Guest`; the owner keeps `Owner` and cannot be removed (409). Removing a member unassigns all their tasks and takes them off every project; ask the user first. A member is in at most one team: joining one leaves the old, and `team set --member ...` sets exactly who is in it. Deleting a team keeps its people and projects, teamless. None of this is logged in the activity feed (the app doesn't log it either).
+- **Labels.** Check `gr8r labels` before labelling, and reuse a label that fits (case doesn't matter: `bug` is `Bug`). You may create a label when none fits and the same kind of task will keep coming up: `gr8r label add NAME --color C --as Claude`, a short Title Case noun (`Chore`, `Tech debt`), not a one-off or a project name. Mention new labels in your report. Renaming or deleting a label the user already has changes their workspace: ask first. `--label X` on `add`/`set` takes a label id; one that doesn't exist yet becomes a gray label, so create it first if it should have a colour. Colours: violet blue teal amber rose red green orange gray.
 - **Milestones** are `{ name, date }` on a project, named uniquely within it. The app only shows them (overview, timeline); the CLI and API are the only way to change them.
 - **Links.** The app's Copy link gives `<the address you opened the app on>/#task/KEY` or `#project/key`, which open that task or project.
 - The `gr8r` project is planned to be renamed Cairn (tasks in project `CRN`), not done yet. Check `gr8r help` if a command or path has moved.
@@ -95,6 +97,7 @@ GET/POST   /api/priorities       PATCH/DELETE /api/priorities/ID   (DELETE ?repl
 GET/POST   /api/agents           (POST: name)
 GET/POST   /api/notifications    (GET ?unread=1; POST: text, optional task key, snippet, type)
 PATCH      /api/notifications/ID (read: true|false)
+GET/POST   /api/labels           PATCH/DELETE /api/labels/ID
 GET/POST   /api/members          PATCH/DELETE /api/members/ID_OR_EMAIL
 GET/POST   /api/teams            PATCH/DELETE /api/teams/ID_OR_NAME
 GET/POST   /api/projects/KEY/milestones   PATCH/DELETE /api/projects/KEY/milestones/NAME

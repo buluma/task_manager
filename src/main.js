@@ -6,6 +6,7 @@ import './styles/index.css';
 import './core/utils.js';
 import './core/icons.js';
 import { adoptPriorities } from './core/priorities.js';
+import { adoptLabels } from './core/labels.js';
 import './data/seed.js';
 import './core/store.js';
 import './ui/helpers.js';
@@ -50,6 +51,7 @@ import './actions/teams.js';
 import './actions/subtasks.js';
 import './actions/archive.js';
 import './actions/priorities.js';
+import './actions/labels.js';
 import { rollNow } from './actions/cycles.js';
 import { S, D, cache, canSee, proj } from './core/store.js';
 import { resolveLink } from './core/links.js';
@@ -96,6 +98,7 @@ const idle = () => !S.ui.modals.length && !S.ui.composer && !S.ui.editCell && !S
 watchRemote(state => {
   S.data = state.data;
   adoptPriorities(S.data);
+  adoptLabels(S.data);
   cache();
   render();
 }, idle);
@@ -107,6 +110,7 @@ window.addEventListener('gr8r:merged', ({ detail: { state, conflicts } }) => {
   S.prefs = state.prefs;
   S.views = state.views;
   adoptPriorities(S.data);
+  adoptLabels(S.data);
   cache();
   if (idle()) render();
   if (!conflicts.length) return;

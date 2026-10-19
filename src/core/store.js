@@ -3,6 +3,7 @@ import { TODAY, diffD, iso, parse, uid } from './utils.js';
 import { PCOLORS } from './constants.js';
 import { teamsOf } from './teams.js';
 import { adoptPriorities } from './priorities.js';
+import { adoptLabels } from './labels.js';
 import { emptyWorkspace } from '../data/seed.js';
 import { pull, push, syncing } from './sync.js';
 import { cycleStart } from './cycles.js';
@@ -81,6 +82,7 @@ export const S = {
   },
 };
 adoptPriorities(S.data);
+adoptLabels(S.data);
 const snapshot = () => ({ data: S.data, prefs: S.prefs, views: S.views, collapsed: S.ui.collapsed });
 export function cache() {
   try {

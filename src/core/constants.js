@@ -35,20 +35,32 @@ export function prBars(id) {
   if (i < 0) return 3;
   return mid.length === 1 ? 2 : 1 + Math.round((i * 2) / (mid.length - 1));
 }
-export const LABELS = [
-  { id: 'design', name: 'Design', c: 'var(--violet)' },
-  { id: 'frontend', name: 'Frontend', c: 'var(--blue)' },
-  { id: 'backend', name: 'Backend', c: 'var(--teal)' },
-  { id: 'research', name: 'Research', c: 'var(--amber)' },
-  { id: 'content', name: 'Content', c: 'var(--rose)' },
-  { id: 'bug', name: 'Bug', c: 'var(--red)' },
-  { id: 'qa', name: 'QA', c: 'var(--green)' },
-  { id: 'growth', name: 'Growth', c: 'var(--orange)' },
+/* Label colours: theme tokens (tokens.css), so they follow light and dark mode. */
+export const LABEL_COLORS = ['violet', 'blue', 'teal', 'amber', 'rose', 'red', 'green', 'orange', 'gray'];
+export const DEFAULT_LABELS = [
+  { id: 'design', name: 'Design', color: 'violet' },
+  { id: 'frontend', name: 'Frontend', color: 'blue' },
+  { id: 'backend', name: 'Backend', color: 'teal' },
+  { id: 'research', name: 'Research', color: 'amber' },
+  { id: 'content', name: 'Content', color: 'rose' },
+  { id: 'bug', name: 'Bug', color: 'red' },
+  { id: 'qa', name: 'QA', color: 'green' },
+  { id: 'growth', name: 'Growth', color: 'orange' },
 ];
+const drawn = l => ({ id: l.id, name: l.name, color: l.color, c: `var(--${l.color})` });
+/* The live label list, with `c` ready for drawing. Both are filled in place by applyLabels, like PRIOS and PR. */
+export const LABELS = DEFAULT_LABELS.map(drawn);
 export const LB = Object.fromEntries(LABELS.map(l => [l.id, l]));
-/* Labels are free text on a task. A built-in one (matched ignoring case, so an imported "Bug" is the red Bug) keeps
-   its colour; any other is shown as written, in gray. */
-export const labelOf = id => LB[id] || LB[String(id).toLowerCase()] || { id, name: String(id), c: 'var(--gray)' };
+/* `list` is the workspace's own labels (data.labels), or nothing for the built-in ones. An empty list is kept:
+   the workspace deleted them all. */
+export function applyLabels(list) {
+  LABELS.splice(0, LABELS.length, ...(list ?? DEFAULT_LABELS).map(drawn));
+  for (const k of Object.keys(LB)) delete LB[k];
+  for (const l of LABELS) LB[l.id] = l;
+}
+/* Labels are free text on a task. One on the workspace's list (matched ignoring case, so an imported "Bug" is the
+   red Bug) has its name and colour; any other is shown as written, in gray. */
+export const labelOf = id => LB[id] || Object.values(LB).find(l => sameLabel(l.id, id)) || { id, name: String(id), color: 'gray', c: 'var(--gray)' };
 /* Labels that differ only in case are one label, so "Bug" and "bug" filter and toggle together. */
 export const sameLabel = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 /* What the label picker and filter offer: the built-in labels, then every other label used on a task, once each
@@ -58,7 +70,7 @@ export function labelOptions(tasks) {
   for (const t of tasks)
     for (const l of t.labels || []) {
       const k = String(l).toLowerCase();
-      if (!LB[k] && !extra.has(k)) extra.set(k, labelOf(l));
+      if (!LABELS.some(x => sameLabel(x.id, l)) && !extra.has(k)) extra.set(k, labelOf(l));
     }
   return [...LABELS, ...[...extra.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))];
 }

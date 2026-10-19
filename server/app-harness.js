@@ -21,6 +21,6 @@ Object.assign(globalThis, {
 
 // Every module that adds handlers to the action tables, as main.js loads them (main.js itself starts timers).
 export const app = await import('../src/actions/actions.js');
-for (const m of ['events', 'keyboard', 'drag-drop', 'teams', 'subtasks', 'archive', 'priorities', 'cycles']) await import(`../src/actions/${m}.js`);
+for (const m of ['events', 'keyboard', 'drag-drop', 'teams', 'subtasks', 'archive', 'priorities', 'labels', 'cycles']) await import(`../src/actions/${m}.js`);
 export const { S, task } = await import('../src/core/store.js');
 export const { emptyWorkspace } = await import('../src/data/seed.js');
