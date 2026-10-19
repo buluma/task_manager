@@ -118,3 +118,13 @@ test('board columns keep the order the view sorts them in', async () => {
   assert.deepEqual(cards(view({ f: 'manual', dir: 1 })), ['t1', 't2', 't3']);
   assert.deepEqual(cards(view({ f: 'created', dir: 1 })), ['t2', 't3', 't1']);
 });
+
+test('duplicating a task takes the next key number, without skipping one', () => {
+  const p = { ...emptyWorkspace().projects[0], id: 'p1', key: 'GR', seq: 3 };
+  const t = { id: 't1', key: 'GR-3', project: 'p1', title: 'Write', status: 'todo', subtasks: [], deps: [], labels: [], order: 1 };
+  S.data = { ...emptyWorkspace(), teams: TEAMS_SEED.map(x => ({ ...x })), projects: [p], tasks: [t] };
+  app.A.dupTask({ dataset: { id: 't1' } });
+  const copy = S.data.tasks.find(x => x.id !== 't1');
+  assert.equal(copy.key, 'GR-4');
+  assert.equal(S.data.projects[0].seq, 4);
+});

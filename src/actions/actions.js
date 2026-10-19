@@ -396,7 +396,6 @@ A.dupTask = el => {
   let n;
   mutate(() => {
     n = createTask({ ...JSON.parse(JSON.stringify(t)), id: uid('t'), key: undefined, title: t.title + ' (copy)', created: Date.now(), fav: false });
-    n.key = nextKey(proj(n.project));
   });
   toast('Task duplicated', { action: 'Open', onAction: () => A.openTask({ dataset: { id: n.id } }) });
 };
