@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { app, fields, S, task, emptyWorkspace } from './app-harness.js';
 import { archiveTask, createTask, patchTask, purgeTask } from './tasks.js';
 import { addComment, deleteComment } from './comments.js';
-import { archiveProject, patchProject, purgeProject } from './projects.js';
+import { archiveProject, createProject, patchProject, purgeProject } from './projects.js';
 import { addDep, addSubtask, deleteSubtask, patchSubtask, removeDep } from './relations.js';
 import { createMembers, createTeam, deleteMember, deleteTeam, patchTeam } from './people.js';
 import { TEAMS_SEED } from '../src/core/constants.js';
@@ -92,14 +92,22 @@ function normalize(data) {
   };
   // New members and teams get random ids too: members are compared without theirs, and a team is named by its name.
   const teamOf = id => data.teams?.find(t => t.id === id)?.name ?? id;
+  // So do new projects: a project is named by its key wherever it is referred to.
+  const projectOf = id => data.projects.find(p => p.id === id)?.key ?? id;
   return {
     ...data,
     members: data.members.map(m => ({ ...without(m, 'id'), team: teamOf(m.team) })),
     teams: data.teams?.map(t => without(t, 'id')),
-    projects: data.projects.map(p => ({ ...p, team: teamOf(p.team) })),
-    tasks: data.tasks.map(t => ({ ...without(t, 'id'), deps: t.deps.map(keyOf), subtasks: t.subtasks.map(s => without(s, 'id')) })),
+    projects: data.projects.map(p => ({ ...without(p, 'id'), team: teamOf(p.team) })),
+    projOrder: data.projOrder.map(projectOf),
+    tasks: data.tasks.map(t => ({
+      ...without(t, 'id'),
+      project: projectOf(t.project),
+      deps: t.deps.map(keyOf),
+      subtasks: t.subtasks.map(s => without(s, 'id')),
+    })),
     comments: data.comments.map(c => ({ ...without(c, 'id'), task: keyOf(c.task) })),
-    activity: data.activity.map(a => ({ ...without(a, 'id'), task: keyOf(a.task) })),
+    activity: data.activity.map(a => ({ ...without(a, 'id'), task: keyOf(a.task), project: projectOf(a.project) })),
   };
 }
 
@@ -363,4 +371,34 @@ depCase(
   'removing',
   () => app.updateTask('t2', { deps: [] }),
   d => removeDep(d, 'GR-2', 'GR-1', NOW),
+);
+
+/* Projects: the project dialog and status menu against the project routes. OPS (p2) is led by me, in the product
+   team. */
+const projectCase = (name, ...rest) => handlerCase(`project parity: ${name}`, ...rest);
+const { dOff } = await import('../src/core/utils.js');
+const dialog = (edit, pform, name, desc) => {
+  Object.assign(fields, { '#p-name': { value: name }, '#p-desc': { value: desc } });
+  S.ui.modals = [{ type: 'project', edit }];
+  S.ui.pform = pform;
+  app.A.submitProject();
+};
+projectCase(
+  'creating a blank project',
+  () => dialog(undefined, { icon: 'server', color: 'teal', team: 'product', lead: 'm2', due: '2026-12-01', tmpl: 'blank' }, 'Home Lab', 'Racks and cables'),
+  d => createProject(d, dOff(0), { name: 'Home Lab', icon: 'server', color: 'teal', lead: 'm2', due: '2026-12-01', desc: 'Racks and cables' }, NOW),
+  d => Object.assign(d.members[1], { team: 'product' }),
+);
+projectCase(
+  'editing a project',
+  () => dialog('p2', { icon: 'rocket', color: 'rose', team: 'product', lead: 'm2', due: '2026-11-15' }, 'Operations', 'Keeps it running'),
+  d => patchProject(d, 'OPS', { name: 'Operations', desc: 'Keeps it running', icon: 'rocket', color: 'rose', lead: 'm2', due: '2026-11-15' }, NOW),
+);
+projectCase(
+  'changing status from the status menu',
+  () => {
+    S.ui.pop = { type: 'pstatus', id: 'p2' };
+    app.A.popPick({ dataset: { v: 'risk' } });
+  },
+  d => patchProject(d, 'OPS', { status: 'risk' }, NOW),
 );

@@ -1,9 +1,10 @@
-/* Project operations on the app's state object, mirroring createProject in actions.js; archive, restore and purge
-   go through src/core/archive.js, as the app's do. Like tasks.js, every function validates before it mutates.
-   Deleting archives, so the app can restore it. */
-import { archiveProject as archive, removeProject, restoreProject } from '../src/core/archive.js';
+/* The project API on the app's state object. Creating, changing, archiving and purging go through
+   src/core/projects.js and archive.js, the same code the app runs; this module validates and picks the API's defaults.
+   Like tasks.js, every function validates before it mutates. Deleting archives, so the app can restore it. */
+import { archiveProject as archive, removeProject } from '../src/core/archive.js';
+import { addProject, changeProject } from '../src/core/projects.js';
 import { PCOLORS, PSTAT } from '../src/core/constants.js';
-import { ApiError, actorOf, bad, isDate, rand } from './tasks.js';
+import { ApiError, bad, changeCtx, isDate } from './tasks.js';
 
 const CREATE = ['name', 'key', 'desc', 'color', 'icon', 'status', 'due', 'lead'];
 const EDITABLE = ['name', 'desc', 'color', 'icon', 'status', 'due', 'lead', 'archived'];
@@ -16,25 +17,6 @@ export function findProject(data, ref) {
 }
 
 export const listProjects = (data, query) => data.projects.filter(p => query.get('archived') || !p.archived).map(p => ({ ...p }));
-
-/* The app's makeKey: initials of the words, padded from the letters, made unique with trailing X. */
-function makeKey(data, name) {
-  let k = name
-    .split(/\s+/)
-    .map(w => w[0] || '')
-    .join('')
-    .toUpperCase()
-    .replace(/[^A-Z]/g, '')
-    .slice(0, 3);
-  if (k.length < 2)
-    k =
-      name
-        .replace(/[^A-Za-z]/g, '')
-        .slice(0, 3)
-        .toUpperCase() || 'PRJ';
-  while (data.projects.some(p => p.key === k)) k += 'X';
-  return k;
-}
 
 function clean(data, input, allowed) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw bad('body must be a JSON object');
@@ -90,60 +72,31 @@ function clean(data, input, allowed) {
 export function createProject(data, today, input, now) {
   const f = clean(data, input, CREATE);
   if (!f.name) throw bad('name is required');
-  const key = f.key || makeKey(data, f.name);
   const lead = f.lead || data.me;
-  let id;
-  do id = 'p' + rand();
-  while (data.projects.some(p => p.id === id));
-  const p = {
-    id,
-    key,
-    seq: 0,
-    name: f.name,
-    icon: f.icon || 'folder',
-    color: f.color || 'indigo',
-    status: f.status || 'planning',
-    team: data.members.find(m => m.id === lead)?.team ?? '',
-    lead,
-    due: f.due ?? null,
-    start: today,
-    fav: false,
-    members: [...new Set([data.me, lead])],
-    desc: f.desc || '',
-    milestones: [],
-    last: 0,
-  };
-  data.projects.push(p);
-  (data.projOrder ??= []).unshift(p.id);
-  data.activity.unshift({ id: 'a' + rand(), by: actorOf(data), verb: 'created project', task: null, project: p.id, at: now, extra: '' });
-  return p;
+  // The API's defaults: a folder in indigo, planning, no due date, in the lead's team.
+  return addProject(
+    data,
+    {
+      key: f.key,
+      name: f.name,
+      icon: f.icon || 'folder',
+      color: f.color || 'indigo',
+      status: f.status || 'planning',
+      team: data.members.find(m => m.id === lead)?.team ?? '',
+      lead,
+      due: f.due ?? null,
+      start: today,
+      desc: f.desc || '',
+    },
+    changeCtx(data, now),
+  );
 }
 
 export function patchProject(data, ref, input, now) {
   const p = findProject(data, ref);
   const f = clean(data, input, EDITABLE);
   if (!Object.keys(f).length) throw bad('no fields to update');
-  for (const [k, v] of Object.entries(f)) {
-    if (JSON.stringify(p[k]) === JSON.stringify(v)) continue;
-    if (k === 'archived') {
-      if (v) archive(p, now);
-      else restoreProject(p);
-      continue;
-    }
-    p[k] = v;
-    if (k === 'lead' && !p.members.includes(v)) p.members.push(v);
-    if (k === 'status')
-      data.activity.unshift({
-        id: 'a' + rand(),
-        by: actorOf(data),
-        verb: 'changed status of project',
-        task: null,
-        project: p.id,
-        at: now,
-        extra: 'to ' + PSTAT[v].name,
-      });
-  }
-  return p;
+  return changeProject(data, p, f, changeCtx(data, now));
 }
 
 export function archiveProject(data, ref, now) {
