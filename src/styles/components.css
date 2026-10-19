@@ -734,3 +734,29 @@
 .select-menu .mi[aria-selected='true'] {
   font-weight: 500;
 }
+/* Settings rows edited in place (labels, priorities): fields read as plain text until hovered or focused,
+   so a long list doesn't turn into a wall of boxes. */
+.edrow {
+  min-height: 40px;
+}
+.edrow .input,
+.edrow .select {
+  height: var(--h-sm);
+  border-color: transparent;
+  background-color: transparent;
+}
+.edrow .select {
+  background-image: none;
+}
+.edrow:hover .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239C988F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+.edrow .input:hover,
+.edrow .select:hover {
+  border-color: var(--border-strong);
+}
+.edrow .input:focus,
+.edrow .select:focus {
+  border-color: var(--accent);
+  background-color: var(--surface);
+}

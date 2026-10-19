@@ -199,7 +199,7 @@ export function settingsBody(sec, title) {
         `<div class="panel" style="overflow:hidden">${PRIOS.map(p => {
           const n = used(p.id);
           const name = esc(p.name);
-          return `<div class="mini" style="min-height:52px;cursor:default;gap:12px"><span style="width:20px;display:flex;justify-content:center">${prIcon(p.id)}</span>
+          return `<div class="mini edrow" style="cursor:default;gap:12px"><span style="width:20px;display:flex;justify-content:center">${prIcon(p.id)}</span>
           <input class="input grow" value="${name}" maxlength="40" aria-label="Name of ${name}" data-blur="prioName" data-id="${p.id}" data-orig="${name}">
           ${p.id === 'none' ? `<span class="faint" style="min-width:104px;font-size:13px">Always weight 0</span>` : `<select class="select" style="width:auto;min-width:104px" aria-label="Weight of ${name}" data-in="prioWeight" data-id="${p.id}">${weights(p.w)}</select>`}
           <span class="faint" style="min-width:64px;text-align:right;font-size:12px">${n} task${n === 1 ? '' : 's'}</span>
@@ -217,7 +217,7 @@ export function settingsBody(sec, title) {
           .map(l => {
             const n = used(l.id);
             const name = esc(l.name);
-            return `<div class="mini" style="min-height:52px;cursor:default;gap:12px"><span class="pdot" style="--c:var(--${l.color});margin:0 6px"></span>
+            return `<div class="mini edrow" style="cursor:default;gap:12px"><span class="pdot" style="--c:var(--${l.color});margin:0 6px"></span>
           <input class="input grow" value="${name}" maxlength="40" aria-label="Name of ${name}" data-blur="labelName" data-id="${esc(l.id)}" data-orig="${name}">
           <select class="select" style="width:auto;min-width:104px" aria-label="Colour of ${name}" data-in="labelColor" data-id="${esc(l.id)}">${colors(l.color)}</select>
           <span class="faint" style="min-width:64px;text-align:right;font-size:12px">${n} task${n === 1 ? '' : 's'}</span>
