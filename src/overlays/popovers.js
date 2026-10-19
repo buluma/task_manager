@@ -1,7 +1,7 @@
 /* ---------------- POPOVERS ---------------- */
 import { $, MOD, MONL, TODAY, WD, addD, dOff, diffD, esc, fmtDate, iso, parse } from '../core/utils.js';
 import { ic } from '../core/icons.js';
-import { LABELS, PRIOS, PSTAT, STATUSES } from '../core/constants.js';
+import { PRIOS, PSTAT, STATUSES, labelOptions, sameLabel } from '../core/constants.js';
 import { RECUR_DAYS } from '../core/recur.js';
 import { D, S, allTasks, canSee, me, mem, pColor, proj, task, visibleProjects } from '../core/store.js';
 import { av, avStack, prIcon, stIcon } from '../ui/helpers.js';
@@ -135,11 +135,11 @@ export function popHtml(p) {
       break;
     case 'labels':
       inner = popList(
-        LABELS.map(l => ({
+        labelOptions(D().tasks).map(l => ({
           id: l.id,
           name: l.name,
           html: `<span class="pdot" style="--c:${l.c}"></span>`,
-          on: t?.labels.includes(l.id),
+          on: t?.labels.some(x => sameLabel(x, l.id)),
           act: 'popToggleLabel',
         })),
         { search: 'Filter labels…' },

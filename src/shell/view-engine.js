@@ -1,7 +1,7 @@
 /* ---------- filter engine ---------- */
 import { DAY, TODAY, diffD, esc, parse } from '../core/utils.js';
 import { ic } from '../core/icons.js';
-import { LABELS, PR, PRIOS, STATUSES } from '../core/constants.js';
+import { PR, PRIOS, STATUSES, labelOptions, sameLabel } from '../core/constants.js';
 import { D, S, canSee, isOver, mem, pColor, proj, visibleProjects } from '../core/store.js';
 import { av, prIcon, stIcon } from '../ui/helpers.js';
 
@@ -35,7 +35,11 @@ export const FIELDS = {
         .filter(canSee)
         .map(p => ({ id: p.id, name: p.name, html: `<span class="pdot" style="--c:${pColor(p)}"></span>` })),
   },
-  labels: { name: 'Labels', icon: 'tag', opts: () => LABELS.map(l => ({ id: l.id, name: l.name, html: `<span class="pdot" style="--c:${l.c}"></span>` })) },
+  labels: {
+    name: 'Labels',
+    icon: 'tag',
+    opts: () => labelOptions(D().tasks).map(l => ({ id: l.id, name: l.name, html: `<span class="pdot" style="--c:${l.c}"></span>` })),
+  },
   created: {
     name: 'Created date',
     icon: 'calendar-plus',
@@ -71,7 +75,7 @@ export function viewOf(key) {
 export function matchF(t, f) {
   if (!f.v || !f.v.length) return true;
   let hit;
-  if (f.f === 'labels') hit = f.v.some(v => t.labels.includes(v));
+  if (f.f === 'labels') hit = f.v.some(v => t.labels.some(l => sameLabel(l, v)));
   else if (f.f === 'assignee') hit = f.v.includes(t.assignee || 'none');
   else if (f.f === 'due') {
     hit = f.v.some(v => {
