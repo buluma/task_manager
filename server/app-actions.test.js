@@ -95,3 +95,26 @@ test('the label picker and filter work on free-form labels, and on a built-in on
   app.A.popToggleLabel({ dataset: { v: 'Feature' } });
   assert.deepEqual(S.data.tasks[0].labels, ['Improvement', 'Feature']);
 });
+
+test('board columns keep the order the view sorts them in', async () => {
+  const { applyView } = await import('../src/shell/view-engine.js');
+  const { boardHtml } = await import('../src/views/board.js');
+  const t = (id, order, created) => ({
+    id,
+    key: id.toUpperCase(),
+    project: 'p1',
+    title: id,
+    status: 'done',
+    subtasks: [],
+    deps: [],
+    labels: [],
+    priority: 'none',
+    order,
+    created,
+  });
+  S.data = { ...emptyWorkspace(), teams: TEAMS_SEED.map(x => ({ ...x })), tasks: [t('t1', 1, 100), t('t2', 2, 300), t('t3', 3, 200)] };
+  const cards = v => [...boardHtml(applyView(S.data.tasks, v), 'test').matchAll(/data-id="(t\d)"/g)].map(m => m[1]).filter((id, i, a) => a.indexOf(id) === i);
+  const view = sort => ({ filters: [], q: '', sort, showDone: true });
+  assert.deepEqual(cards(view({ f: 'manual', dir: 1 })), ['t1', 't2', 't3']);
+  assert.deepEqual(cards(view({ f: 'created', dir: 1 })), ['t2', 't3', 't1']);
+});

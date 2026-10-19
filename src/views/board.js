@@ -26,9 +26,10 @@ export function kcard(t, opt = {}) {
     <div class="hacts"><button class="ibtn ibtn-xs" data-a="toggleDone" data-id="${t.id}" data-tip="${t.status === 'done' ? 'Reopen' : 'Mark complete'}" aria-label="${t.status === 'done' ? 'Reopen' : 'Mark complete'}">${ic(t.status === 'done' ? 'rotate-ccw' : 'check', 13)}</button><button class="ibtn ibtn-xs" data-a="editTask" data-id="${t.id}" data-tip="Quick edit" aria-label="Quick edit">${ic('pencil', 12)}</button><button class="ibtn ibtn-xs" data-a="ctxBtn" data-ctx="task" data-id="${t.id}" aria-label="More">${ic('ellipsis', 13)}</button></div>
   </div>`;
 }
+/* `ts` arrive sorted by the view (applyView): manual order by default, or whatever Sort is set to. */
 export function boardHtml(ts, key, opt = {}) {
   return `<div class="board" data-keep="board:${key}">${STATUSES.map(s => {
-    const col = ts.filter(t => t.status === s.id).sort((a, b) => a.order - b.order);
+    const col = ts.filter(t => t.status === s.id);
     const ck = key + ':' + s.id;
     if (S.ui.collapsedCols[ck])
       return `<div class="bcol collapsed" data-a="toggleCol" data-ck="${ck}" data-drop-col="${s.id}" data-key="${key}" role="button" aria-label="Expand ${s.name}" title="Expand">${stIcon(s.id)}<span class="vname">${s.name}<span class="faint">${col.length}</span></span></div>`;
