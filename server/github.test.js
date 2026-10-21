@@ -72,17 +72,18 @@ test('asks GitHub once for a PR requested twice at the same time', async () => {
   assert.equal(gh.calls.length, 1);
 });
 
-test('linkedPrRefs finds every PR named in any comment', () => {
+test('linkedPrRefs finds the PR each "PR: <url>" comment links, and no other', () => {
   const data = {
     comments: [
       { text: 'PR: https://github.com/buluma/task_manager/pull/14' },
-      { text: 'also https://github.com/o/r.js/pull/2 and https://github.com/o/r.js/pull/3' },
+      { text: 'PR: https://github.com/o/r.js/pull/2' },
+      { text: 'also https://github.com/o/r.js/pull/3' },
       { text: 'an issue https://github.com/o/r/issues/9' },
       { text: '' },
       {},
     ],
   };
-  assert.deepEqual([...linkedPrRefs(data)].sort(), ['buluma/task_manager#14', 'o/r.js#2', 'o/r.js#3']);
+  assert.deepEqual([...linkedPrRefs(data)].sort(), ['buluma/task_manager#14', 'o/r.js#2']);
 });
 
 test('reviewPrs lists tasks in Review with the PR their icon shows', () => {
@@ -99,6 +100,7 @@ test('reviewPrs lists tasks in Review with the PR their icon shows', () => {
       { task: 't1', at: 2, text: 'PR: https://github.com/o/r/pull/7' },
       { task: 't2', at: 1, text: 'PR: https://github.com/o/r/pull/2' },
       { task: 't3', at: 1, text: 'no link here' },
+      { task: 't3', at: 2, text: 'merged with https://github.com/o/r/pull/3' },
       { task: 't4', at: 1, text: 'PR: https://github.com/o/r/pull/4' },
       { task: 't5', at: 1, text: 'PR: https://github.com/o/r/pull/5' },
     ],
