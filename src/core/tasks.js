@@ -16,8 +16,9 @@ export function nextKey(p) {
   return p.key + '-' + p.seq;
 }
 
-/* A new open task starts the day it is made and is due three days later. A date given is kept (start moves back to
-   an earlier due, due forward from a later start), and null means none on purpose; a task made closed gets neither. */
+/* A new scheduled task (To Do, In Progress or Review) starts the day it is made and is due three days later. A date
+   given is kept (start moves back to an earlier due, due forward from a later start), and null means none on purpose.
+   A task made in the backlog is not scheduled yet, and one made closed (an import) is history: neither gets dates. */
 const DUE_IN = 3;
 // the local day of a timestamp, and day arithmetic in UTC (as recur.js) so a DST change can't shift it
 const dayOf = ms => {
@@ -29,7 +30,7 @@ const plusDays = (day, n) => {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 };
 function defaultDates(fields, now) {
-  if (fields.status === 'done' || fields.status === 'cancelled') return {};
+  if (['backlog', 'done', 'cancelled'].includes(fields.status)) return {};
   const today = dayOf(now);
   const out = {};
   if (fields.start === undefined) out.start = fields.due && fields.due < today ? fields.due : today;

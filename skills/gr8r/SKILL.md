@@ -64,7 +64,7 @@ Add `--json` to any command for machine-readable output. Values:
 - priority: ids from `gr8r priorities` (default `urgent high medium low none`; the scale is editable, so check)
 - project status: `planning active risk hold complete`; project colors: indigo blue violet teal rose amber green slate
 - dates: `YYYY-MM-DD`; `none` clears due, start, cycle, estimate, completed, recur
-- a new open task starts today and is due three days later unless `--start`/`--due` are given (`--due none` for no due date); tasks added as done or cancelled get no dates, so imports keep theirs
+- a new task made in todo, progress or review starts today and is due three days later unless `--start`/`--due` are given (`--due none` for no due date); backlog tasks (the default for `gr8r add`) and tasks added as done or cancelled get no dates
 - `--cycle current` means this week's cycle (weeks start on the day set in the app's prefs)
 
 ## Behaviours worth knowing
