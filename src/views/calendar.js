@@ -2,7 +2,7 @@
 import { MONL, TODAY, WD, addD, diffD, esc, fmtDate, iso, parse, sod } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { D, S, allTasks, pColor, proj } from '../core/store.js';
-import { av, prIcon, stIcon } from '../ui/helpers.js';
+import { av, closedCls, prIcon, stIcon } from '../ui/helpers.js';
 import { fxc } from '../shell/render.js';
 import { applyView, viewOf, viewToolbar } from '../shell/view-engine.js';
 
@@ -25,7 +25,7 @@ export function calendarHtml(ts, opt = {}) {
     }
     const t = it.t;
     const p = proj(t.project);
-    return `<button class="cev ${t.status === 'done' ? 'done' : ''}${fxc('moved', t.id)}" style="--c:${pColor(p)}" draggable="true" data-drag-cal="${t.id}" data-a="openTask" data-id="${t.id}" data-ctx="task" title="${esc(t.title)}">${t.status === 'done' ? stIcon('done', 11) : prIcon(t.priority, 11)}<span class="trunc">${esc(t.title)}</span>${av(t.assignee, '', false)}</button>`;
+    return `<button class="cev ${closedCls(t)}${fxc('moved', t.id)}" style="--c:${pColor(p)}" draggable="true" data-drag-cal="${t.id}" data-a="openTask" data-id="${t.id}" data-ctx="task" title="${esc(t.title)}">${t.status === 'done' ? stIcon('done', 11) : prIcon(t.priority, 11)}<span class="trunc">${esc(t.title)}</span>${av(t.assignee, '', false)}</button>`;
   };
   let label, body;
   if (mode === 'month') {

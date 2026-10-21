@@ -93,10 +93,11 @@
 .cev .trunc {
   flex: 1;
 }
-.cev.done {
+.cev.done,
+.cev.cancelled {
   opacity: 0.55;
 }
-.cev.done .trunc {
+.cev.cancelled .trunc {
   text-decoration: line-through;
 }
 .cev.event {

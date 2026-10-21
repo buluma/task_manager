@@ -114,8 +114,12 @@
   min-width: 0;
   word-wrap: break-word;
 }
-.kcard.done .title {
+/* done is greyed; cancelled is also struck through, as dropped rather than finished */
+.kcard.done .title,
+.kcard.cancelled .title {
   color: var(--text-3);
+}
+.kcard.cancelled .title {
   text-decoration: line-through;
 }
 .kcard .hacts {

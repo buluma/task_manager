@@ -84,8 +84,11 @@
   text-decoration-color: var(--border-strong);
   text-underline-offset: 3px;
 }
-.trow.done .tt {
+.trow.done .tt,
+.trow.cancelled .tt {
   color: var(--text-3);
+}
+.trow.cancelled .tt {
   text-decoration: line-through;
   text-decoration-color: var(--text-3);
 }
@@ -236,9 +239,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mini.done .tt {
-  text-decoration: line-through;
+.mini.done .tt,
+.mini.cancelled .tt {
   color: var(--text-3);
+}
+.mini.cancelled .tt {
+  text-decoration: line-through;
 }
 .mini .pj {
   display: inline-flex;

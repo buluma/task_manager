@@ -44,6 +44,8 @@ export function prIcon(p, s = 14) {
   const bar = (x, h, on) => `<rect x="${x}" y="${12 - h}" width="2.6" height="${h}" rx="1" fill="${on ? 'var(--text-2)' : 'var(--border-strong)'}"/>`;
   return `<svg width="${s}" height="${s}" viewBox="0 0 14 14" aria-hidden="true" style="flex-shrink:0">${bar(1.8, 4.5, n >= 1)}${bar(5.7, 7.5, n >= 2)}${bar(9.6, 10.5, n >= 3)}</svg>`;
 }
+/* The class a closed task is drawn with: 'done' (greyed) or 'cancelled' (greyed and struck through); '' while open. */
+export const closedCls = t => (t.status === 'done' || t.status === 'cancelled' ? t.status : '');
 export const stPill = st => `${stIcon(st)}<span>${ST[st].name}</span>`;
 export const prPill = p => `${prIcon(p)}<span>${esc(PR[p || 'none'].name)}</span>`;
 export const lbl = id => {

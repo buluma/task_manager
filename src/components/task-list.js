@@ -5,7 +5,7 @@ import { ago, esc, fmtDate, relDate } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { PR, ST } from '../core/constants.js';
 import { D, S, commentsOf, currentCycle, isOver, mem, pColor, proj, task } from '../core/store.js';
-import { av, dueHtml, empty, lbl, prIcon, prPill, stIcon, stPill } from '../ui/helpers.js';
+import { av, closedCls, dueHtml, empty, lbl, prIcon, prPill, stIcon, stPill } from '../ui/helpers.js';
 import { fxc } from '../shell/render.js';
 import { prLinkOf } from '../core/pr-links.js';
 import { prBadge } from '../ui/pr-state.js';
@@ -63,7 +63,7 @@ export function taskRow(t, cols, tpl, opt = {}) {
   const cc = cs.length;
   const pr = prLinkOf(cs);
   const sd = t.subtasks.filter(s => s.done).length;
-  return `<div class="trow ${t.status === 'done' ? 'done' : ''} ${sel ? 'sel' : ''}${fxc('done', t.id)}${fxc('added', t.id)}" style="--cols:${tpl}" data-task-row="${t.id}" data-group="${opt.group || ''}" data-lkey="${opt.key || ''}" data-ctx="task" data-id="${t.id}">
+  return `<div class="trow ${closedCls(t)} ${sel ? 'sel' : ''}${fxc('done', t.id)}${fxc('added', t.id)}" style="--cols:${tpl}" data-task-row="${t.id}" data-group="${opt.group || ''}" data-lkey="${opt.key || ''}" data-ctx="task" data-id="${t.id}">
     <div class="handle" draggable="${opt.drag !== false}" data-drag-row="${t.id}" aria-hidden="true">${opt.drag !== false ? ic('grip-vertical', 14) : ''}</div>
     <div class="c-check">${
       opt.complete
@@ -154,7 +154,7 @@ export function actHtml(a, opt = {}) {
 }
 export function miniRow(t, opt = {}) {
   const p = proj(t.project);
-  return `<div class="mini ${t.status === 'done' ? 'done' : ''}${fxc('done', t.id)}${fxc('added', t.id)}" data-a="openTask" data-id="${t.id}" data-ctx="task" role="button" tabindex="0">
+  return `<div class="mini ${closedCls(t)}${fxc('done', t.id)}${fxc('added', t.id)}" data-a="openTask" data-id="${t.id}" data-ctx="task" role="button" tabindex="0">
     <input type="checkbox" class="check round" ${t.status === 'done' ? 'checked' : ''} data-a="toggleDone" data-id="${t.id}" aria-label="Complete ${esc(t.title)}">
     <span data-tip="${ST[t.status].name}">${stIcon(t.status)}</span>
     <span class="tt">${esc(t.title)}</span>
