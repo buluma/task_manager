@@ -32,8 +32,8 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   pr link KEY URL                record a GitHub PR on a task (a comment; linking twice is a no-op)
   projects [--archived]
   project show KEY
-  project add NAME [--key KEY] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE] [--lead MEMBER]
-  project set KEY [--name N] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE|none] [--lead MEMBER]
+  project add NAME [--key KEY] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE] [--lead MEMBER] [--repo OWNER/NAME]
+  project set KEY [--name N] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE|none] [--lead MEMBER] [--repo OWNER/NAME|none]
   project rm KEY      archive          project restore KEY    bring it back
   project rm KEY --purge    delete an archived project and its tasks for good
   notify TEXT [--task KEY] [--snippet TEXT] [--type needs|comment|update|mention|assign]   raise an Inbox item (use with --as; needs = asking for you)
@@ -86,6 +86,7 @@ const OPTIONS = {
   color: { type: 'string' },
   icon: { type: 'string' },
   lead: { type: 'string' },
+  repo: { type: 'string' },
   weight: { type: 'string' },
   id: { type: 'string' },
   replace: { type: 'string' },
@@ -124,7 +125,7 @@ async function api(method, route, body) {
 }
 
 /* "none" clears the fields that can be empty; for priority it is a real value. */
-const CLEARABLE = ['due', 'start', 'cycle', 'estimate', 'completed', 'recur'];
+const CLEARABLE = ['due', 'start', 'cycle', 'estimate', 'completed', 'recur', 'repo'];
 function fields(v, keys) {
   const out = {};
   for (const k of keys) if (v[k] !== undefined) out[k] = CLEARABLE.includes(k) && v[k] === 'none' ? null : v[k];
@@ -334,11 +335,14 @@ async function main(argv) {
         if (args.length !== 1) throw new CliError(`project ${sub} needs exactly one project key`);
         return encodeURIComponent(args[0]);
       };
-      const body = () => fields(v, ['name', 'desc', 'status', 'color', 'icon', 'due', 'lead']);
+      const body = () => fields(v, ['name', 'desc', 'status', 'color', 'icon', 'due', 'lead', 'repo']);
       switch (sub) {
         case 'show': {
           const { project } = await api('GET', `/api/projects/${one()}`);
-          return out(project, [projectRow(project), project.desc && `\n${project.desc}`].filter(Boolean).join('\n'));
+          return out(
+            project,
+            [projectRow(project), project.repo && `repo      ${project.repo}`, project.desc && `\n${project.desc}`].filter(Boolean).join('\n'),
+          );
         }
         case 'add': {
           if (!args.length) throw new CliError('project add needs a name');

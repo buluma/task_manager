@@ -46,6 +46,7 @@ gr8r agent add NAME           gr8r agent list                    # agents are me
 gr8r notify TEXT [--task KEY] [--snippet TEXT] [--type needs|comment|update|mention|assign] --as NAME
 gr8r inbox [--unread]         gr8r inbox read|unread ID
 gr8r projects [--archived]    gr8r project show|add|set|rm|restore ...   (rm --purge deletes for good)
+gr8r project set KEY --repo OWNER/NAME   # link the project's GitHub repo (none unlinks); add takes --repo too
 gr8r priorities               gr8r priority add NAME --weight 1-99 [--id ID] | set ID | rm ID [--replace ID]
 gr8r labels                   gr8r label add NAME [--color C] | set ID [--name N] [--color C] | rm ID
 gr8r members                  gr8r member add EMAIL... [--role Admin|Member|Guest] [--team T]

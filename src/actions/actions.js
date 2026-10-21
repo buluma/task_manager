@@ -9,7 +9,7 @@ import { archiveProject, archiveTask, removeProject, removeTasks, restoreProject
 import { addComment, removeComment } from '../core/comments.js';
 import { linkTo } from '../core/links.js';
 import { addTask, changeTask, nextKey } from '../core/tasks.js';
-import { addProject, changeProject } from '../core/projects.js';
+import { addProject, changeProject, repoName } from '../core/projects.js';
 import { addMembers, removeMember } from '../core/members.js';
 import { addSub, removeSub, setSubDone } from '../core/subtasks.js';
 import { D, S, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
@@ -1036,7 +1036,7 @@ A.clearProjFilters = () => {
   render();
 };
 A.newProject = () => {
-  S.ui.pform = { name: '', desc: '', icon: 'folder', color: 'indigo', team: me().team, lead: D().me, due: dOff(30), tmpl: 'blank' };
+  S.ui.pform = { name: '', desc: '', repo: '', icon: 'folder', color: 'indigo', team: me().team, lead: D().me, due: dOff(30), tmpl: 'blank' };
   S.ui.errors = {};
   S.ui.pop = null;
   openModal({ type: 'project' });
@@ -1044,7 +1044,7 @@ A.newProject = () => {
 A.editProject = el => {
   const p = proj(el.dataset.id);
   S.ui.pop = null;
-  S.ui.pform = { name: p.name, desc: p.desc, icon: p.icon, color: p.color, team: p.team, lead: p.lead, due: p.due, tmpl: 'blank' };
+  S.ui.pform = { name: p.name, desc: p.desc, repo: p.repo || '', icon: p.icon, color: p.color, team: p.team, lead: p.lead, due: p.due, tmpl: 'blank' };
   S.ui.errors = {};
   openModal({ type: 'project', edit: p.id });
 };
@@ -1066,7 +1066,7 @@ A.pformSet = el => {
 /* The app's defaults for a new project: planning, due in a month, starting today. */
 export function createProject(f, tmplId) {
   const fields = { name: f.name, icon: f.icon, color: f.color, status: 'planning', team: f.team, lead: f.lead, due: f.due || dOff(30), start: dOff(0) };
-  const p = addProject(D(), { ...fields, desc: f.desc || 'No description yet.' }, asMe());
+  const p = addProject(D(), { ...fields, desc: f.desc || 'No description yet.', repo: repoName(f.repo) ?? null }, asMe());
   const tm = TEMPLATES.find(t => t.id === tmplId);
   (tm?.tasks || []).forEach((title, i) =>
     createTask({
@@ -1086,15 +1086,27 @@ A.submitProject = () => {
   const f = S.ui.pform;
   f.name = ($('#p-name')?.value || '').trim();
   f.desc = $('#p-desc')?.value || '';
+  f.repo = $('#p-repo')?.value || '';
   if (!f.name) {
     S.ui.errors.pname = 'Give the project a name';
     render();
     $('#p-name')?.focus();
     return;
   }
+  const repo = repoName(f.repo);
+  if (repo === undefined) {
+    S.ui.errors.prepo = 'Use owner/name, or paste the repo’s github.com link';
+    render();
+    $('#p-repo')?.focus();
+    return;
+  }
+  S.ui.errors.prepo = null;
   if (m.edit) {
     const p = proj(m.edit);
-    if (mutate(() => changeProject(D(), p, { name: f.name, desc: f.desc, icon: f.icon, color: f.color, team: f.team, lead: f.lead, due: f.due }, asMe()))) {
+    const patch = { name: f.name, desc: f.desc, icon: f.icon, color: f.color, team: f.team, lead: f.lead, due: f.due, repo };
+    // a project made before repos were linked has no field until one is set
+    if (repo === null && p.repo === undefined) delete patch.repo;
+    if (mutate(() => changeProject(D(), p, patch, asMe()))) {
       S.ui.modals.pop();
       render();
       toast('Project updated');

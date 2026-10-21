@@ -139,6 +139,7 @@ export const TEMPLATES = [
 export function projectModal(m, H) {
   const f = S.ui.pform;
   const err = S.ui.errors.pname;
+  const repoErr = S.ui.errors.prepo;
   return `${H(m.edit ? 'Project settings' : 'New project', m.edit ? '' : 'Projects hold tasks and conversations for one body of work.')}
   <form class="modal-b" data-submit="submitProject">
     <div class="row" style="gap:10px;align-items:flex-start">
@@ -146,6 +147,7 @@ export function projectModal(m, H) {
       <div class="field grow"><label class="label" for="p-name">Project name</label><input class="input ${err ? 'is-error' : ''}" id="p-name" data-in="pform" data-f="name" value="${esc(f.name)}" placeholder="e.g. Website Redesign" autofocus aria-invalid="${!!err}">${err ? `<span class="err">${ic('circle-alert', 12)}${err}</span>` : ''}</div>
     </div>
     <div class="field"><label class="label" for="p-desc">Description</label><textarea class="textarea" id="p-desc" data-in="pform" data-f="desc" rows="2" placeholder="What is this project about?">${esc(f.desc)}</textarea></div>
+    <div class="field"><label class="label" for="p-repo">GitHub repo <span class="faint">(optional)</span></label><input class="input ${repoErr ? 'is-error' : ''}" id="p-repo" data-in="pform" data-f="repo" value="${esc(f.repo || '')}" placeholder="owner/name" autocomplete="off" spellcheck="false" aria-invalid="${!!repoErr}" aria-describedby="p-repo-h"><span class="faint" id="p-repo-h" style="font-size:11.5px">Where this project’s pull requests live.</span>${repoErr ? `<span class="err">${ic('circle-alert', 12)}${repoErr}</span>` : ''}</div>
     <div class="row" style="gap:16px;align-items:flex-start;flex-wrap:wrap">
       <div class="field" style="flex:1;min-width:220px"><span class="label">Icon</span><div class="iconpick" role="radiogroup" aria-label="Icon">${PICONS.map(i => `<button type="button" role="radio" aria-checked="${f.icon === i}" class="${f.icon === i ? 'on' : ''}" data-a="pformSet" data-f="icon" data-v="${i}" aria-label="${i}">${ic(i, 15)}</button>`).join('')}</div></div>
       <div class="field"><span class="label">Color</span><div class="swatches" role="radiogroup" aria-label="Color" style="max-width:140px">${Object.entries(
