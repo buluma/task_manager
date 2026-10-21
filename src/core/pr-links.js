@@ -1,11 +1,19 @@
 /* ---------- GitHub PR links: `gr8r pr link` stores one as a "PR: <url>" comment ---------- */
-const PR_URL = /https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/pull\/(\d+)/;
+/* Only a comment that starts "PR: <url>" links one: a PR mentioned in passing is not the task's PR, and a linked PR
+   that merges can move the task to Done (server/app.js). */
+const PR_LINK = /^PR: https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/pull\/(\d+)/;
 
-/* The PR named in the newest comment that has one, or null. */
+/* The PR a comment's text links, or null. */
+export function prLinkIn(text) {
+  const m = PR_LINK.exec(text || '');
+  return m ? { url: m[0].slice(4), repo: m[1], number: +m[2] } : null;
+}
+
+/* The PR linked by the newest comment that links one, or null. */
 export function prLinkOf(comments) {
   for (const c of [...comments].sort((a, b) => b.at - a.at)) {
-    const m = PR_URL.exec(c.text || '');
-    if (m) return { url: m[0], repo: m[1], number: +m[2] };
+    const pr = prLinkIn(c.text);
+    if (pr) return pr;
   }
   return null;
 }
@@ -13,14 +21,9 @@ export function prLinkOf(comments) {
 /* "owner/repo#number", how /api/prs names a PR. */
 export const prRef = pr => `${pr.repo}#${pr.number}`;
 
-/* Every PR a piece of text names, as refs. */
-export function prRefsIn(text) {
-  return [...(text || '').matchAll(new RegExp(PR_URL, 'g'))].map(m => `${m[1]}#${+m[2]}`);
-}
-
 /* The ids of tasks with at least one comment linking a PR. */
 export function tasksWithPr(comments) {
-  return new Set((comments || []).filter(c => PR_URL.test(c.text || '')).map(c => c.task));
+  return new Set((comments || []).filter(c => prLinkIn(c.text)).map(c => c.task));
 }
 
 /* How a PR's state is drawn: open, draft, merged, closed, or not known (no token, not found, not fetched yet). */

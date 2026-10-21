@@ -1,16 +1,21 @@
 /* PR states for the app's PR icons, looked up on GitHub and cached. GR8R_GITHUB_TOKEN (a fine-grained token with
    read access to pull requests) lets it see private repos and raises GitHub's limit from 60 calls an hour; without
-   it public PRs still work. The app asks through GET /api/prs, which only answers for PRs linked in a comment. */
-import { prLinkOf, prRef, prRefsIn } from '../src/core/pr-links.js';
+   it public PRs still work. The app asks through GET /api/prs, which only answers for PRs a "PR: <url>" comment links. */
+import { prLinkIn, prLinkOf, prRef } from '../src/core/pr-links.js';
 
 const OPEN_TTL = 10 * 60e3; // open and draft PRs move; merged and closed ones rarely do
 const DONE_TTL = 24 * 3600e3;
 const MISS_TTL = 10 * 60e3;
 const PARALLEL = 8;
 
-/* Every PR named in any comment of the workspace, as "owner/repo#number" refs. */
+/* Every PR a comment of the workspace links, as "owner/repo#number" refs. */
 export function linkedPrRefs(data) {
-  return new Set((data.comments || []).flatMap(c => prRefsIn(c.text)));
+  return new Set(
+    (data.comments || [])
+      .map(c => prLinkIn(c.text))
+      .filter(Boolean)
+      .map(prRef),
+  );
 }
 
 /* Tasks in Review and the PR their icon shows (the newest linked), as { id, key, ref }: the ones a merge moves to Done. */
