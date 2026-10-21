@@ -5,6 +5,7 @@ import { D, S, proj, save, task } from '../core/store.js';
 import { mutate, toast } from '../ui/toast.js';
 import { fxSet, render } from '../shell/render.js';
 import { viewOf } from '../shell/view-engine.js';
+import { columnOrders, forceManual, isManual } from '../core/reorder.js';
 import { applyPatch, updateTask } from './actions.js';
 
 export let DRAG = null;
@@ -108,22 +109,43 @@ document.addEventListener('drop', e => {
   clearDropMarks();
   if (d.type === 'card' && d.col) {
     const t = task(d.id);
-    const colTs = D()
-      .tasks.filter(x => x.status === d.col && x.id !== t.id && !x.archived)
-      .sort((a, b) => a.order - b.order);
-    let order;
-    if (d.before) {
-      const i = colTs.findIndex(x => x.id === d.before);
-      const prev = colTs[i - 1];
-      const nx = colTs[i];
-      order = prev ? (prev.order + nx.order) / 2 : nx.order - 1;
-    } else order = colTs.length ? colTs[colTs.length - 1].order + 1 : t.order;
     const moved = t.status !== d.col;
+    /* the view and the cards as drawn come from the column dropped on, read now rather than kept from dragover */
+    const colEl = e.target.closest?.('[data-drop-col]');
+    const here = colEl && colEl.dataset.dropCol === d.col ? colEl : null;
+    const v = here?.dataset.key ? viewOf(here.dataset.key) : null;
+    const manual = v && isManual(v);
+    let orders;
+    /* a reorder inside the column, or a drop into one already drawn in manual order, keeps the sequence on
+       screen; moving across columns under another sort is a status change and leaves the sort alone */
+    if (here && (!moved || manual)) {
+      const shown = [...here.querySelectorAll('[data-drag-card]')].map(c => c.dataset.dragCard);
+      orders = columnOrders(shown, t.id, d.before, id => task(id)?.order);
+      if (!orders) return;
+    } else {
+      const colTs = D()
+        .tasks.filter(x => x.status === d.col && x.id !== t.id && !x.archived)
+        .sort((a, b) => a.order - b.order);
+      let order;
+      if (d.before) {
+        const i = colTs.findIndex(x => x.id === d.before);
+        const prev = colTs[i - 1];
+        const nx = colTs[i];
+        order = prev ? (prev.order + nx.order) / 2 : nx.order - 1;
+      } else order = colTs.length ? colTs[colTs.length - 1].order + 1 : t.order;
+      orders = { [t.id]: order };
+    }
+    let switched = false;
     fxSet({ moved: t.id });
     mutate(() => {
-      t.order = order;
+      for (const [id, o] of Object.entries(orders)) {
+        const x = task(id);
+        if (x && x.order !== o) x.order = o;
+      }
       if (moved) applyPatch(t, { status: d.col });
+      if (v && !moved) switched = forceManual(v);
     });
+    if (switched) toast('Sorted manually to keep your order', { kind: 'info', ms: 2200 });
     if (moved) toast(`Moved “${t.title}” to ${ST[d.col].name}`, { ms: 2200 });
   } else if (d.type === 'row' && d.target) {
     const t = task(d.id),
@@ -148,10 +170,7 @@ document.addEventListener('drop', e => {
     mutate(() => {
       t.order = order;
       applyPatch(t, patch);
-      if (v && v.sort.f !== 'manual') {
-        v.sort = { f: 'manual', dir: 1 };
-        switched = true;
-      }
+      if (v) switched = forceManual(v);
     });
     if (switched) toast('Sorted manually to keep your order', { kind: 'info', ms: 2200 });
   } else if (d.type === 'cal' && d.day) {
