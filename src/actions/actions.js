@@ -471,8 +471,9 @@ A.newTask = el => {
     status: 'todo',
     assignee: d.assignee || D().me,
     priority: 'medium',
-    due: d.due || null,
-    start: null,
+    // as addTask's defaults: starts today, due in three days (or on the day picked), shown so they can be changed
+    due: d.due || dOff(3),
+    start: d.due && d.due < dOff(0) ? d.due : dOff(0),
     labels: [],
     subtasks: [],
     recur: null,

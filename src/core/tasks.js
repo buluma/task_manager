@@ -16,6 +16,28 @@ export function nextKey(p) {
   return p.key + '-' + p.seq;
 }
 
+/* A new open task starts the day it is made and is due three days later. A date given is kept (start moves back to
+   an earlier due, due forward from a later start), and null means none on purpose; a task made closed gets neither. */
+const DUE_IN = 3;
+// the local day of a timestamp, and day arithmetic in UTC (as recur.js) so a DST change can't shift it
+const dayOf = ms => {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const plusDays = (day, n) => {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+};
+function defaultDates(fields, now) {
+  if (fields.status === 'done' || fields.status === 'cancelled') return {};
+  const today = dayOf(now);
+  const out = {};
+  if (fields.start === undefined) out.start = fields.due && fields.due < today ? fields.due : today;
+  const from = fields.start ?? out.start ?? today;
+  if (fields.due === undefined) out.due = plusDays(from > today ? from : today, DUE_IN);
+  return out;
+}
+
 /* A new task in project `p`, last in the order. `fields` override the defaults; an `id` or `key` given is kept. */
 export function addTask(data, p, fields, ctx) {
   let id = fields.id;
@@ -39,6 +61,7 @@ export function addTask(data, p, fields, ctx) {
     created: ctx.now,
     updated: ctx.now,
     order: Math.max(0, ...data.tasks.map(x => x.order || 0)) + 1,
+    ...defaultDates(fields, ctx.now),
     ...fields,
     id,
     project: p.id,
