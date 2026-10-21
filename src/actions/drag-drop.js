@@ -57,8 +57,14 @@ document.addEventListener('dragover', e => {
     e.preventDefault();
     $$('.bcol.over').forEach(x => x !== col && x.classList.remove('over'));
     col.classList.add('over');
+    DRAG.col = col.dataset.dropCol;
+    DRAG.before = null;
     const body = col.querySelector('[data-col-body]');
-    if (!body) return;
+    /* a collapsed column has no cards to aim between: the card goes to its bottom */
+    if (!body) {
+      $('.drop-line')?.remove();
+      return;
+    }
     const cards = [...body.querySelectorAll('.kcard:not(.dragging)')];
     const after = cards.find(c => {
       const r = c.getBoundingClientRect();
@@ -71,7 +77,6 @@ document.addEventListener('dragover', e => {
     }
     const ref = after || body.querySelector('.addcard, .composer');
     if (line.nextSibling !== ref || line.parentNode !== body) body.insertBefore(line, ref);
-    DRAG.col = col.dataset.dropCol;
     DRAG.before = after ? after.dataset.dragCard : null;
   } else if (DRAG.type === 'row') {
     const row = e.target.closest('.trow[data-task-row]');
@@ -112,7 +117,7 @@ document.addEventListener('drop', e => {
     const moved = t.status !== d.col;
     /* the view and the cards as drawn come from the column dropped on, read now rather than kept from dragover */
     const colEl = e.target.closest?.('[data-drop-col]');
-    const here = colEl && colEl.dataset.dropCol === d.col ? colEl : null;
+    const here = colEl && colEl.dataset.dropCol === d.col && colEl.querySelector('[data-col-body]') ? colEl : null;
     const v = here?.dataset.key ? viewOf(here.dataset.key) : null;
     const manual = v && isManual(v);
     let orders;
