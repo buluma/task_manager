@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { beforeOf, dropOrders, forceManual, isManual } from './reorder.js';
+import { beforeOf, drawnOrders, dropOrders, forceManual, isManual } from './reorder.js';
 
 const orders = o => id => o[id];
 const drawn = res => Object.keys(res).sort((a, b) => res[a] - res[b]);
@@ -73,4 +73,24 @@ test('a list row dropped across groups keeps the drawn sequence of the whole lis
   assert.deepEqual(drawn(res), ['b', 'c', 'a', 'd']);
   // dropping just after the row above it leaves the list as it was
   assert.equal(dropOrders(shown, 'b', beforeOf(shown, 'b', 'a', 'after'), o), null);
+});
+
+test('drawnOrders gives tasks the order values they hold, in the sequence they are drawn', () => {
+  const order = { a: 3, b: 1, c: 2 };
+  const got = drawnOrders(['a', 'b', 'c'], id => order[id]);
+  assert.deepEqual(got, { a: 1, b: 2, c: 3 });
+  assert.deepEqual(
+    drawnOrders(['b', 'c', 'a'], id => order[id]),
+    { b: 1, c: 2, a: 3 },
+  );
+  assert.deepEqual(
+    drawnOrders([], id => order[id]),
+    {},
+  );
+});
+
+test('drawnOrders separates tied or missing values so the drawn sequence holds', () => {
+  const order = { a: 5, b: 5, c: undefined };
+  const got = drawnOrders(['a', 'b', 'c'], id => order[id]);
+  assert.ok(got.a < got.b && got.b < got.c, JSON.stringify(got));
 });
