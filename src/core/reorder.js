@@ -10,11 +10,11 @@ export function forceManual(v) {
   return true;
 }
 
-/* `shown` is a board column's task ids top to bottom as drawn, `id` the dropped card (in `shown` when it came
-   from this column) and `before` the card it lands above (null: at the bottom). Returns { id: order } that draws
-   the column in its new sequence under Manual, or null when the drop leaves the sequence as it was. The cards
-   trade the order values they already hold, so cards a filter hides keep their place among them. */
-export function columnOrders(shown, id, before, orderOf) {
+/* `shown` is a board column's, or a list's, task ids top to bottom as drawn, `id` the dropped task (in `shown` when
+   it came from there) and `before` the task it lands above (null: at the bottom). Returns { id: order } that draws
+   them in their new sequence under Manual, or null when the drop leaves the sequence as it was. The tasks trade the
+   order values they already hold, so tasks a filter or a collapsed group hides keep their place among them. */
+export function dropOrders(shown, id, before, orderOf) {
   const next = shown.filter(x => x !== id);
   const at = before == null ? -1 : next.indexOf(before);
   next.splice(at < 0 ? next.length : at, 0, id);
@@ -27,4 +27,12 @@ export function columnOrders(shown, id, before, orderOf) {
     slots[i] = up === undefined ? slots[i - 1] + 1 : (slots[i - 1] + up) / 2;
   }
   return Object.fromEntries(next.map((x, i) => [x, slots[i]]));
+}
+
+/* The task a row dropped `pos` ('before' or 'after') `target` lands above in `shown`, skipping the dragged `id`;
+   null when it lands at the bottom. */
+export function beforeOf(shown, id, target, pos) {
+  if (pos === 'before') return target;
+  const rest = shown.filter(x => x !== id);
+  return rest[rest.indexOf(target) + 1] ?? null;
 }
