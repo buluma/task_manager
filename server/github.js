@@ -28,6 +28,59 @@ export function reviewPrs(data) {
     .map(({ t, pr }) => ({ id: t.id, key: t.key, ref: prRef(pr) }));
 }
 
+/* The task keys of project `key` a PR names: in its title or branch, or in its body after a word like "implements",
+   so a body that only mentions other tasks in passing does not link them. Upper case, each once. */
+const BODY_WORDS = 'implements|implement|fixes|fix|fixed|closes|close|closed|resolves|resolve|resolved|part of|step of';
+export function prKeysIn(pr, key) {
+  const k = `(?<![A-Za-z0-9])${key}-(\\d+)(?![A-Za-z0-9])`;
+  const named = [
+    ...[pr.title, pr.branch].flatMap(s => [...(s || '').matchAll(new RegExp(k, 'gi'))]),
+    ...(pr.body || '').matchAll(new RegExp(`\\b(?:${BODY_WORDS})\\s+${k}`, 'gi')),
+  ];
+  return [...new Set(named.map(m => `${key}-${+m[1]}`))];
+}
+
+/* What a PR's change of state since the last look means for its tasks: 'opened' when it is open now and was not (or
+   merged without ever being seen open), 'closed' when it closed unmerged after being open or a draft, else null. */
+export function prEvent(prev, state) {
+  if (state === 'open' && prev !== 'open') return 'opened';
+  if (state === 'merged' && prev !== 'merged' && prev !== 'open') return 'opened';
+  if (state === 'closed' && (prev === 'open' || prev === 'draft')) return 'closed';
+  return null;
+}
+
+const ghHeaders = token => ({
+  accept: 'application/vnd.github+json',
+  'user-agent': 'gr8r',
+  'x-github-api-version': '2022-11-28',
+  ...(token && { authorization: `Bearer ${token}` }),
+});
+const stateOfPull = pr => (pr.merged_at ? 'merged' : pr.state === 'closed' ? 'closed' : pr.draft ? 'draft' : 'open');
+
+/* Returns `pulls(repo)`: the repo's 50 most recently updated PRs as { ref, url, title, body, branch, state }, or null
+   when GitHub would not say. One call per repo, for the PR finder (syncProjectPrs in app.js). */
+export function createPullLister({ token, fetch = globalThis.fetch } = {}) {
+  return async function pulls(repo) {
+    try {
+      const r = await fetch(`https://api.github.com/repos/${repo}/pulls?state=all&sort=updated&direction=desc&per_page=50`, {
+        headers: ghHeaders(token),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) return null;
+      return (await r.json()).map(pr => ({
+        ref: `${repo}#${pr.number}`,
+        url: pr.html_url,
+        title: pr.title || '',
+        body: pr.body || '',
+        branch: pr.head?.ref || '',
+        state: stateOfPull(pr),
+      }));
+    } catch {
+      return null;
+    }
+  };
+}
+
 /* Returns `states(refs)`, resolving to { ref: 'open' | 'draft' | 'merged' | 'closed' | null }, null when GitHub
    would not say (not found, no access, rate limited or unreachable). */
 export function createPrStates({ token, fetch = globalThis.fetch, now = Date.now } = {}) {
@@ -35,13 +88,10 @@ export function createPrStates({ token, fetch = globalThis.fetch, now = Date.now
 
   async function lookup(ref) {
     const [repo, number] = ref.split('#');
-    const headers = { accept: 'application/vnd.github+json', 'user-agent': 'gr8r', 'x-github-api-version': '2022-11-28' };
-    if (token) headers.authorization = `Bearer ${token}`;
     try {
-      const r = await fetch(`https://api.github.com/repos/${repo}/pulls/${number}`, { headers, signal: AbortSignal.timeout(8000) });
+      const r = await fetch(`https://api.github.com/repos/${repo}/pulls/${number}`, { headers: ghHeaders(token), signal: AbortSignal.timeout(8000) });
       if (!r.ok) return null;
-      const pr = await r.json();
-      return pr.merged_at ? 'merged' : pr.state === 'closed' ? 'closed' : pr.draft ? 'draft' : 'open';
+      return stateOfPull(await r.json());
     } catch {
       return null;
     }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPrStates, linkedPrRefs, reviewPrs } from './github.js';
+import { createPrStates, createPullLister, linkedPrRefs, prEvent, prKeysIn, reviewPrs } from './github.js';
 
 /* A fake GitHub: `prs` maps "owner/repo#n" to the pull request JSON, or to a status code for an error. */
 function fakeGitHub(prs) {
@@ -110,4 +110,75 @@ test('reviewPrs lists tasks in Review with the PR their icon shows', () => {
     { id: 't5', key: 'A-5', ref: 'o/r#5' },
   ]);
   assert.deepEqual(reviewPrs({ tasks: [{ id: 't1', key: 'A-1', status: 'review' }] }), []);
+});
+
+test('prKeysIn finds the project key in the title, the branch, or after "implements"-like words in the body', () => {
+  const pr = (title, branch, body = '') => ({ title, branch, body });
+  assert.deepEqual(prKeysIn(pr('fix: strict CSP (RDD-29)', 'fix/rdd-29-strict-csp', 'RDD-29, follow-up to RDD-25 (#63).'), 'RDD'), ['RDD-29']);
+  assert.deepEqual(prKeysIn(pr('Test drag and drop', 'drag-drop-tests', 'Implements CRN-68.\n\nThe bug behind CRN-63 and CRN-69 got through.'), 'CRN'), [
+    'CRN-68',
+  ]);
+  assert.deepEqual(prKeysIn(pr('x', 'y', 'First step of CRN-6: a repo per project. Fixes crn-7, closes CRN-8; Part of CRN-9'), 'CRN'), [
+    'CRN-6',
+    'CRN-7',
+    'CRN-8',
+    'CRN-9',
+  ]);
+  assert.deepEqual(prKeysIn(pr('CRN-1 and CRN-1 again', 'crn-1-thing'), 'CRN'), ['CRN-1']);
+  assert.deepEqual(prKeysIn(pr('UTF-8 and XCRN-4 and CRN-55x', 'feature/crn-12a'), 'CRN'), []);
+  assert.deepEqual(prKeysIn(pr('RDD-3 is elsewhere', 'b'), 'CRN'), []);
+  assert.deepEqual(prKeysIn({ title: 'CRN-2', branch: null, body: null }, 'CRN'), ['CRN-2']);
+});
+
+test('prEvent: opening (or merging unseen), and closing after being open, are the changes that matter', () => {
+  assert.equal(prEvent(undefined, 'open'), 'opened');
+  assert.equal(prEvent('draft', 'open'), 'opened');
+  assert.equal(prEvent('closed', 'open'), 'opened');
+  assert.equal(prEvent('open', 'open'), null);
+  assert.equal(prEvent(undefined, 'merged'), 'opened', 'opened and merged between two looks');
+  assert.equal(prEvent('draft', 'merged'), 'opened');
+  assert.equal(prEvent('open', 'merged'), null, 'the merge itself is closeMergedReviews');
+  assert.equal(prEvent('open', 'closed'), 'closed');
+  assert.equal(prEvent('draft', 'closed'), 'closed');
+  assert.equal(prEvent(undefined, 'closed'), null);
+  assert.equal(prEvent(undefined, 'draft'), null);
+  assert.equal(prEvent('merged', 'merged'), null);
+});
+
+test("createPullLister lists a repo's recently updated PRs with their state, and null when GitHub will not say", async () => {
+  const calls = [];
+  const fetch = async (url, init) => {
+    calls.push({ url, headers: init.headers });
+    if (url.includes('/gone/')) return { ok: false, status: 404, json: async () => ({}) };
+    const p = (number, state, extra = {}) => ({
+      number,
+      html_url: `https://github.com/o/r/pull/${number}`,
+      title: `t${number}`,
+      body: null,
+      head: { ref: `b${number}` },
+      state,
+      draft: false,
+      merged_at: null,
+      ...extra,
+    });
+    return { ok: true, json: async () => [p(1, 'open'), p(2, 'open', { draft: true }), p(3, 'closed', { merged_at: 'x' }), p(4, 'closed')] };
+  };
+  const pulls = createPullLister({ fetch, token: 'tok' });
+  assert.deepEqual(await pulls('o/r'), [
+    { ref: 'o/r#1', url: 'https://github.com/o/r/pull/1', title: 't1', body: '', branch: 'b1', state: 'open' },
+    { ref: 'o/r#2', url: 'https://github.com/o/r/pull/2', title: 't2', body: '', branch: 'b2', state: 'draft' },
+    { ref: 'o/r#3', url: 'https://github.com/o/r/pull/3', title: 't3', body: '', branch: 'b3', state: 'merged' },
+    { ref: 'o/r#4', url: 'https://github.com/o/r/pull/4', title: 't4', body: '', branch: 'b4', state: 'closed' },
+  ]);
+  assert.equal(calls[0].url, 'https://api.github.com/repos/o/r/pulls?state=all&sort=updated&direction=desc&per_page=50');
+  assert.equal(calls[0].headers.authorization, 'Bearer tok');
+  assert.equal(await pulls('o/gone'), null);
+  assert.equal(
+    await createPullLister({
+      fetch: async () => {
+        throw new Error('down');
+      },
+    })('o/r'),
+    null,
+  );
 });

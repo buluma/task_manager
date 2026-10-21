@@ -4,13 +4,14 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patchTask, purgeTask, rand } from './tasks.js';
+import { ApiError, archiveTask, changeCtx, createTask, findTask, listTasks, localIso, patchTask, purgeTask, rand } from './tasks.js';
 import { archiveProject, createProject, findProject, listProjects, patchProject, purgeProject } from './projects.js';
 import { addDep, addSubtask, deleteSubtask, listDeps, patchSubtask, removeDep } from './relations.js';
 import { addComment, deleteComment, editComment, listComments } from './comments.js';
+import { addComment as postComment } from '../src/core/comments.js';
 import { createNotification, listNotifications, setRead } from './notifications.js';
 import { addAgent, findAgent, listAgents } from './agents.js';
-import { createPrStates, linkedPrRefs, reviewPrs } from './github.js';
+import { createPrStates, createPullLister, linkedPrRefs, prEvent, prKeysIn, reviewPrs } from './github.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
 import { changeLabel, createLabel, deleteLabel, listLabels } from './labels.js';
 import {
@@ -57,8 +58,16 @@ const CSP = [
 /* `token` (GR8R_TOKEN) guards the task, project and priority APIs. /api/rev and /api/state stay open because
    the browser app syncs through them without credentials, so the token stops casual API use, not a determined
    write to the whole state; keep the server on a private interface. `githubToken` is for PR states (github.js);
-   `prStates` replaces that lookup in tests. */
-export function createApp({ dataFile, distDir, now = () => new Date(), token, githubToken, prStates = createPrStates({ token: githubToken }) }) {
+   `prStates` and `pulls` replace the GitHub lookups in tests. */
+export function createApp({
+  dataFile,
+  distDir,
+  now = () => new Date(),
+  token,
+  githubToken,
+  prStates = createPrStates({ token: githubToken }),
+  pulls = createPullLister({ token: githubToken }),
+}) {
   let current = readStored(dataFile);
   const digest = s => crypto.createHash('sha256').update(s).digest();
   const expected = token ? digest(`Bearer ${token}`) : null;
@@ -386,6 +395,75 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
     return keys;
   }
 
+  /* The PR finder. For each project with a `repo`, lists the repo's recent PRs and links each one that names a task of
+     the project (prKeysIn) with a "PR: <url>" comment. Against the state each PR was in at the last look, kept per
+     repo in pr-seen.json beside the data file, a PR that opens moves its open tasks to Review and one closed unmerged
+     is reported, each with an Inbox item (a merge is closeMergedReviews). The first look at a repo only links, so its
+     old PRs move nothing. Returns what it did, one line each; writes the state only when something changed. */
+  const seenFile = path.join(path.dirname(dataFile), 'pr-seen.json');
+  async function syncProjectPrs() {
+    if (!current) return [];
+    const repos = new Map();
+    for (const p of current.state.data.projects) if (p.repo && !p.archived) repos.set(p.repo, [...(repos.get(p.repo) || []), p.key]);
+    if (!repos.size) return [];
+    const listed = [];
+    for (const [repo, keys] of repos) {
+      const list = await pulls(repo);
+      if (list) listed.push({ repo, keys, list });
+    }
+    if (!listed.length) return [];
+    let seen;
+    try {
+      seen = JSON.parse(fs.readFileSync(seenFile, 'utf8'));
+    } catch {
+      seen = { repos: {} };
+    }
+    // read the state now, after the waits, and change it without another one
+    const data = current.state.data;
+    const work = [];
+    for (const { repo, keys, list } of listed) {
+      const before = seen.repos[repo];
+      for (const pr of list) {
+        const event = before ? prEvent(before[pr.ref], pr.state) : null;
+        for (const key of keys.flatMap(k => prKeysIn(pr, k))) {
+          const t = data.tasks.find(x => x.key === key && !x.archived);
+          if (!t) continue;
+          const link = !(data.comments || []).some(c => c.task === t.id && c.text === `PR: ${pr.url}`);
+          const open = !['done', 'cancelled'].includes(t.status);
+          if (link || (event && open)) work.push({ key, id: t.id, pr, link, event: open ? event : null });
+        }
+      }
+      seen.repos[repo] = Object.fromEntries(list.map(pr => [pr.ref, pr.state]));
+    }
+    const done = work.length
+      ? mutateAs(undefined, (d, p, today, t) =>
+          work.flatMap(w => {
+            const lines = [];
+            const task = d.tasks.find(x => x.id === w.id);
+            const notify = (text, snippet) =>
+              (d.notifs ??= []).push({ id: 'n' + rand(), type: 'update', by: d.me, task: w.id, text, snippet, at: t, read: false });
+            if (w.link) {
+              postComment(d, task, `PR: ${w.pr.url}`, changeCtx(d, t));
+              lines.push(`linked ${w.key} to ${w.pr.ref}`);
+            }
+            if (w.event === 'opened') {
+              const move = ['backlog', 'todo', 'progress'].includes(task.status);
+              if (move) patchTask(d, p, today, w.key, { status: 'review' }, t);
+              notify(move ? 'moved to Review' : 'PR opened', `${w.pr.ref} opened`);
+              lines.push(`${w.key}: ${w.pr.ref} opened${move ? ', moved to Review' : ''}`);
+            }
+            if (w.event === 'closed') {
+              notify('PR closed without merging', w.pr.ref);
+              lines.push(`${w.key}: ${w.pr.ref} closed without merging`);
+            }
+            return lines;
+          }),
+        )
+      : [];
+    fs.writeFileSync(seenFile, JSON.stringify(seen));
+    return done;
+  }
+
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://x');
     const route = url.pathname === '/api/state' ? handleState : url.pathname.startsWith('/api/') ? handleApi : handleStatic;
@@ -397,6 +475,7 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
     });
   });
   server.closeMergedReviews = closeMergedReviews;
+  server.syncProjectPrs = syncProjectPrs;
   return server;
 }
 

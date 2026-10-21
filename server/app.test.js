@@ -212,3 +212,85 @@ test('closeMergedReviews moves Review tasks whose PR merged to Done, once, and t
     await new Promise(r => app.close(r));
   }
 });
+
+test('syncProjectPrs links PRs that name a task in the project repo, moves a task to Review when its PR opens, and reports a close', async () => {
+  let list = [];
+  const asked = [];
+  const pulls = async repo => (asked.push(repo), repo === 'o/r' ? list : null);
+  const app = createApp({ dataFile, distDir: path.join(dir, 'dist'), prStates: async () => ({}), pulls, now: () => new Date(2026, 9, 22, 9) });
+  await new Promise(r => app.listen(0, '127.0.0.1', r));
+  const at = `http://127.0.0.1:${app.address().port}`;
+  const read = async () => (await (await fetch(`${at}/api/state`)).json()).state.data;
+  const rev = async () => (await (await fetch(`${at}/api/rev`)).json()).rev;
+  const pr = (n, state, title, body = '') => ({ ref: `o/r#${n}`, url: `https://github.com/o/r/pull/${n}`, title, body, branch: `b${n}`, state });
+  try {
+    assert.deepEqual(await app.syncProjectPrs(), []);
+    const task = (id, key, status) => ({ id, key, title: key, status, project: 'p1', labels: [], subtasks: [], order: 1, created: 1, updated: 1 });
+    const data = {
+      me: 'u1',
+      members: [{ id: 'u1', name: 'Me' }],
+      projects: [
+        { id: 'p1', key: 'A', name: 'A', repo: 'o/r' },
+        { id: 'p2', key: 'B', name: 'B', repo: 'o/gone' },
+        { id: 'p3', key: 'C', name: 'C' },
+      ],
+      tasks: [task('t1', 'A-1', 'progress'), task('t2', 'A-2', 'todo'), task('t3', 'A-3', 'done'), task('t4', 'A-4', 'progress')],
+      comments: [],
+      activity: [],
+      notifs: [],
+    };
+    await fetch(`${at}/api/state`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ baseRev: 0, state: { data, prefs: {} } }),
+    });
+
+    // first look at a repo: link what names a task, move nothing
+    list = [pr(1, 'open', 'fix (A-1)'), pr(2, 'merged', 'old work', 'Implements A-3.')];
+    assert.deepEqual((await app.syncProjectPrs()).sort(), ['linked A-1 to o/r#1', 'linked A-3 to o/r#2']);
+    assert.deepEqual(asked.sort(), ['o/gone', 'o/r']);
+    let d = await read();
+    assert.deepEqual(
+      d.comments.map(c => [c.task, c.text]),
+      [
+        ['t1', 'PR: https://github.com/o/r/pull/1'],
+        ['t3', 'PR: https://github.com/o/r/pull/2'],
+      ],
+    );
+    assert.deepEqual(
+      d.tasks.map(t => t.status),
+      ['progress', 'todo', 'done', 'progress'],
+    );
+    assert.equal(d.notifs.length, 0);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(path.dirname(dataFile), 'pr-seen.json'), 'utf8')), {
+      repos: { 'o/r': { 'o/r#1': 'open', 'o/r#2': 'merged' } },
+    });
+
+    // later: #1 closed unmerged, #3 opened for A-2, #4 opened and merged between two looks for A-4
+    list = [pr(1, 'closed', 'fix (A-1)'), pr(3, 'open', 'x', 'Fixes A-2'), pr(4, 'merged', 'A-4 quick fix'), pr(2, 'merged', 'old work', 'Implements A-3.')];
+    assert.deepEqual((await app.syncProjectPrs()).sort(), [
+      'A-1: o/r#1 closed without merging',
+      'A-2: o/r#3 opened, moved to Review',
+      'A-4: o/r#4 opened, moved to Review',
+      'linked A-2 to o/r#3',
+      'linked A-4 to o/r#4',
+    ]);
+    d = await read();
+    assert.deepEqual(
+      d.tasks.map(t => t.status),
+      ['progress', 'review', 'done', 'review'],
+    );
+    assert.deepEqual(d.notifs.map(n => [n.task, n.text, n.snippet]).sort(), [
+      ['t1', 'PR closed without merging', 'o/r#1'],
+      ['t2', 'moved to Review', 'o/r#3 opened'],
+      ['t4', 'moved to Review', 'o/r#4 opened'],
+    ]);
+
+    // nothing new: no write
+    const before = await rev();
+    assert.deepEqual(await app.syncProjectPrs(), []);
+    assert.equal(await rev(), before);
+  } finally {
+    await new Promise(r => app.close(r));
+  }
+});

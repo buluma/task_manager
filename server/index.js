@@ -21,14 +21,19 @@ const githubToken = process.env.GR8R_GITHUB_TOKEN || undefined;
 const app = createApp({ dataFile, distDir, token, githubToken });
 await listenAll(app, port, hosts);
 
-/* Tasks in Review move to Done when their linked PR merges (app.js). Open PRs are cached for 10 minutes (github.js),
-   so checking more often than that would not see a merge any sooner. */
+/* The PR finder links PRs in each project's repo to the tasks they name and moves a task to Review when its PR opens;
+   then tasks in Review move to Done when their linked PR merges (app.js). Open PRs are cached for 10 minutes
+   (github.js), so checking more often than that would not see a merge any sooner. */
 const PR_SYNC_MS = 10 * 60e3;
-const syncPrs = () =>
-  app
-    .closeMergedReviews()
-    .then(keys => keys.length && console.log(`PR merged: moved ${keys.join(', ')} to Done`))
-    .catch(e => console.error(`PR sync failed: ${e.message}`));
+const syncPrs = async () => {
+  try {
+    for (const line of await app.syncProjectPrs()) console.log(`PR finder: ${line}`);
+    const keys = await app.closeMergedReviews();
+    if (keys.length) console.log(`PR merged: moved ${keys.join(', ')} to Done`);
+  } catch (e) {
+    console.error(`PR sync failed: ${e.message}`);
+  }
+};
 setInterval(syncPrs, PR_SYNC_MS);
 syncPrs();
 
