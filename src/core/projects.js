@@ -26,8 +26,19 @@ export function makeKey(data, name) {
   return k;
 }
 
+/* The GitHub repo `text` names, as "owner/name": given that way or as a github.com URL (a trailing .git or path is
+   dropped). null for empty text, undefined for anything else. A project's `repo` is where its PRs are looked for. */
+export function repoName(text) {
+  const s = String(text ?? '').trim();
+  if (!s) return null;
+  const m = /^(?:(?:https?:\/\/)?github\.com\/)?([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:\/.*)?$/.exec(s);
+  if (!m || (!/^(?:https?:\/\/)?github\.com\//.test(s) && s.split('/').length !== 2)) return undefined;
+  if ([m[1], m[2]].some(x => /^\.+$/.test(x))) return undefined;
+  return `${m[1]}/${m[2]}`;
+}
+
 /* A new project, first in the sidebar, with you and its lead as members. Its tasks are numbered from 1. */
-export function addProject(data, { key, name, icon, color, status, team, lead, due, start, desc }, ctx) {
+export function addProject(data, { key, name, icon, color, status, team, lead, due, start, desc, repo = null }, ctx) {
   let id;
   do id = ctx.newId('p');
   while (data.projects.some(p => p.id === id));
@@ -46,6 +57,7 @@ export function addProject(data, { key, name, icon, color, status, team, lead, d
     fav: false,
     members: [...new Set([data.me, lead])],
     desc,
+    repo,
     milestones: [],
     last: 0,
   };

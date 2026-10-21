@@ -53,15 +53,15 @@ Accepted values:
 
 ## Projects
 
-| Command                      | Does                                                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `projects [--archived]`      | list projects                                                                                          |
-| `project show KEY`           | one project                                                                                            |
-| `project add NAME [options]` | create a project: `--key`, `--desc`, `--color`, `--icon`, `--status`, `--due`, `--lead`                |
-| `project set KEY [options]`  | change `--name`, `--desc`, `--color`, `--icon`, `--status`, `--due` or `--lead`; the key never changes |
-| `project rm KEY`             | archive the project, keeping its tasks                                                                 |
-| `project restore KEY`        | bring an archived project back                                                                         |
-| `project rm KEY --purge`     | delete an archived project with its tasks, comments and activity for good                              |
+| Command                      | Does                                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `projects [--archived]`      | list projects                                                                                                                        |
+| `project show KEY`           | one project                                                                                                                          |
+| `project add NAME [options]` | create a project: `--key`, `--desc`, `--color`, `--icon`, `--status`, `--due`, `--lead`, `--repo OWNER/NAME` (its GitHub repo)       |
+| `project set KEY [options]`  | change `--name`, `--desc`, `--color`, `--icon`, `--status`, `--due`, `--lead` or `--repo` (`none` unlinks it); the key never changes |
+| `project rm KEY`             | archive the project, keeping its tasks                                                                                               |
+| `project restore KEY`        | bring an archived project back                                                                                                       |
+| `project rm KEY --purge`     | delete an archived project with its tasks, comments and activity for good                                                            |
 
 Project status is `planning`, `active`, `risk`, `hold` or `complete`. Colours are `indigo`, `blue`, `violet`, `teal`, `rose`, `amber`, `green` and `slate`.
 

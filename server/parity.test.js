@@ -378,8 +378,8 @@ depCase(
    team. */
 const projectCase = (name, ...rest) => handlerCase(`project parity: ${name}`, ...rest);
 const { dOff } = await import('../src/core/utils.js');
-const dialog = (edit, pform, name, desc) => {
-  Object.assign(fields, { '#p-name': { value: name }, '#p-desc': { value: desc } });
+const dialog = (edit, pform, name, desc, repo = '') => {
+  Object.assign(fields, { '#p-name': { value: name }, '#p-desc': { value: desc }, '#p-repo': { value: repo } });
   S.ui.modals = [{ type: 'project', edit }];
   S.ui.pform = pform;
   app.A.submitProject();
@@ -391,9 +391,33 @@ projectCase(
   d => Object.assign(d.members[1], { team: 'product' }),
 );
 projectCase(
+  'creating a project linked to a repo',
+  () =>
+    dialog(
+      undefined,
+      { icon: 'server', color: 'teal', team: 'product', lead: 'm2', due: '2026-12-01', tmpl: 'blank' },
+      'Home Lab',
+      'Racks',
+      'https://github.com/buluma/homelab',
+    ),
+  d =>
+    createProject(d, dOff(0), { name: 'Home Lab', icon: 'server', color: 'teal', lead: 'm2', due: '2026-12-01', desc: 'Racks', repo: 'buluma/homelab' }, NOW),
+  d => Object.assign(d.members[1], { team: 'product' }),
+);
+projectCase(
   'editing a project',
   () => dialog('p2', { icon: 'rocket', color: 'rose', team: 'product', lead: 'm2', due: '2026-11-15' }, 'Operations', 'Keeps it running'),
   d => patchProject(d, 'OPS', { name: 'Operations', desc: 'Keeps it running', icon: 'rocket', color: 'rose', lead: 'm2', due: '2026-11-15' }, NOW),
+);
+projectCase(
+  'linking a project to a repo in its settings',
+  () => {
+    app.A.editProject({ dataset: { id: 'p2' } });
+    const p = S.data.projects.find(x => x.id === 'p2');
+    Object.assign(fields, { '#p-name': { value: p.name }, '#p-desc': { value: p.desc }, '#p-repo': { value: 'buluma/ops' } });
+    app.A.submitProject();
+  },
+  d => patchProject(d, 'OPS', { repo: 'buluma/ops' }, NOW),
 );
 projectCase(
   'changing status from the status menu',

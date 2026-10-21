@@ -118,12 +118,24 @@ test('POST rejects bad input without changing anything', async () => {
     { name: 'x', due: '2026-02-30' },
     { name: 'x', lead: 'nobody' },
     { name: 'x', bogus: 1 },
+    { name: 'x', repo: 'not a repo' },
+    { name: 'x', repo: 5 },
   ]) {
     const r = await call('POST', '/api/projects', body);
     assert.equal(r.status, 400, JSON.stringify(body));
     assert.ok(r.body.error);
   }
   assert.equal(stored().rev, 1);
+});
+
+test('a project links a GitHub repo, given as owner/name or a URL, and null unlinks it', async () => {
+  const r = await call('POST', '/api/projects', { name: 'Site', repo: 'https://github.com/buluma/site' });
+  assert.equal(r.status, 201);
+  assert.equal(r.body.project.repo, 'buluma/site');
+  assert.equal((await call('POST', '/api/projects', { name: 'Plain' })).body.project.repo, null);
+  assert.equal((await call('PATCH', '/api/projects/gr', { repo: 'buluma/task_manager' })).body.project.repo, 'buluma/task_manager');
+  assert.equal((await call('PATCH', '/api/projects/gr', { repo: null })).body.project.repo, null);
+  assert.equal((await call('PATCH', '/api/projects/gr', { repo: 'nope' })).status, 400);
 });
 
 test('PATCH updates fields, logs a status change, and refuses to change the key', async () => {

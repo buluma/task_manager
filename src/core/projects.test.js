@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addProject, changeProject, makeKey } from './projects.js';
+import { addProject, changeProject, makeKey, repoName } from './projects.js';
 
 const NOW = 1000;
 let n = 0;
@@ -48,6 +48,7 @@ test('addProject keys the project, starts its task counter at 0, puts it first a
       fav: false,
       members: ['m1', 'm2'],
       desc: '',
+      repo: null,
       milestones: [],
       last: 0,
     },
@@ -55,6 +56,7 @@ test('addProject keys the project, starts its task counter at 0, puts it first a
   assert.equal(d.projOrder[0], p.id);
   assert.deepEqual(d.activity[0], { id: d.activity[0].id, by: 'm2', verb: 'created project', task: null, project: p.id, at: NOW, extra: '' });
   assert.equal(addProject(d, { name: 'X', key: 'ZZ' }, ctx).key, 'ZZ');
+  assert.equal(addProject(d, { name: 'Y', repo: 'buluma/task_manager' }, ctx).repo, 'buluma/task_manager');
 });
 
 test('changeProject applies what changed, adds a new lead to the members and logs a status change', () => {
@@ -77,4 +79,16 @@ test('changeProject archives and restores through the archive', () => {
   assert.deepEqual([p.archived, p.archivedAt], [true, NOW]);
   changeProject(d, p, { archived: false }, ctx);
   assert.deepEqual([p.archived, p.archivedAt], [false, null]);
+});
+
+test('repoName reads a GitHub repo as owner/name from that, a github.com URL, or nothing', () => {
+  assert.equal(repoName('buluma/task_manager'), 'buluma/task_manager');
+  assert.equal(repoName('  buluma/ansible-role-x.js  '), 'buluma/ansible-role-x.js');
+  assert.equal(repoName('https://github.com/buluma/task_manager'), 'buluma/task_manager');
+  assert.equal(repoName('https://github.com/buluma/task_manager.git'), 'buluma/task_manager');
+  assert.equal(repoName('github.com/buluma/task_manager/pull/3'), 'buluma/task_manager');
+  assert.equal(repoName(''), null);
+  assert.equal(repoName('   '), null);
+  for (const bad of ['task_manager', 'a/b/c d', 'https://gitlab.com/a/b', 'https://github.com.evil.example/a/b', 'a b/c', '../x'])
+    assert.equal(repoName(bad), undefined, bad);
 });

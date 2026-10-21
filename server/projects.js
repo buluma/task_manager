@@ -2,12 +2,12 @@
    src/core/projects.js and archive.js, the same code the app runs; this module validates and picks the API's defaults.
    Like tasks.js, every function validates before it mutates. Deleting archives, so the app can restore it. */
 import { archiveProject as archive, removeProject } from '../src/core/archive.js';
-import { addProject, changeProject } from '../src/core/projects.js';
+import { addProject, changeProject, repoName } from '../src/core/projects.js';
 import { PCOLORS, PSTAT } from '../src/core/constants.js';
 import { ApiError, bad, changeCtx, isDate } from './tasks.js';
 
-const CREATE = ['name', 'key', 'desc', 'color', 'icon', 'status', 'due', 'lead'];
-const EDITABLE = ['name', 'desc', 'color', 'icon', 'status', 'due', 'lead', 'archived'];
+const CREATE = ['name', 'key', 'desc', 'color', 'icon', 'status', 'due', 'lead', 'repo'];
+const EDITABLE = ['name', 'desc', 'color', 'icon', 'status', 'due', 'lead', 'repo', 'archived'];
 
 export function findProject(data, ref) {
   const r = String(ref).toLowerCase();
@@ -60,6 +60,10 @@ function clean(data, input, allowed) {
         if (!data.members.some(m => m.id === v)) throw bad('lead must be a member id');
         out.lead = v;
         break;
+      case 'repo':
+        if (v !== null && (typeof v !== 'string' || !repoName(v))) throw bad('repo must be a GitHub repo as OWNER/NAME (or its github.com URL), or null');
+        out.repo = v === null ? null : repoName(v);
+        break;
       case 'archived':
         if (typeof v !== 'boolean') throw bad('archived must be true or false');
         out.archived = v;
@@ -87,6 +91,7 @@ export function createProject(data, today, input, now) {
       due: f.due ?? null,
       start: today,
       desc: f.desc || '',
+      repo: f.repo ?? null,
     },
     changeCtx(data, now),
   );

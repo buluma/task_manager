@@ -139,6 +139,10 @@ test('project add, set and rm manage projects; --archived lists the removed ones
   assert.equal((await run(['project', 'set', 'WEB', '--due', 'none'])).code, 0);
   p = JSON.parse((await run(['project', 'show', 'web', '--json'])).stdout);
   assert.equal(p.due, null);
+  assert.equal((await run(['project', 'set', 'WEB', '--repo', 'https://github.com/buluma/site'])).code, 0);
+  assert.match((await run(['project', 'show', 'web'])).stdout, /repo +buluma\/site/);
+  assert.equal((await run(['project', 'set', 'WEB', '--repo', 'none'])).code, 0);
+  assert.equal(JSON.parse((await run(['project', 'show', 'web', '--json'])).stdout).repo, null);
   assert.equal((await run(['project', 'rm', 'WEB'])).code, 0);
   assert.doesNotMatch((await run(['projects'])).stdout, /WEB/);
   assert.match((await run(['projects', '--archived'])).stdout, /WEB\s+Site\s+\[archived\]/);
