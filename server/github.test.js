@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPrStates, linkedPrRefs } from './github.js';
+import { createPrStates, linkedPrRefs, reviewPrs } from './github.js';
 
 /* A fake GitHub: `prs` maps "owner/repo#n" to the pull request JSON, or to a status code for an error. */
 function fakeGitHub(prs) {
@@ -83,4 +83,29 @@ test('linkedPrRefs finds every PR named in any comment', () => {
     ],
   };
   assert.deepEqual([...linkedPrRefs(data)].sort(), ['buluma/task_manager#14', 'o/r.js#2', 'o/r.js#3']);
+});
+
+test('reviewPrs lists tasks in Review with the PR their icon shows', () => {
+  const data = {
+    tasks: [
+      { id: 't1', key: 'A-1', status: 'review' },
+      { id: 't2', key: 'A-2', status: 'progress' },
+      { id: 't3', key: 'A-3', status: 'review' },
+      { id: 't4', key: 'A-4', status: 'review', archived: true },
+      { id: 't5', key: 'A-5', status: 'review' },
+    ],
+    comments: [
+      { task: 't1', at: 1, text: 'PR: https://github.com/o/r/pull/1' },
+      { task: 't1', at: 2, text: 'PR: https://github.com/o/r/pull/7' },
+      { task: 't2', at: 1, text: 'PR: https://github.com/o/r/pull/2' },
+      { task: 't3', at: 1, text: 'no link here' },
+      { task: 't4', at: 1, text: 'PR: https://github.com/o/r/pull/4' },
+      { task: 't5', at: 1, text: 'PR: https://github.com/o/r/pull/5' },
+    ],
+  };
+  assert.deepEqual(reviewPrs(data), [
+    { id: 't1', key: 'A-1', ref: 'o/r#7' },
+    { id: 't5', key: 'A-5', ref: 'o/r#5' },
+  ]);
+  assert.deepEqual(reviewPrs({ tasks: [{ id: 't1', key: 'A-1', status: 'review' }] }), []);
 });

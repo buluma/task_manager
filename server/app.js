@@ -4,13 +4,13 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patchTask, purgeTask } from './tasks.js';
+import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patchTask, purgeTask, rand } from './tasks.js';
 import { archiveProject, createProject, findProject, listProjects, patchProject, purgeProject } from './projects.js';
 import { addDep, addSubtask, deleteSubtask, listDeps, patchSubtask, removeDep } from './relations.js';
 import { addComment, deleteComment, listComments } from './comments.js';
 import { createNotification, listNotifications, setRead } from './notifications.js';
 import { addAgent, findAgent, listAgents } from './agents.js';
-import { createPrStates, linkedPrRefs } from './github.js';
+import { createPrStates, linkedPrRefs, reviewPrs } from './github.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
 import { changeLabel, createLabel, deleteLabel, listLabels } from './labels.js';
 import {
@@ -345,7 +345,46 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
     fs.createReadStream(file).pipe(res);
   }
 
-  return http.createServer((req, res) => {
+  /* Moves each task in Review whose linked PR has merged to Done, with an Inbox item naming the PR, and returns their
+     keys. index.js runs it every 10 minutes. A task is moved once per PR while the server runs, so one put back in
+     Review by hand stays there. Writes only when something moves. */
+  const closed = new Set();
+  async function closeMergedReviews() {
+    if (!current) return [];
+    const unseen = w => !closed.has(`${w.id} ${w.ref}`);
+    const refs = [
+      ...new Set(
+        reviewPrs(current.state.data)
+          .filter(unseen)
+          .map(w => w.ref),
+      ),
+    ];
+    if (!refs.length) return [];
+    const states = await prStates(refs);
+    // read again after the wait: the state may have moved on while GitHub answered
+    const merged = reviewPrs(current.state.data).filter(w => unseen(w) && states[w.ref] === 'merged');
+    if (!merged.length) return [];
+    const keys = mutateAs(undefined, (d, p, today, t) =>
+      merged.map(w => {
+        patchTask(d, p, today, w.key, { status: 'done' }, t);
+        (d.notifs ??= []).push({
+          id: 'n' + rand(),
+          type: 'update',
+          by: d.me,
+          task: w.id,
+          text: 'moved to Done',
+          snippet: `${w.ref} merged`,
+          at: t,
+          read: false,
+        });
+        return w.key;
+      }),
+    );
+    for (const w of merged) closed.add(`${w.id} ${w.ref}`);
+    return keys;
+  }
+
+  const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://x');
     const route = url.pathname === '/api/state' ? handleState : url.pathname.startsWith('/api/') ? handleApi : handleStatic;
     Promise.resolve(route(req, res, url)).catch(e => {
@@ -355,6 +394,8 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
       else res.end();
     });
   });
+  server.closeMergedReviews = closeMergedReviews;
+  return server;
 }
 
 function isFile(file) {
