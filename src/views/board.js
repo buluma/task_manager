@@ -26,7 +26,7 @@ export function kcard(t, opt = {}) {
     <div class="hacts"><button class="ibtn ibtn-xs" data-a="toggleDone" data-id="${t.id}" data-tip="${t.status === 'done' ? 'Reopen' : 'Mark complete'}" aria-label="${t.status === 'done' ? 'Reopen' : 'Mark complete'}">${ic(t.status === 'done' ? 'rotate-ccw' : 'check', 13)}</button><button class="ibtn ibtn-xs" data-a="editTask" data-id="${t.id}" data-tip="Quick edit" aria-label="Quick edit">${ic('pencil', 12)}</button><button class="ibtn ibtn-xs" data-a="ctxBtn" data-ctx="task" data-id="${t.id}" aria-label="More">${ic('ellipsis', 13)}</button></div>
   </div>`;
 }
-/* `ts` arrive sorted by the view (applyView): manual order by default, or whatever Sort is set to. */
+/* `ts` arrive sorted by the view (applyView): newest first by default, or whatever Sort is set to. */
 export function boardHtml(ts, key, opt = {}) {
   return `<div class="board" data-keep="board:${key}">${STATUSES.map(s => {
     const col = ts.filter(t => t.status === s.id);

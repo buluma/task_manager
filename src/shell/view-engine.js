@@ -63,7 +63,8 @@ export function viewOf(key) {
   if (!S.views[key])
     S.views[key] = {
       filters: [],
-      sort: { f: 'manual', dir: 1 },
+      /* My Tasks keeps manual, which pageMyTasks reads as "by due date" */
+      sort: { f: key === 'mytasks' ? 'manual' : 'created', dir: 1 },
       group: key === 'tasks' || key === 'mytasks' ? 'status' : 'status',
       q: '',
       hidden: ['start', 'created', 'deps'],
