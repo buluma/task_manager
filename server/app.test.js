@@ -152,3 +152,63 @@ test('GET /api/prs answers, without the token, only for PRs linked in a comment'
     await new Promise(r => app.close(r));
   }
 });
+
+test('closeMergedReviews moves Review tasks whose PR merged to Done, once, and tells the Inbox', async () => {
+  const states = { 'o/r#1': 'merged', 'o/r#2': 'open', 'o/r#3': 'merged' };
+  const asked = [];
+  const prStates = async refs => (asked.push(refs), Object.fromEntries(refs.map(r => [r, states[r] ?? null])));
+  const app = createApp({ dataFile, distDir: path.join(dir, 'dist'), prStates, now: () => new Date(2026, 9, 22, 9) });
+  await new Promise(r => app.listen(0, '127.0.0.1', r));
+  const at = `http://127.0.0.1:${app.address().port}`;
+  const read = async () => (await (await fetch(`${at}/api/state`)).json()).state.data;
+  try {
+    assert.deepEqual(await app.closeMergedReviews(), []);
+    const task = (id, key, status) => ({ id, key, title: key, status, project: 'p1', labels: [], subtasks: [], order: 1, created: 1, updated: 1 });
+    const data = {
+      me: 'u1',
+      members: [{ id: 'u1', name: 'Me' }],
+      projects: [{ id: 'p1', key: 'A', name: 'A' }],
+      tasks: [task('t1', 'A-1', 'review'), task('t2', 'A-2', 'review'), task('t3', 'A-3', 'progress')],
+      comments: [
+        { id: 'c1', task: 't1', at: 1, text: 'PR: https://github.com/o/r/pull/1' },
+        { id: 'c2', task: 't2', at: 1, text: 'PR: https://github.com/o/r/pull/2' },
+        { id: 'c3', task: 't3', at: 1, text: 'PR: https://github.com/o/r/pull/3' },
+      ],
+      activity: [],
+      notifs: [],
+    };
+    await fetch(`${at}/api/state`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ baseRev: 0, state: { data, prefs: {} } }),
+    });
+    assert.deepEqual(await app.closeMergedReviews(), ['A-1']);
+    let d = await read();
+    assert.deepEqual(
+      d.tasks.map(t => t.status),
+      ['done', 'review', 'progress'],
+    );
+    assert.equal(d.notifs.length, 1);
+    assert.equal(d.notifs[0].task, 't1');
+    assert.match(d.notifs[0].snippet, /o\/r#1 merged/);
+    assert.deepEqual(asked, [['o/r#1', 'o/r#2']]);
+    const rev = (await (await fetch(`${at}/api/rev`)).json()).rev;
+
+    // nothing new merged: no write
+    assert.deepEqual(await app.closeMergedReviews(), []);
+    assert.equal((await (await fetch(`${at}/api/rev`)).json()).rev, rev);
+
+    // put back in Review by hand, it stays there
+    d = await read();
+    d.tasks[0].status = 'review';
+    await fetch(`${at}/api/state`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ baseRev: rev, state: { data: d, prefs: {} } }),
+    });
+    assert.deepEqual(await app.closeMergedReviews(), []);
+    assert.equal((await read()).tasks[0].status, 'review');
+  } finally {
+    await new Promise(r => app.close(r));
+  }
+});

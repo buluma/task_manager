@@ -18,5 +18,18 @@ const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..',
 const token = process.env.GR8R_TOKEN || undefined;
 const githubToken = process.env.GR8R_GITHUB_TOKEN || undefined;
 
-await listenAll(createApp({ dataFile, distDir, token, githubToken }), port, hosts);
+const app = createApp({ dataFile, distDir, token, githubToken });
+await listenAll(app, port, hosts);
+
+/* Tasks in Review move to Done when their linked PR merges (app.js). Open PRs are cached for 10 minutes (github.js),
+   so checking more often than that would not see a merge any sooner. */
+const PR_SYNC_MS = 10 * 60e3;
+const syncPrs = () =>
+  app
+    .closeMergedReviews()
+    .then(keys => keys.length && console.log(`PR merged: moved ${keys.join(', ')} to Done`))
+    .catch(e => console.error(`PR sync failed: ${e.message}`));
+setInterval(syncPrs, PR_SYNC_MS);
+syncPrs();
+
 console.log(`gr8r listening on ${hosts.map(h => `http://${h}:${port}`).join(' and ')}, data in ${dataFile}${token ? ', API token required' : ''}`);

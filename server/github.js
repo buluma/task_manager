@@ -1,7 +1,7 @@
 /* PR states for the app's PR icons, looked up on GitHub and cached. GR8R_GITHUB_TOKEN (a fine-grained token with
    read access to pull requests) lets it see private repos and raises GitHub's limit from 60 calls an hour; without
    it public PRs still work. The app asks through GET /api/prs, which only answers for PRs linked in a comment. */
-import { prRefsIn } from '../src/core/pr-links.js';
+import { prLinkOf, prRef, prRefsIn } from '../src/core/pr-links.js';
 
 const OPEN_TTL = 10 * 60e3; // open and draft PRs move; merged and closed ones rarely do
 const DONE_TTL = 24 * 3600e3;
@@ -11,6 +11,16 @@ const PARALLEL = 8;
 /* Every PR named in any comment of the workspace, as "owner/repo#number" refs. */
 export function linkedPrRefs(data) {
   return new Set((data.comments || []).flatMap(c => prRefsIn(c.text)));
+}
+
+/* Tasks in Review and the PR their icon shows (the newest linked), as { id, key, ref }: the ones a merge moves to Done. */
+export function reviewPrs(data) {
+  const comments = data.comments || [];
+  return data.tasks
+    .filter(t => t.status === 'review' && !t.archived)
+    .map(t => ({ t, pr: prLinkOf(comments.filter(c => c.task === t.id)) }))
+    .filter(x => x.pr)
+    .map(({ t, pr }) => ({ id: t.id, key: t.key, ref: prRef(pr) }));
 }
 
 /* Returns `states(refs)`, resolving to { ref: 'open' | 'draft' | 'merged' | 'closed' | null }, null when GitHub
