@@ -19,7 +19,7 @@ Gr8r Studio is a personal task manager. One server holds the whole workspace; th
 ## Ground rules
 
 1. **Look before you write.** `gr8r list`, `gr8r show KEY`, `gr8r projects`, `gr8r priorities` first. Keys are `PROJECT-N` (`GR-12`, `PP-3`); lookups are case-insensitive.
-2. **Back up before bulk or destructive work.** `launchctl kickstart gui/$(id -u)/com.buluma.gr8r-backup`, then check `tail -1 ~/.gr8r/backup.log`. For one-off bulk jobs write a script with a dry run by default and `--apply` to write, test it against a throwaway server on a copy of `~/.gr8r/state.json` (`GR8R_PORT=8799 GR8R_DATA=<copy> GR8R_TOKEN=<test> GR8R_ENV_FILE= node server/index.js`), then run it live.
+2. **Back up before bulk or destructive work.** `launchctl kickstart gui/$(id -u)/com.buluma.gr8r-backup`, then check that `tail -2 ~/.gr8r/backup.log` shows a `backed up to` line from just now (the last line is usually `pushed off-site`; failures go to `~/.gr8r/backup.err.log`). For one-off bulk jobs write a script with a dry run by default and `--apply` to write, test it against a throwaway server on a copy of `~/.gr8r/state.json` (`GR8R_PORT=8799 GR8R_DATA=<copy> GR8R_TOKEN=<test> GR8R_ENV_FILE= node server/index.js`), then run it live.
 3. **Archive is the default delete.** `gr8r rm KEY` archives and `gr8r restore KEY` brings it back. `--purge` is permanent and only works on something already archived. Ask the user before any purge.
 4. **Moving a task to another project changes its key** (`GR-6` becomes `PP-1`); the old key stops working. Tell the user.
 5. **Verify after every write** with `gr8r show KEY` or `gr8r list`, and report what actually changed, not what you intended.
