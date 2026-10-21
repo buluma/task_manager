@@ -5,7 +5,7 @@ import { D, S, proj, save, task } from '../core/store.js';
 import { mutate, toast } from '../ui/toast.js';
 import { fxSet, render } from '../shell/render.js';
 import { viewOf } from '../shell/view-engine.js';
-import { columnOrders, forceManual, isManual } from '../core/reorder.js';
+import { beforeOf, dropOrders, forceManual, isManual } from '../core/reorder.js';
 import { applyPatch, updateTask } from './actions.js';
 
 export let DRAG = null;
@@ -120,7 +120,7 @@ document.addEventListener('drop', e => {
        screen; moving across columns under another sort is a status change and leaves the sort alone */
     if (here && (!moved || manual)) {
       const shown = [...here.querySelectorAll('[data-drag-card]')].map(c => c.dataset.dragCard);
-      orders = columnOrders(shown, t.id, d.before, id => task(id)?.order);
+      orders = dropOrders(shown, t.id, d.before, id => task(id)?.order);
       if (!orders) return;
     } else {
       const colTs = D()
@@ -148,16 +148,14 @@ document.addEventListener('drop', e => {
     if (switched) toast('Sorted manually to keep your order', { kind: 'info', ms: 2200 });
     if (moved) toast(`Moved “${t.title}” to ${ST[d.col].name}`, { ms: 2200 });
   } else if (d.type === 'row' && d.target) {
-    const t = task(d.id),
-      tg = task(d.target);
+    const t = task(d.id);
     const key = d.lkey;
     const v = key ? viewOf(key) : null;
-    const all = D()
-      .tasks.filter(x => !x.archived && x.id !== t.id)
-      .sort((a, b) => a.order - b.order);
-    const i = all.findIndex(x => x.id === tg.id);
-    const nb = d.pos === 'before' ? all[i - 1] : all[i + 1];
-    const order = nb ? (tg.order + nb.order) / 2 : tg.order + (d.pos === 'before' ? -1 : 1);
+    /* the rows as drawn, across every group of the list dropped on, so the sequence on screen is what's kept */
+    const list = e.target.closest?.('.tlist');
+    if (!list) return;
+    const shown = [...list.querySelectorAll('[data-task-row]')].map(r => r.dataset.taskRow);
+    const orders = dropOrders(shown, t.id, beforeOf(shown, t.id, d.target, d.pos), id => task(id)?.order);
     const patch = {};
     if (v && d.group) {
       const g = v.group;
@@ -166,9 +164,13 @@ document.addEventListener('drop', e => {
       if (g === 'assignee') patch.assignee = d.group === 'none' ? null : d.group;
       if (g === 'project' && proj(d.group)) patch.project = d.group;
     }
+    if (!orders && Object.keys(patch).every(k => t[k] === patch[k])) return;
     let switched = false;
     mutate(() => {
-      t.order = order;
+      for (const [id, o] of Object.entries(orders || {})) {
+        const x = task(id);
+        if (x && x.order !== o) x.order = o;
+      }
       applyPatch(t, patch);
       if (v) switched = forceManual(v);
     });
