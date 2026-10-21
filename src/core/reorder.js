@@ -19,14 +19,20 @@ export function dropOrders(shown, id, before, orderOf) {
   const at = before == null ? -1 : next.indexOf(before);
   next.splice(at < 0 ? next.length : at, 0, id);
   if (next.length === shown.length && next.every((x, i) => x === shown[i])) return null;
-  const slots = next.map(x => orderOf(x) ?? 0).sort((a, b) => a - b);
+  return drawnOrders(next, orderOf);
+}
+
+/* { id: order } that draws `shown` in that sequence under Manual, the tasks trading the order values they hold. A
+   board switched to Manual by a drag uses it on its other columns, so they stay as drawn instead of jumping. */
+export function drawnOrders(shown, orderOf) {
+  const slots = shown.map(x => orderOf(x) ?? 0).sort((a, b) => a - b);
   // tied values would leave the sequence to chance: lift each tie between its neighbours
   for (let i = 1; i < slots.length; i++) {
     if (slots[i] > slots[i - 1]) continue;
     const up = slots.slice(i + 1).find(x => x > slots[i - 1]);
     slots[i] = up === undefined ? slots[i - 1] + 1 : (slots[i - 1] + up) / 2;
   }
-  return Object.fromEntries(next.map((x, i) => [x, slots[i]]));
+  return Object.fromEntries(shown.map((x, i) => [x, slots[i]]));
 }
 
 /* The task a row dropped `pos` ('before' or 'after') `target` lands above in `shown`, skipping the dragged `id`;

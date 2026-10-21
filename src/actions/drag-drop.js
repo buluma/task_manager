@@ -5,7 +5,7 @@ import { D, S, proj, save, task } from '../core/store.js';
 import { mutate, toast } from '../ui/toast.js';
 import { fxSet, render } from '../shell/render.js';
 import { viewOf } from '../shell/view-engine.js';
-import { beforeOf, dropOrders, forceManual, isManual } from '../core/reorder.js';
+import { beforeOf, drawnOrders, dropOrders, forceManual, isManual } from '../core/reorder.js';
 import { applyPatch, updateTask } from './actions.js';
 
 export let DRAG = null;
@@ -124,9 +124,15 @@ document.addEventListener('drop', e => {
     /* a reorder inside the column, or a drop into one already drawn in manual order, keeps the sequence on
        screen; moving across columns under another sort is a status change and leaves the sort alone */
     if (here && (!moved || manual)) {
-      const shown = [...here.querySelectorAll('[data-drag-card]')].map(c => c.dataset.dragCard);
-      orders = dropOrders(shown, t.id, d.before, id => task(id)?.order);
+      const orderOf = id => task(id)?.order;
+      const shown = col => [...col.querySelectorAll('[data-drag-card]')].map(c => c.dataset.dragCard);
+      orders = dropOrders(shown(here), t.id, d.before, orderOf);
       if (!orders) return;
+      /* this drop switches the board to Manual: the other open columns keep the sequence they are drawn in rather than
+         jumping to their stored order (a collapsed one draws no cards to read) */
+      if (v && !moved && !manual)
+        for (const col of here.closest('.board')?.querySelectorAll('.bcol[data-drop-col]') || [])
+          if (col !== here && col.querySelector('[data-col-body]')) Object.assign(orders, drawnOrders(shown(col), orderOf));
     } else {
       const colTs = D()
         .tasks.filter(x => x.status === d.col && x.id !== t.id && !x.archived)
