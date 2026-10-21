@@ -18,6 +18,11 @@ export function prRefsIn(text) {
   return [...(text || '').matchAll(new RegExp(PR_URL, 'g'))].map(m => `${m[1]}#${+m[2]}`);
 }
 
+/* The ids of tasks with at least one comment linking a PR. */
+export function tasksWithPr(comments) {
+  return new Set((comments || []).filter(c => PR_URL.test(c.text || '')).map(c => c.task));
+}
+
 /* How a PR's state is drawn: open, draft, merged, closed, or not known (no token, not found, not fetched yet). */
 const LOOK = {
   open: ['git-pull-request', 'var(--green)', 'Open'],
