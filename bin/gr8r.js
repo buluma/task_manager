@@ -27,6 +27,7 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   deps KEY                     dep add|rm KEY OTHER_KEY   (KEY waits for OTHER_KEY)
   comments KEY
   comment KEY TEXT [--at DATE]   add a comment (--at backdates it)
+  comment edit KEY COMMENT_ID TEXT   replace a comment's text (keeps its author and date)
   comment rm KEY COMMENT_ID
   pr link KEY URL                record a GitHub PR on a task (a comment; linking twice is a no-op)
   projects [--archived]
@@ -268,6 +269,13 @@ async function main(argv) {
         if (rest.length !== 3) throw new CliError('comment rm needs a task key and a comment id');
         const { comment } = await api('DELETE', `/api/tasks/${encodeURIComponent(rest[1])}/comments/${encodeURIComponent(rest[2])}`);
         return out(comment, `deleted comment ${comment.id}`);
+      }
+      if (rest[0] === 'edit') {
+        if (rest.length < 4) throw new CliError('comment edit needs a task key, a comment id and the new text');
+        const [, taskKey, id, ...words] = rest;
+        const route = `/api/tasks/${encodeURIComponent(taskKey)}/comments/${encodeURIComponent(id)}`;
+        const { comment } = await api('PATCH', route, { text: words.join(' ') });
+        return out(comment, `edited comment ${comment.id} on ${taskKey.toUpperCase()}`);
       }
       if (rest.length < 2) throw new CliError('comment needs a task key and some text');
       const [taskKey, ...words] = rest;

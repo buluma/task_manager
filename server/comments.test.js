@@ -111,8 +111,32 @@ test('DELETE removes one comment of that task only', async () => {
   assert.ok(b);
 });
 
+test("PATCH changes a comment's text and keeps its author and time, without logging it", async () => {
+  await withTask();
+  await call('POST', '/api/tasks', { title: 'other' });
+  const a = (await call('POST', '/api/tasks/GR-1/comments', { text: 'tpyo', at: '2026-10-01T09:00:00Z' })).body.comment;
+  const o = (await call('POST', '/api/tasks/GR-2/comments', { text: 'o' })).body.comment;
+  const activity = stored().state.data.activity.length;
+  const r = await call('PATCH', `/api/tasks/gr-1/comments/${a.id}`, { text: '  typo  ' });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.comment, { ...a, text: 'typo' });
+  assert.deepEqual(
+    stored().state.data.comments.find(c => c.id === a.id),
+    { ...a, text: 'typo' },
+  );
+  assert.equal(stored().state.data.activity.length, activity);
+  const rev = stored().rev;
+  for (const body of [{}, { text: '' }, { text: '  ' }, { text: 5 }, { text: 'x', at: '2026-01-01' }, { text: 'x'.repeat(20001) }]) {
+    assert.equal((await call('PATCH', `/api/tasks/GR-1/comments/${a.id}`, body)).status, 400, JSON.stringify(body).slice(0, 60));
+  }
+  assert.equal((await call('PATCH', `/api/tasks/GR-1/comments/${o.id}`, { text: 'x' })).status, 404, "not this task's comment");
+  assert.equal((await call('PATCH', '/api/tasks/GR-1/comments/nope', { text: 'x' })).status, 404);
+  assert.equal((await call('PATCH', `/api/tasks/GR-9/comments/${a.id}`, { text: 'x' })).status, 404);
+  assert.equal(stored().rev, rev);
+});
+
 test('unsupported methods are 405', async () => {
   await withTask();
   assert.equal((await call('PUT', '/api/tasks/GR-1/comments', { text: 'x' })).status, 405);
-  assert.equal((await call('PATCH', '/api/tasks/GR-1/comments/c1', { text: 'x' })).status, 405);
+  assert.equal((await call('PUT', '/api/tasks/GR-1/comments/c1', { text: 'x' })).status, 405);
 });

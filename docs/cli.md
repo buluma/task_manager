@@ -36,6 +36,7 @@ Tasks are addressed by key, `PROJECT-N` (`GR-12`), and keys are case-insensitive
 | `dep add\|rm KEY OTHER_KEY`       | make `KEY` wait for `OTHER_KEY`, or stop waiting                                                                                                                                           |
 | `comments KEY`                    | list a task's comments                                                                                                                                                                     |
 | `comment KEY TEXT [--at DATE]`    | add a comment; `--at` backdates it and keeps it out of the activity feed                                                                                                                   |
+| `comment edit KEY ID TEXT`        | replace a comment's text; it keeps its author and date                                                                                                                                     |
 | `comment rm KEY ID`               | delete a comment                                                                                                                                                                           |
 | `pr link KEY URL`                 | record a `https://github.com/OWNER/REPO/pull/N` link as a `PR: URL` comment; linking the same PR twice does nothing                                                                        |
 

@@ -7,7 +7,7 @@ import path from 'node:path';
 import { ApiError, archiveTask, createTask, findTask, listTasks, localIso, patchTask, purgeTask, rand } from './tasks.js';
 import { archiveProject, createProject, findProject, listProjects, patchProject, purgeProject } from './projects.js';
 import { addDep, addSubtask, deleteSubtask, listDeps, patchSubtask, removeDep } from './relations.js';
-import { addComment, deleteComment, listComments } from './comments.js';
+import { addComment, deleteComment, editComment, listComments } from './comments.js';
 import { createNotification, listNotifications, setRead } from './notifications.js';
 import { addAgent, findAgent, listAgents } from './agents.js';
 import { createPrStates, linkedPrRefs, reviewPrs } from './github.js';
@@ -304,8 +304,10 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
       return json(res, 201, { comment: mutate((d, p, today, t) => addComment(d, key, body, t)) });
     }
     if (what === 'tasks' && parts[2] === 'comments' && parts.length === 4) {
-      allow('DELETE');
-      return json(res, 200, { comment: mutate(d => deleteComment(d, key, parts[3])) });
+      allow('PATCH', 'DELETE');
+      if (method === 'DELETE') return json(res, 200, { comment: mutate(d => deleteComment(d, key, parts[3])) });
+      const body = await readJson(req, 'comment');
+      return json(res, 200, { comment: mutate(d => editComment(d, key, parts[3], body)) });
     }
     if (what === 'tasks' && parts.length === 2) {
       allow('GET', 'PATCH', 'DELETE');

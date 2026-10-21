@@ -15,6 +15,11 @@ export function addComment(data, t, text, ctx, { at } = {}) {
   return c;
 }
 
+/* A fix to the text: the comment keeps its id, author, time and reactions, and the edit is not logged. */
+export function editComment(c, text) {
+  c.text = text;
+}
+
 export function removeComment(data, c) {
   data.comments = data.comments.filter(x => x !== c);
 }
