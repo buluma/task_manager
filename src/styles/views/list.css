@@ -224,8 +224,9 @@
   background: var(--surface-2);
 }
 /* The status and priority icons are inline svgs in a span; as inline content they sit on a text baseline
-   and ride high, so lay the wrappers out as flex boxes to centre them on the row. */
-.mini > span[data-tip] {
+   and ride high, so lay the wrappers out as flex boxes to centre them on the row. Not the assignee's avatar, also a
+   span with a tip, whose own grid centres its initials. */
+.mini > span[data-tip]:not(.av) {
   display: inline-flex;
 }
 .mini .tt {
