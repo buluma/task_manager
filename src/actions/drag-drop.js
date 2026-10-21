@@ -71,6 +71,7 @@ document.addEventListener('dragover', e => {
     const ref = after || body.querySelector('.addcard, .composer');
     if (line.nextSibling !== ref || line.parentNode !== body) body.insertBefore(line, ref);
     DRAG.col = col.dataset.dropCol;
+    DRAG.lkey = col.dataset.key;
     DRAG.before = after ? after.dataset.dragCard : null;
   } else if (DRAG.type === 'row') {
     const row = e.target.closest('.trow[data-task-row]');
@@ -119,11 +120,19 @@ document.addEventListener('drop', e => {
       order = prev ? (prev.order + nx.order) / 2 : nx.order - 1;
     } else order = colTs.length ? colTs[colTs.length - 1].order + 1 : t.order;
     const moved = t.status !== d.col;
+    /* only a reorder inside a column needs Manual; moving across columns is a status change */
+    const v = !moved && d.lkey ? viewOf(d.lkey) : null;
+    let switched = false;
     fxSet({ moved: t.id });
     mutate(() => {
       t.order = order;
       if (moved) applyPatch(t, { status: d.col });
+      if (v && v.sort.f !== 'manual') {
+        v.sort = { f: 'manual', dir: 1 };
+        switched = true;
+      }
     });
+    if (switched) toast('Sorted manually to keep your order', { kind: 'info', ms: 2200 });
     if (moved) toast(`Moved “${t.title}” to ${ST[d.col].name}`, { ms: 2200 });
   } else if (d.type === 'row' && d.target) {
     const t = task(d.id),
