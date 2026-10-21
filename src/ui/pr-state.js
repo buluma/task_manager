@@ -45,9 +45,12 @@ async function ask() {
   if (changed) render();
 }
 
+/* How a task's linked `pr` is drawn right now: its state's icon, colour and name (see prLook). */
+export const prLookOf = pr => prLook(stateOf(pr));
+
 /* The PR icon for a task's linked `pr`, in the state's colour, with `cls` for where it sits. */
 export function prBadge(pr, size, cls) {
-  const { icon, color, name } = prLook(stateOf(pr));
+  const { icon, color, name } = prLookOf(pr);
   const tip = `PR #${pr.number} · ${esc(pr.repo)}${name ? ` · ${name}` : ''}`;
   return `<span class="${cls}" data-tip="${tip}" aria-label="Pull request #${pr.number}${name ? `, ${name.toLowerCase()}` : ' linked'}"${color ? ` style="color:${color}"` : ''}>${ic(icon, size)}</span>`;
 }
