@@ -37,11 +37,6 @@
     transform: scale(1);
   }
 }
-@keyframes strike {
-  to {
-    background-size: 100% 1.5px;
-  }
-}
 @keyframes doneWash {
   from {
     background: var(--green-soft);
@@ -149,12 +144,6 @@
 .fx-done .done-ic {
   animation: popCheck 0.42s var(--spring) both;
 }
-.fx-done .tt,
-.fx-done .title {
-  text-decoration: none !important;
-  background: linear-gradient(currentColor, currentColor) 0 58%/0 1.5px no-repeat;
-  animation: strike 0.38s 0.1s var(--ease) forwards;
-}
 /* dropped, created */
 .kcard.fx-moved {
   animation: land 0.5s var(--spring) both;
@@ -227,12 +216,6 @@
   .fx-route .prog > i,
   .fx-route .stackbar i {
     animation: none !important;
-  }
-  .fx-done .tt,
-  .fx-done .title {
-    animation: none;
-    background: none;
-    text-decoration: line-through !important;
   }
   .pcard:hover,
   .kcard:hover,
