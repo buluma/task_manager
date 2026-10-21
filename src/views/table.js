@@ -1,9 +1,10 @@
 /* ---------- TABLE ---------- */
 import { esc, fmtDate, iso } from '../core/utils.js';
 import { ic } from '../core/icons.js';
-import { S, isOver, mem, pColor, proj, task } from '../core/store.js';
+import { S, commentsOf, isOver, mem, pColor, proj, task } from '../core/store.js';
 import { av, dueHtml, empty, lbl, prPill, stIcon, stPill } from '../ui/helpers.js';
 import { groupTasks, viewOf } from '../shell/view-engine.js';
+import { prLinkOf } from '../core/pr-links.js';
 
 export const TCOLS = [
   ['title', 'Task', 314],
@@ -18,13 +19,19 @@ export const TCOLS = [
   ['created', 'Created', 112],
   ['project', 'Project', 156],
 ];
+function prCell(t) {
+  const pr = prLinkOf(commentsOf(t.id));
+  return pr
+    ? `<span class="faint" data-tip="PR #${pr.number} · ${esc(pr.repo)}" aria-label="Pull request #${pr.number} linked">${ic('git-pull-request', 12)}</span>`
+    : '';
+}
 export function tcell(t, c) {
   const ed = S.ui.editCell && S.ui.editCell.id === t.id && S.ui.editCell.f === c;
   switch (c) {
     case 'title':
       return ed
         ? `<td class="sticky editing"><input id="edit-cell" data-blur="commitCell" data-key-enter="commitCell" data-id="${t.id}" data-f="title" value="${esc(t.title)}" aria-label="Title"></td>`
-        : `<td class="sticky cellbtn" data-a="openTask" data-id="${t.id}" data-dbl="editCell" data-f="title" title="Double-click to rename"><span class="row" style="gap:8px">${stIcon(t.status, 13)}<span class="trunc" style="font-weight:450">${esc(t.title)}</span><span class="mono faint" style="font-size:11px;margin-left:auto">${t.key}</span></span></td>`;
+        : `<td class="sticky cellbtn" data-a="openTask" data-id="${t.id}" data-dbl="editCell" data-f="title" title="Double-click to rename"><span class="row" style="gap:8px">${stIcon(t.status, 13)}<span class="trunc" style="font-weight:450">${esc(t.title)}</span>${prCell(t)}<span class="mono faint" style="font-size:11px;margin-left:auto">${t.key}</span></span></td>`;
     case 'status':
       return `<td class="cellbtn" data-a="pop" data-pop="status" data-id="${t.id}"><span class="row" style="gap:6px">${stPill(t.status)}</span></td>`;
     case 'priority':
