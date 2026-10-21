@@ -9,7 +9,18 @@ registerHooks({
 const inert = new Proxy(function () {}, { get: (_, k) => (k === Symbol.toPrimitive ? () => '' : inert), apply: () => inert });
 /* Form inputs a handler reads with $('#id'): a test puts { value } here, keyed by selector, before calling it. */
 export const fields = {};
-const document = new Proxy(inert, { get: (_, k) => (k === 'querySelector' ? sel => fields[sel] ?? inert : inert) });
+/* For drag-drop.test.js: the listeners modules add to the document, by event type, and `page.root`, a fake-dom.js tree
+   the document's queries search first when a test sets it. Anything not found there is still inert. */
+export const listeners = {};
+export const page = { root: null };
+const document = new Proxy(inert, {
+  get: (_, k) => {
+    if (k === 'addEventListener') return (type, fn) => (listeners[type] ??= []).push(fn);
+    if (k === 'querySelector') return sel => fields[sel] ?? page.root?.querySelector(sel) ?? inert;
+    if (k === 'querySelectorAll') return sel => (page.root ? page.root.querySelectorAll(sel) : []);
+    return inert;
+  },
+});
 Object.assign(globalThis, {
   document,
   addEventListener() {},
