@@ -7,6 +7,7 @@ import { PR, ST } from '../core/constants.js';
 import { D, S, commentsOf, currentCycle, isOver, mem, pColor, proj, task } from '../core/store.js';
 import { av, dueHtml, empty, lbl, prIcon, prPill, stIcon, stPill } from '../ui/helpers.js';
 import { fxc } from '../shell/render.js';
+import { prLinkOf } from '../core/pr-links.js';
 
 /* ---------- shared list renderer ---------- */
 export const LCOLS = {
@@ -57,7 +58,9 @@ export function taskRow(t, cols, tpl, opt = {}) {
   const sel = S.ui.sel.has(t.id);
   const open = S.ui.openTasks[t.id];
   const editing = S.ui.editCell && S.ui.editCell.id === t.id && S.ui.editCell.f === 'title';
-  const cc = commentsOf(t.id).length;
+  const cs = commentsOf(t.id);
+  const cc = cs.length;
+  const pr = prLinkOf(cs);
   const sd = t.subtasks.filter(s => s.done).length;
   return `<div class="trow ${t.status === 'done' ? 'done' : ''} ${sel ? 'sel' : ''}${fxc('done', t.id)}${fxc('added', t.id)}" style="--cols:${tpl}" data-task-row="${t.id}" data-group="${opt.group || ''}" data-lkey="${opt.key || ''}" data-ctx="task" data-id="${t.id}">
     <div class="handle" draggable="${opt.drag !== false}" data-drag-row="${t.id}" aria-hidden="true">${opt.drag !== false ? ic('grip-vertical', 14) : ''}</div>
@@ -72,6 +75,7 @@ export function taskRow(t, cols, tpl, opt = {}) {
       ${editing ? `<input class="inline-in" id="edit-title" data-in="noop" data-blur="commitTitle" data-key-enter="commitTitle" data-id="${t.id}" value="${esc(t.title)}" aria-label="Task title">` : `<span class="tt">${esc(t.title)}</span>`}
       ${t.recur ? `<span class="meta-mini" data-tip="Repeats ${t.recur.toLowerCase()}">${ic('repeat', 11)}</span>` : ''}
       ${t.subtasks.length ? `<span class="meta-mini">${ic('list-checks', 11)}${sd}/${t.subtasks.length}</span>` : ''}
+      ${pr ? `<span class="meta-mini" data-tip="PR #${pr.number} · ${esc(pr.repo)}" aria-label="Pull request #${pr.number} linked">${ic('git-pull-request', 11)}</span>` : ''}
       ${cc ? `<span class="meta-mini">${ic('message-square', 11)}${cc}</span>` : ''}
     </div>
     ${cols.map(c => `<div class="c-meta c-${c === 'labels' ? 'lbl' : c}">${CELL[c](t)}</div>`).join('')}
