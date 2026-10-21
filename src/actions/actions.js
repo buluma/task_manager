@@ -464,6 +464,8 @@ A.newTask = el => {
     projectFromKey(S.ui.composer?.ctx) ||
     (S.ui.drawer && task(S.ui.drawer)?.project) ||
     visibleProjects().find(p => canSee(p) && p.status !== 'complete')?.id;
+  // as addTask's defaults: starts today, due in three days (or on the day picked), shown so they can be changed
+  const shown = { due: d.due || dOff(3), start: d.due && d.due < dOff(0) ? d.due : dOff(0) };
   S.ui.form = {
     title: '',
     desc: '',
@@ -471,9 +473,8 @@ A.newTask = el => {
     status: 'todo',
     assignee: d.assignee || D().me,
     priority: 'medium',
-    // as addTask's defaults: starts today, due in three days (or on the day picked), shown so they can be changed
-    due: d.due || dOff(3),
-    start: d.due && d.due < dOff(0) ? d.due : dOff(0),
+    ...shown,
+    shown,
     labels: [],
     subtasks: [],
     recur: null,
@@ -525,6 +526,8 @@ A.submitTask = () => {
     due: f.due,
     start: f.start && f.due && f.start > f.due ? f.due : f.start,
     labels: f.labels,
+    // a task put in the backlog is not scheduled: drop the dates the dialog filled in unless they were changed
+    ...(!m.edit && f.status === 'backlog' && f.shown && { due: f.due === f.shown.due ? null : f.due, start: f.start === f.shown.start ? null : f.start }),
     recur: f.recur,
     subtasks: f.subtasks,
   };

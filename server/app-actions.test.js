@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { app, S, emptyWorkspace } from './app-harness.js';
+import { app, fields, S, emptyWorkspace } from './app-harness.js';
 import { TEAMS_SEED } from '../src/core/constants.js';
 
 const SRC = new URL('../src/', import.meta.url).pathname;
@@ -127,4 +127,24 @@ test('duplicating a task takes the next key number, without skipping one', () =>
   const copy = S.data.tasks.find(x => x.id !== 't1');
   assert.equal(copy.key, 'GR-4');
   assert.equal(S.data.projects[0].seq, 4);
+});
+
+test('the New task dialog fills in today and three days out, and drops them if the task goes to the backlog untouched', async () => {
+  const p = { ...emptyWorkspace().projects[0] };
+  S.data = { ...emptyWorkspace(), teams: TEAMS_SEED.map(x => ({ ...x })), projects: [p], tasks: [] };
+  const create = (status, change = {}) => {
+    S.ui.modals = [];
+    app.A.newTask({ dataset: { project: p.id } });
+    Object.assign(S.ui.form, { status, ...change });
+    fields['#f-title'] = { value: `in ${status}` };
+    app.A.submitTask();
+    return S.data.tasks.at(-1);
+  };
+  const { dOff } = await import('../src/core/utils.js');
+  const todo = create('todo');
+  assert.deepEqual([todo.start, todo.due], [dOff(0), dOff(3)]);
+  const backlog = create('backlog');
+  assert.deepEqual([backlog.start, backlog.due], [null, null]);
+  const picked = create('backlog', { due: '2030-01-01' });
+  assert.deepEqual([picked.start, picked.due], [null, '2030-01-01']);
 });
