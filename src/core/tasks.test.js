@@ -55,8 +55,8 @@ test('addTask fills the defaults, keys it from its project, puts it last and log
       status: 'backlog',
       assignee: null,
       priority: 'none',
-      due: null,
-      start: null,
+      due: '1970-01-04',
+      start: '1970-01-01',
       labels: [],
       subtasks: [],
       deps: [],
@@ -151,4 +151,18 @@ test('moving to another project re-keys the task from that project; archived goe
   assert.deepEqual([d.tasks[0].archived, d.activity[0].verb], [true, 'archived']);
   changeTask(d, d.tasks[0], { archived: false }, ctx);
   assert.deepEqual([d.tasks[0].archived, d.activity[0].verb], [false, 'restored']);
+});
+
+test('a new task starts the day it is made and is due three days later, unless dates are given or cleared', () => {
+  const at = { ...ctx, now: new Date(2026, 9, 22, 23, 30).getTime() };
+  const make = fields => addTask(state(), state().projects[0], { title: 'x', ...fields }, at);
+  const dates = t => [t.start, t.due];
+  assert.deepEqual(dates(make({})), ['2026-10-22', '2026-10-25']);
+  assert.deepEqual(dates(make({ due: '2026-11-30' })), ['2026-10-22', '2026-11-30']);
+  assert.deepEqual(dates(make({ start: '2026-11-01' })), ['2026-11-01', '2026-11-04'], 'due stays after a later start');
+  assert.deepEqual(dates(make({ due: '2026-10-01' })), ['2026-10-01', '2026-10-01'], 'start stays on or before an earlier due');
+  assert.deepEqual(dates(make({ due: null, start: null })), [null, null], 'cleared on purpose');
+  assert.deepEqual(dates(make({ due: null })), ['2026-10-22', null]);
+  assert.deepEqual(dates(make({ status: 'done' })), [null, null], 'a task made already closed, such as an import, gets no dates');
+  assert.deepEqual(dates(make({ status: 'cancelled' })), [null, null]);
 });

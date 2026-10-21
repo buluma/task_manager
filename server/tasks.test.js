@@ -53,6 +53,7 @@ test('POST creates a backlog task with defaults, the next key, and persists with
   assert.equal(t.title, 'buy milk');
   assert.deepEqual([t.status, t.priority, t.assignee, t.project, t.cycle], ['backlog', 'none', 'm1', 'p1', null]);
   assert.deepEqual([t.labels, t.subtasks, t.deps], [[], [], []]);
+  assert.deepEqual([t.start, t.due], ['2026-10-17', '2026-10-20'], 'starts today, due in three days');
   assert.ok(t.id && t.created && t.updated && t.order === 1);
   const s = stored();
   assert.equal(s.rev, 2);
@@ -60,6 +61,8 @@ test('POST creates a backlog task with defaults, the next key, and persists with
   assert.equal(s.state.data.activity[0].verb, 'created');
   assert.equal((await post({ title: 'second' })).body.task.key, 'GR-2');
   assert.equal((await post({ title: 'third' })).body.task.order, 3);
+  const none = (await post({ title: 'undated', due: null, start: null })).body.task;
+  assert.deepEqual([none.start, none.due], [null, null], 'null asks for no date');
 });
 
 test('POST resolves project by key or id, case-insensitively, and continues that project counter', async () => {
@@ -363,7 +366,7 @@ test('recur is validated; completing a repeating task with a due date schedules 
 
 test('completing a task without a repeat, or without a due date, schedules nothing', async () => {
   await post({ title: 'plain', due: '2026-10-19' });
-  await post({ title: 'no due', recur: 'Daily' });
+  await post({ title: 'no due', recur: 'Daily', due: null });
   assert.equal((await call('PATCH', '/api/tasks/GR-1', { status: 'done' })).body.next, undefined);
   assert.equal((await call('PATCH', '/api/tasks/GR-2', { status: 'done' })).body.next, undefined);
   assert.equal(stored().state.data.tasks.length, 2);
