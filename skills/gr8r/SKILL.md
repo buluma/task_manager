@@ -40,7 +40,7 @@ gr8r done KEY                 # prints the next occurrence if the task repeats
 gr8r rm KEY [--purge]        gr8r restore KEY
 gr8r subtask add KEY TITLE    gr8r subtask done|reopen|rm KEY SUBTASK_ID
 gr8r deps KEY                 gr8r dep add|rm KEY OTHER_KEY      # KEY waits for OTHER_KEY
-gr8r comments KEY             gr8r comment KEY TEXT [--at DATE]  gr8r comment rm KEY COMMENT_ID
+gr8r comments KEY             gr8r comment KEY TEXT [--at DATE]  gr8r comment edit KEY COMMENT_ID TEXT  gr8r comment rm KEY COMMENT_ID
 gr8r pr link KEY URL          # records a github.com/OWNER/REPO/pull/N link as a "PR: URL" comment; repeating it is a no-op
 gr8r agent add NAME           gr8r agent list                    # agents are members with agent: true
 gr8r notify TEXT [--task KEY] [--snippet TEXT] [--type needs|comment|update|mention|assign] --as NAME
@@ -90,7 +90,7 @@ Base `http://100.100.245.3:8787`, header `Authorization: Bearer <token>` on ever
 
 ```
 GET/POST   /api/tasks            GET/PATCH/DELETE /api/tasks/KEY   (DELETE ?purge=1; PATCH archived: false restores)
-GET/POST   /api/tasks/KEY/comments   DELETE /api/tasks/KEY/comments/ID
+GET/POST   /api/tasks/KEY/comments   PATCH/DELETE /api/tasks/KEY/comments/ID
 POST       /api/tasks/KEY/subtasks   PATCH/DELETE /api/tasks/KEY/subtasks/ID
 GET/POST   /api/tasks/KEY/deps       DELETE /api/tasks/KEY/deps/OTHER_KEY
 GET/POST   /api/projects         GET/PATCH/DELETE /api/projects/KEY

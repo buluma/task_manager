@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addComment, removeComment } from './comments.js';
+import { addComment, editComment, removeComment } from './comments.js';
 
 const NOW = 1000;
 const state = () => ({
@@ -45,4 +45,12 @@ test('removeComment drops that comment only, without logging', () => {
     [keep.id],
   );
   assert.equal(d.activity.length, 1);
+});
+
+test('editComment changes only the text: same id, author, time and reactions, and nothing logged', () => {
+  const d = state();
+  const before = { ...d.comments[0] };
+  editComment(d.comments[0], 'First, fixed');
+  assert.deepEqual(d.comments[0], { ...before, text: 'First, fixed' });
+  assert.deepEqual([d.activity.length, d.tasks[0].updated], [0, 1]);
 });

@@ -275,7 +275,7 @@ test('notify raises an Inbox item as an agent; inbox lists it and read/unread ma
   assert.notEqual((await run(['inbox', 'read', 'nope'])).code, 0);
 });
 
-test('comment adds, comments lists, comment rm deletes', async () => {
+test('comment adds, comments lists, comment edit fixes, comment rm deletes', async () => {
   await run(['add', 'host']);
   const add = await run(['comment', 'GR-1', 'looks', 'good', '--at', '2026-07-12']);
   assert.equal(add.code, 0, add.stderr);
@@ -285,8 +285,13 @@ test('comment adds, comments lists, comment rm deletes', async () => {
   assert.match(list.stdout, /2026-07-12 00:00 +\w+\nlooks good/);
   assert.match(list.stdout, /ship it/);
   const id = JSON.parse((await run(['comments', 'GR-1', '--json'])).stdout)[0].id;
+  const edit = await run(['comment', 'edit', 'GR-1', id, 'looks', 'great']);
+  assert.equal(edit.code, 0, edit.stderr);
+  assert.match(edit.stdout, new RegExp(`edited comment ${id}`));
+  assert.match((await run(['comments', 'GR-1'])).stdout, /2026-07-12 00:00 +\w+\nlooks great/);
+  assert.notEqual((await run(['comment', 'edit', 'GR-1', id])).code, 0);
   assert.equal((await run(['comment', 'rm', 'GR-1', id])).code, 0);
-  assert.doesNotMatch((await run(['comments', 'GR-1'])).stdout, /looks good/);
+  assert.doesNotMatch((await run(['comments', 'GR-1'])).stdout, /looks great/);
   assert.notEqual((await run(['comment', 'GR-1'])).code, 0);
   assert.match((await run(['comments', 'GR-9'])).stderr, /no task GR-9/);
 });
