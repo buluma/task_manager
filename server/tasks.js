@@ -8,6 +8,7 @@ import { cycleStart } from '../src/core/cycles.js';
 import { scaleOf } from '../src/core/priorities.js';
 import { RECUR_DAYS } from '../src/core/recur.js';
 import { markdownToHtml } from '../src/core/markdown.js';
+import { tasksWithPr } from '../src/core/pr-links.js';
 import { addTask, changeTask } from '../src/core/tasks.js';
 
 export class ApiError extends Error {
@@ -180,6 +181,8 @@ export function listTasks(data, prefs, query, today) {
   const q = Object.fromEntries(query);
   if (q.status && !Object.hasOwn(STATUS_NAMES, q.status)) throw bad('unknown status');
   if (q.priority && !prioName(data, q.priority)) throw bad('unknown priority');
+  if (q.pr && q.pr !== 'yes' && q.pr !== 'no') throw bad('pr must be yes or no');
+  const withPr = q.pr ? tasksWithPr(data.comments) : null;
   const proj = q.project ? projectOf(data, q.project) : null;
   if (q.project && !proj) throw bad(`unknown project: ${q.project}`);
   let cycle = q.cycle;
@@ -192,6 +195,7 @@ export function listTasks(data, prefs, query, today) {
       (!proj || t.project === proj.id) &&
       (!q.assignee || t.assignee === q.assignee) &&
       (!cycle || (cycle === 'none' ? !t.cycle : t.cycle === cycle)) &&
+      (!withPr || withPr.has(t.id) === (q.pr === 'yes')) &&
       (!q.q || t.title.toLowerCase().includes(q.q.toLowerCase()) || t.key.toLowerCase() === q.q.toLowerCase()),
   );
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { prLinkOf, prLook, prRef, prRefsIn } from './pr-links.js';
+import { prLinkOf, prLook, prRef, prRefsIn, tasksWithPr } from './pr-links.js';
 
 const c = (text, at) => ({ text, at });
 
@@ -49,4 +49,16 @@ test('prLook gives each state its own icon and name, and a plain icon when the s
   );
   assert.equal(prLook('merged').name, 'Merged');
   assert.deepEqual(prLook(null), { icon: 'git-pull-request', color: '', name: '' });
+});
+
+test('tasksWithPr names the tasks that have a comment linking a PR', () => {
+  const comments = [
+    { task: 't1', text: 'PR: https://github.com/a/b/pull/1' },
+    { task: 't2', text: 'see https://github.com/a/b/issues/2' },
+    { task: 't3', text: 'looks good' },
+    { task: 't3', text: 'merged in https://github.com/a/b/pull/4' },
+    { task: 't4' },
+  ];
+  assert.deepEqual([...tasksWithPr(comments)].sort(), ['t1', 't3']);
+  assert.deepEqual([...tasksWithPr(undefined)], []);
 });

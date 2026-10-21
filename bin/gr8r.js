@@ -13,7 +13,7 @@ const BASE = (process.env.GR8R_URL || 'http://127.0.0.1:8787').replace(/\/$/, ''
 const TIMEOUT_MS = Number(process.env.GR8R_TIMEOUT_MS) || 10000;
 const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http://127.0.0.1:8787; token: $GR8R_TOKEN)
 
-  list [--status S] [--priority P] [--project KEY] [--cycle current|none|DATE] [--query TEXT] [--archived]
+  list [--status S] [--priority P] [--project KEY] [--cycle current|none|DATE] [--query TEXT] [--pr yes|no] [--archived]
   show KEY
   add TITLE [--project KEY] [--status S] [--priority P] [--due DATE] [--start DATE] [--cycle current|DATE]
             [--label L ...] [--desc TEXT [--markdown]] [--estimate E] [--completed DATE (done tasks)]
@@ -63,6 +63,7 @@ const OPTIONS = {
   cycle: { type: 'string' },
   query: { type: 'string', short: 'q' },
   archived: { type: 'boolean' },
+  pr: { type: 'string' },
   purge: { type: 'boolean' },
   markdown: { type: 'boolean' },
   title: { type: 'string' },
@@ -188,6 +189,7 @@ async function main(argv) {
         ['project', 'project'],
         ['cycle', 'cycle'],
         ['query', 'q'],
+        ['pr', 'pr'],
       ])
         if (v[flag]) q.set(name, v[flag]);
       if (v.archived) q.set('archived', '1');

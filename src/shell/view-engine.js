@@ -2,7 +2,8 @@
 import { DAY, TODAY, diffD, esc, parse } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { PR, PRIOS, STATUSES, labelOptions, sameLabel } from '../core/constants.js';
-import { D, S, canSee, isOver, mem, pColor, proj, visibleProjects } from '../core/store.js';
+import { D, S, canSee, commentsOf, isOver, mem, pColor, proj, visibleProjects } from '../core/store.js';
+import { prLinkOf } from '../core/pr-links.js';
 import { av, prIcon, stIcon } from '../ui/helpers.js';
 
 export const FIELDS = {
@@ -58,6 +59,14 @@ export const FIELDS = {
       { id: '30', name: 'Last 30 days' },
     ],
   },
+  pr: {
+    name: 'Pull request',
+    icon: 'git-pull-request',
+    opts: () => [
+      { id: 'yes', name: 'Has a PR' },
+      { id: 'no', name: 'No PR' },
+    ],
+  },
 };
 export function viewOf(key) {
   if (!S.views[key])
@@ -88,7 +97,8 @@ export function matchF(t, f) {
   } else if (f.f === 'created' || f.f === 'updated') {
     const ts = f.f === 'created' ? t.created : t.updated;
     hit = f.v.some(v => Date.now() - ts <= +v * DAY);
-  } else hit = f.v.includes(t[f.f]);
+  } else if (f.f === 'pr') hit = f.v.includes(prLinkOf(commentsOf(t.id)) ? 'yes' : 'no');
+  else hit = f.v.includes(t[f.f]);
   return f.op === 'not' ? !hit : hit;
 }
 export function applyView(ts, v) {

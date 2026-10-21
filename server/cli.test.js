@@ -81,6 +81,21 @@ test('list filters and projects command', async () => {
   assert.match((await run(['projects'])).stdout, /GR\s+Tasks/);
 });
 
+test('list --pr yes|no splits tasks by whether a comment links a PR', async () => {
+  await run(['add', 'shipped']);
+  await run(['add', 'not yet']);
+  assert.equal((await run(['pr', 'link', 'GR-1', 'https://github.com/a/b/pull/3'])).code, 0);
+  const yes = (await run(['list', '--pr', 'yes'])).stdout;
+  assert.match(yes, /shipped/);
+  assert.doesNotMatch(yes, /not yet/);
+  const no = (await run(['list', '--pr', 'no'])).stdout;
+  assert.match(no, /not yet/);
+  assert.doesNotMatch(no, /shipped/);
+  const bad = await run(['list', '--pr', 'maybe']);
+  assert.notEqual(bad.code, 0);
+  assert.match(bad.stderr, /pr must be yes or no/);
+});
+
 test('errors exit non-zero with a one-line message on stderr', async () => {
   const missing = await run(['show', 'GR-9']);
   assert.notEqual(missing.code, 0);

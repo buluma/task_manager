@@ -29,7 +29,7 @@ Gr8r Studio is a personal task manager. One server holds the whole workspace; th
 ## Commands
 
 ```
-gr8r list [--status S] [--priority P] [--project KEY] [--cycle current|none|DATE] [--query TEXT] [--archived]
+gr8r list [--status S] [--priority P] [--project KEY] [--cycle current|none|DATE] [--query TEXT] [--pr yes|no] [--archived]
 gr8r show KEY
 gr8r add TITLE [--project KEY] [--status S] [--priority P] [--due DATE] [--start DATE] [--cycle current|DATE]
          [--label L ...] [--desc TEXT [--markdown]] [--estimate E] [--completed DATE] [--recur Daily|Weekly|"Every 2 weeks"|Monthly]
