@@ -8,6 +8,7 @@ import { D, S, commentsOf, currentCycle, isOver, mem, pColor, proj, task } from 
 import { av, dueHtml, empty, lbl, prIcon, prPill, stIcon, stPill } from '../ui/helpers.js';
 import { fxc } from '../shell/render.js';
 import { prLinkOf } from '../core/pr-links.js';
+import { prBadge } from '../ui/pr-state.js';
 
 /* ---------- shared list renderer ---------- */
 export const LCOLS = {
@@ -75,7 +76,7 @@ export function taskRow(t, cols, tpl, opt = {}) {
       ${editing ? `<input class="inline-in" id="edit-title" data-in="noop" data-blur="commitTitle" data-key-enter="commitTitle" data-id="${t.id}" value="${esc(t.title)}" aria-label="Task title">` : `<span class="tt">${esc(t.title)}</span>`}
       ${t.recur ? `<span class="meta-mini" data-tip="Repeats ${t.recur.toLowerCase()}">${ic('repeat', 11)}</span>` : ''}
       ${t.subtasks.length ? `<span class="meta-mini">${ic('list-checks', 11)}${sd}/${t.subtasks.length}</span>` : ''}
-      ${pr ? `<span class="meta-mini" data-tip="PR #${pr.number} · ${esc(pr.repo)}" aria-label="Pull request #${pr.number} linked">${ic('git-pull-request', 11)}</span>` : ''}
+      ${pr ? prBadge(pr, 11, 'meta-mini') : ''}
       ${cc ? `<span class="meta-mini">${ic('message-square', 11)}${cc}</span>` : ''}
     </div>
     ${cols.map(c => `<div class="c-meta c-${c === 'labels' ? 'lbl' : c}">${CELL[c](t)}</div>`).join('')}

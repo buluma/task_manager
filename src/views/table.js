@@ -5,6 +5,7 @@ import { S, commentsOf, isOver, mem, pColor, proj, task } from '../core/store.js
 import { av, dueHtml, empty, lbl, prPill, stIcon, stPill } from '../ui/helpers.js';
 import { groupTasks, viewOf } from '../shell/view-engine.js';
 import { prLinkOf } from '../core/pr-links.js';
+import { prBadge } from '../ui/pr-state.js';
 
 export const TCOLS = [
   ['title', 'Task', 314],
@@ -21,9 +22,7 @@ export const TCOLS = [
 ];
 function prCell(t) {
   const pr = prLinkOf(commentsOf(t.id));
-  return pr
-    ? `<span class="faint" data-tip="PR #${pr.number} · ${esc(pr.repo)}" aria-label="Pull request #${pr.number} linked">${ic('git-pull-request', 12)}</span>`
-    : '';
+  return pr ? prBadge(pr, 12, 'faint') : '';
 }
 export function tcell(t, c) {
   const ed = S.ui.editCell && S.ui.editCell.id === t.id && S.ui.editCell.f === c;

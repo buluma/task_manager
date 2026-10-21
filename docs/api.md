@@ -1,6 +1,8 @@
 # HTTP API
 
-The task, project, priority, agent and notification routes need `Authorization: Bearer <token>` when `GR8R_TOKEN` is set. `/api/rev` and `/api/state` stay open for the browser app, so bind the server to a private interface (see [server.md](server.md)).
+The task, project, priority, agent and notification routes need `Authorization: Bearer <token>` when `GR8R_TOKEN` is set. `/api/rev`, `/api/state` and `/api/prs` stay open for the browser app, so bind the server to a private interface (see [server.md](server.md)).
+
+`GET /api/prs?ref=OWNER/REPO#N&ref=...` (each `ref` URL-encoded, at most 200) returns `{ "prs": { ref: state } }`, where the state is `open`, `draft`, `merged`, `closed` or `null`. It asks GitHub only about PRs a comment links, and `null` covers any other ref and any PR GitHub won't show. Answers are cached for 10 minutes, or a day once a PR is merged or closed. The app uses it to colour its PR icons.
 
 | Request                                                          | Does                                                                                                                                                                                                                                                                                                                |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

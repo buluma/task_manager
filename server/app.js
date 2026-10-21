@@ -10,6 +10,7 @@ import { addDep, addSubtask, deleteSubtask, listDeps, patchSubtask, removeDep } 
 import { addComment, deleteComment, listComments } from './comments.js';
 import { createNotification, listNotifications, setRead } from './notifications.js';
 import { addAgent, findAgent, listAgents } from './agents.js';
+import { createPrStates, linkedPrRefs } from './github.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
 import { changeLabel, createLabel, deleteLabel, listLabels } from './labels.js';
 import {
@@ -28,6 +29,7 @@ import {
 } from './people.js';
 
 const MAX_BODY = 10 * 1024 * 1024;
+const MAX_PR_REFS = 200;
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -54,8 +56,9 @@ const CSP = [
 
 /* `token` (GR8R_TOKEN) guards the task, project and priority APIs. /api/rev and /api/state stay open because
    the browser app syncs through them without credentials, so the token stops casual API use, not a determined
-   write to the whole state; keep the server on a private interface. */
-export function createApp({ dataFile, distDir, now = () => new Date(), token }) {
+   write to the whole state; keep the server on a private interface. `githubToken` is for PR states (github.js);
+   `prStates` replaces that lookup in tests. */
+export function createApp({ dataFile, distDir, now = () => new Date(), token, githubToken, prStates = createPrStates({ token: githubToken }) }) {
   let current = readStored(dataFile);
   const digest = s => crypto.createHash('sha256').update(s).digest();
   const expected = token ? digest(`Bearer ${token}`) : null;
@@ -147,6 +150,16 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token }) 
     if (what === 'rev' && parts.length === 1) {
       allow('GET');
       return json(res, 200, { rev: current?.rev ?? 0 });
+    }
+    /* Open like /api/rev, for the browser's PR icons; it only asks GitHub about PRs linked in a comment, so it
+       cannot be used to probe other repos with the token. */
+    if (what === 'prs' && parts.length === 1) {
+      allow('GET');
+      const refs = [...new Set(url.searchParams.getAll('ref'))];
+      if (refs.length > MAX_PR_REFS) throw new ApiError(400, `at most ${MAX_PR_REFS} refs at a time`);
+      const linked = linkedPrRefs(needState().data);
+      const found = await prStates(refs.filter(r => linked.has(r)));
+      return json(res, 200, { prs: Object.fromEntries(refs.map(r => [r, found[r] ?? null])) });
     }
     authorize(req, res);
     // X-Gr8r-Agent attributes a write to a registered agent; it is not authentication (see agents.js).

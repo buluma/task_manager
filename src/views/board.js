@@ -6,6 +6,7 @@ import { S, commentsOf, pColor, proj } from '../core/store.js';
 import { av, dueHtml, lbl, prIcon, progBar, stIcon } from '../ui/helpers.js';
 import { fxc } from '../shell/render.js';
 import { prLinkOf } from '../core/pr-links.js';
+import { prBadge } from '../ui/pr-state.js';
 
 export function kcard(t, opt = {}) {
   const cs = commentsOf(t.id);
@@ -23,7 +24,7 @@ export function kcard(t, opt = {}) {
       <button class="m" data-a="pop" data-pop="priority" data-id="${t.id}" data-tip="${esc(PR[t.priority].name)}" aria-label="Priority: ${esc(PR[t.priority].name)}">${prIcon(t.priority, 13)}</button>
       ${t.due ? `<button class="m" data-a="pop" data-pop="date" data-field="due" data-id="${t.id}" aria-label="Due date">${dueHtml(t)}</button>` : ''}
       ${t.recur ? `<span class="m" data-tip="Repeats ${t.recur.toLowerCase()}">${ic('repeat', 12)}</span>` : ''}
-      ${pr ? `<span class="m" data-tip="PR #${pr.number} · ${esc(pr.repo)}" aria-label="Pull request #${pr.number} linked">${ic('git-pull-request', 12)}</span>` : ''}
+      ${pr ? prBadge(pr, 12, 'm') : ''}
       ${cc ? `<span class="m" aria-label="${cc} comments">${ic('message-square', 12)}${cc}</span>` : ''}
       <button class="m" data-a="pop" data-pop="assignee" data-id="${t.id}" style="margin-left:auto" aria-label="Assignee">${av(t.assignee, 'sm')}</button>
     </div>
