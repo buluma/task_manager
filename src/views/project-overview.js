@@ -40,6 +40,7 @@ export function projOverview(p) {
           <dt>${ic('calendar', 14)}Start</dt><dd><span class="pillbtn num">${fmtDate(p.start, true)}</span></dd>
           <dt>${ic('flag', 14)}Due</dt><dd><span class="pillbtn num">${fmtDate(p.due, true)}</span></dd>
           <dt>${ic('user-plus', 14)}Members</dt><dd><button class="pillbtn" data-a="share" data-id="${p.id}">${avStack(p.members, 6)}<span class="faint">${p.members.length}</span></button></dd>
+          <dt>${ic('github', 14)}Repo</dt><dd>${p.repo ? `<a class="pillbtn" href="https://github.com/${esc(p.repo)}" target="_blank" rel="noopener noreferrer" data-tip="Open on GitHub">${esc(p.repo)}${ic('external-link', 12)}</a>` : `<button class="pillbtn faint" data-a="editProject" data-id="${p.id}">Link a repo</button>`}</dd>
         </dl></div></section>
         <section class="panel"><div class="panel-h"><h2>Milestones</h2></div><div class="panel-b">${
           (p.milestones || [])
