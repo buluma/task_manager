@@ -16,6 +16,7 @@ const dataFile = process.env.GR8R_DATA || path.join(os.homedir(), '.gr8r', 'stat
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 
 const token = process.env.GR8R_TOKEN || undefined;
+const githubToken = process.env.GR8R_GITHUB_TOKEN || undefined;
 
-await listenAll(createApp({ dataFile, distDir, token }), port, hosts);
+await listenAll(createApp({ dataFile, distDir, token, githubToken }), port, hosts);
 console.log(`gr8r listening on ${hosts.map(h => `http://${h}:${port}`).join(' and ')}, data in ${dataFile}${token ? ', API token required' : ''}`);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { prLinkOf } from './pr-links.js';
+import { prLinkOf, prLook, prRef, prRefsIn } from './pr-links.js';
 
 const c = (text, at) => ({ text, at });
 
@@ -30,4 +30,23 @@ test('a url followed by punctuation or more text is trimmed to the PR itself', (
 test('lookalike hosts are not treated as GitHub', () => {
   assert.equal(prLinkOf([c('https://github.com.evil.example/a/b/pull/5', 1)]), null);
   assert.equal(prLinkOf([c('https://notgithub.com/a/b/pull/5', 1)]), null);
+});
+
+test('prRef names a PR as owner/repo#number', () => {
+  assert.equal(prRef(prLinkOf([c('PR: https://github.com/a/b.js/pull/7', 1)])), 'a/b.js#7');
+});
+
+test('prRefsIn finds every PR in a text, and nothing in no text', () => {
+  assert.deepEqual(prRefsIn('https://github.com/a/b/pull/1 then (https://github.com/c/d/pull/02/files)'), ['a/b#1', 'c/d#2']);
+  assert.deepEqual(prRefsIn('https://github.com/a/b/issues/1'), []);
+  assert.deepEqual(prRefsIn(undefined), []);
+});
+
+test('prLook gives each state its own icon and name, and a plain icon when the state is unknown', () => {
+  assert.deepEqual(
+    ['open', 'draft', 'merged', 'closed'].map(s => prLook(s).icon),
+    ['git-pull-request', 'git-pull-request-draft', 'git-merge', 'git-pull-request-closed'],
+  );
+  assert.equal(prLook('merged').name, 'Merged');
+  assert.deepEqual(prLook(null), { icon: 'git-pull-request', color: '', name: '' });
 });
