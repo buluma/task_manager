@@ -1,13 +1,13 @@
 /* ============================================================
    MOTION: one-shot flow animations (gated to the render they belong to)
    ============================================================ */
+/* ends at the element's own opacity, not 1, so a faded element (a done timeline bar) stays faded */
 @keyframes riseIn {
   from {
     opacity: 0;
     transform: translateY(8px);
   }
   to {
-    opacity: 1;
     transform: none;
   }
 }
