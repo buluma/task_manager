@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 Object.defineProperty(globalThis, 'document', { value: { querySelectorAll: () => [] }, configurable: true });
 Object.defineProperty(globalThis, 'localStorage', { value: { getItem: () => null, setItem() {} }, configurable: true });
 globalThis.fetch = () => Promise.reject(new Error('offline'));
-const { S, allTasks, canSee, save } = await import('./store.js');
+const { S, allTasks, canSee, save, adoptState, DEVICE_PREFS, DEFAULT_PREFS } = await import('./store.js');
 
 test('canSee: a missing project is not visible instead of throwing', () => {
   assert.equal(canSee(undefined), false);
@@ -35,6 +35,44 @@ test('save caches and stages the edit before the debounce timer runs', async () 
     assert.deepEqual(writes.get('gr8r.v2').data, S.data);
     assert.deepEqual(writes.get(SYNC_KEY).pending.data, S.data);
   } finally {
+    localStorage.setItem = () => {};
+  }
+});
+
+test('remote adoption updates all shared settings and views while keeping device UI state', async () => {
+  const original = { data: S.data, prefs: S.prefs, views: S.views };
+  const collapsed = S.ui.collapsed;
+  const workspace = S.ui.workspace;
+  const writes = new Map();
+  localStorage.setItem = (key, value) => writes.set(key, JSON.parse(value));
+  try {
+    S.ui.collapsed = true;
+    S.ui.workspace = 'work';
+    S.prefs = { ...DEFAULT_PREFS, theme: 'light', accent: 'teal' };
+    const remote = { data: structuredClone(S.data), prefs: { theme: 'dark', weekStart: 0 }, views: { tasks: { sort: 'due' } }, collapsed: false };
+    adoptState(remote);
+    assert.equal(S.prefs.theme, 'light');
+    assert.equal(S.prefs.weekStart, 0);
+    assert.equal(S.prefs.accent, 'teal');
+    assert.deepEqual(S.views, remote.views);
+    assert.equal(S.ui.collapsed, true);
+    assert.equal(S.ui.workspace, 'work');
+    S.data.ws.name = 'a later local edit';
+    save();
+    clearTimeout((await import('./store.js'))._saveT);
+    const { SYNC_KEY } = await import('./sync.js');
+    const pending = writes.get(SYNC_KEY).pending;
+    assert.equal(pending.prefs.weekStart, 0);
+    for (const key of DEVICE_PREFS) assert.equal(Object.hasOwn(pending.prefs, key), false);
+    assert.equal(writes.get('gr8r.v2').prefs.theme, 'light');
+    assert.deepEqual(pending.views, remote.views);
+    assert.equal(Object.hasOwn(pending, 'collapsed'), false);
+    assert.equal(writes.get('gr8r.v2').collapsed, true);
+  } finally {
+    S.ui.collapsed = collapsed;
+    S.ui.workspace = workspace;
+    adoptState(original);
+    S.prefs = original.prefs;
     localStorage.setItem = () => {};
   }
 });

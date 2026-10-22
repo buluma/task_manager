@@ -20,6 +20,9 @@ function savedWorkspace() {
     return 'all';
   }
 }
+export const DEVICE_PREFS = ['theme', 'accent', 'side', 'density', 'motion', 'dateFmt', 'home', 'openTasks'];
+const devicePrefs = prefs => Object.fromEntries(DEVICE_PREFS.filter(k => prefs && Object.hasOwn(prefs, k)).map(k => [k, prefs[k]]));
+const sharedPrefs = prefs => Object.fromEntries(Object.entries(prefs).filter(([k]) => !DEVICE_PREFS.includes(k)));
 export const DEFAULT_PREFS = {
   theme: 'system',
   accent: 'indigo',
@@ -46,17 +49,18 @@ export function load() {
   return null;
 }
 /* The server copy wins when there is one; localStorage is the cache and the offline fallback. */
-export const saved = await initialize(load());
+const local = load();
+export const saved = await initialize(local);
 export const S = {
   data: saved?.data || emptyWorkspace(),
-  prefs: Object.assign({}, DEFAULT_PREFS, saved?.prefs || {}),
+  prefs: Object.assign({}, DEFAULT_PREFS, saved?.prefs || {}, devicePrefs(local?.prefs)),
   views: saved?.views || {},
   ui: {
     fx: {},
     route: 'home',
     params: {},
     history: [],
-    collapsed: !!saved?.collapsed,
+    collapsed: !!local?.collapsed,
     mnav: false,
     expanded: { p1: true },
     drawer: null,
@@ -94,10 +98,19 @@ export const S = {
 };
 adoptPriorities(S.data);
 adoptLabels(S.data);
-const snapshot = () => ({ data: S.data, prefs: S.prefs, views: S.views, collapsed: S.ui.collapsed });
+// Profile/calendar preferences and views are shared; appearance and navigation preferences stay on this device.
+const snapshot = () => ({ data: S.data, prefs: sharedPrefs(S.prefs), views: S.views });
+export function adoptState(state) {
+  S.data = state.data;
+  S.prefs = { ...DEFAULT_PREFS, ...sharedPrefs(state.prefs || {}), ...devicePrefs(S.prefs) };
+  S.views = state.views || {};
+  adoptPriorities(S.data);
+  adoptLabels(S.data);
+  cache();
+}
 export function cache() {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(snapshot()));
+    localStorage.setItem(STORE_KEY, JSON.stringify({ ...snapshot(), prefs: S.prefs, collapsed: S.ui.collapsed }));
   } catch {
     /* storage full or blocked: keep working in memory */
   }
