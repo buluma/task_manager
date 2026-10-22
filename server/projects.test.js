@@ -138,6 +138,19 @@ test('a project links a GitHub repo, given as owner/name or a URL, and null unli
   assert.equal((await call('PATCH', '/api/projects/gr', { repo: 'nope' })).status, 400);
 });
 
+test('a project is in the Personal or the Work workspace, Personal unless said, and the list can be filtered by it', async () => {
+  const work = (await call('POST', '/api/projects', { name: 'Client Portal', workspace: 'work' })).body.project;
+  assert.equal(work.workspace, 'work');
+  assert.equal((await call('POST', '/api/projects', { name: 'Garden' })).body.project.workspace, 'personal');
+  assert.equal((await call('POST', '/api/projects', { name: 'Bad', workspace: 'mars' })).status, 400);
+  assert.equal((await call('PATCH', '/api/projects/gr', { workspace: 'work' })).body.project.workspace, 'work');
+  assert.equal((await call('PATCH', '/api/projects/gr', { workspace: 'all' })).status, 400);
+  const keys = async q => (await call('GET', '/api/projects' + q)).body.projects.map(p => p.key);
+  assert.deepEqual(await keys('?workspace=work'), ['GR', 'CP']);
+  assert.deepEqual(await keys('?workspace=personal'), ['GAR']);
+  assert.equal((await call('GET', '/api/projects?workspace=mars')).status, 400);
+});
+
 test('PATCH updates fields, logs a status change, and refuses to change the key', async () => {
   const r = await call('PATCH', '/api/projects/gr', { name: 'Everything', status: 'risk', color: 'rose', desc: 'x', due: '2026-11-30', lead: 'm2' });
   assert.equal(r.status, 200);

@@ -4,6 +4,7 @@ import { ic } from '../core/icons.js';
 import { PRIOS, PSTAT, STATUSES, labelOptions, sameLabel } from '../core/constants.js';
 import { RECUR_DAYS } from '../core/recur.js';
 import { D, S, allTasks, canSee, me, mem, pColor, proj, task, visibleProjects } from '../core/store.js';
+import { WORKSPACES } from '../core/workspaces.js';
 import { av, avStack, prIcon, stIcon } from '../ui/helpers.js';
 import { focusKey, render } from '../shell/render.js';
 import { FIELDS, viewOf } from '../shell/view-engine.js';
@@ -216,7 +217,14 @@ export function popHtml(p) {
       break;
     }
     case 'ws':
-      inner = `<button class="mi" data-a="go" data-r="settings" data-sec="workspace">${ic('settings', 15)}Workspace settings</button><button class="mi" data-a="invite">${ic('user-plus', 15)}Add members</button>`;
+      inner = `<div class="mh">Show</div>${[{ id: 'all', name: 'All workspaces', icon: 'layers' }, ...WORKSPACES]
+        .map(
+          w =>
+            `<button class="mi" role="menuitemradio" aria-checked="${S.ui.workspace === w.id}" data-a="setWorkspace" data-v="${w.id}">${ic(w.icon, 15)}${w.name}${S.ui.workspace === w.id ? `<span class="r">${ic('check', 14)}</span>` : ''}</button>`,
+        )
+        .join(
+          '',
+        )}<div class="msep"></div><button class="mi" data-a="go" data-r="settings" data-sec="workspace">${ic('settings', 15)}Workspace settings</button><button class="mi" data-a="invite">${ic('user-plus', 15)}Add members</button>`;
       style = 'width:260px';
       break;
     case 'user':

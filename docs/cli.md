@@ -22,7 +22,7 @@ Tasks are addressed by key, `PROJECT-N` (`GR-12`), and keys are case-insensitive
 
 | Command                           | Does                                                                                                                                                                                                                                                                                                                 |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `list [filters]`                  | list tasks; filters are `--status`, `--priority`, `--project KEY`, `--cycle current\|none\|DATE`, `--query TEXT`, `--pr yes\|no` (whether a `PR: URL` comment links a PR) and `--archived`                                                                                                                           |
+| `list [filters]`                  | list tasks; filters are `--status`, `--priority`, `--project KEY`, `--cycle current\|none\|DATE`, `--query TEXT`, `--pr yes\|no` (whether a `PR: URL` comment links a PR), `--workspace personal\|work` and `--archived`                                                                                             |
 | `show KEY`                        | one task with its description and subtasks                                                                                                                                                                                                                                                                           |
 | `add TITLE [options]`             | create a task (`--project`, `--status`, `--priority`, `--due`, `--start`, `--cycle`, `--label` (repeatable), `--desc`, `--estimate`, `--completed`, `--recur`); made in To Do or later it starts today and is due in three days unless you give dates (`--due none` for none); the default backlog leaves it undated |
 | `set KEY [options]`               | change a task; the same options plus `--title` and `--project` (moving re-keys the task, so `GR-6` can become `PP-1` and the old key stops working)                                                                                                                                                                  |
@@ -53,15 +53,15 @@ Accepted values:
 
 ## Projects
 
-| Command                      | Does                                                                                                                                 |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `projects [--archived]`      | list projects                                                                                                                        |
-| `project show KEY`           | one project                                                                                                                          |
-| `project add NAME [options]` | create a project: `--key`, `--desc`, `--color`, `--icon`, `--status`, `--due`, `--lead`, `--repo OWNER/NAME` (its GitHub repo)       |
-| `project set KEY [options]`  | change `--name`, `--desc`, `--color`, `--icon`, `--status`, `--due`, `--lead` or `--repo` (`none` unlinks it); the key never changes |
-| `project rm KEY`             | archive the project, keeping its tasks                                                                                               |
-| `project restore KEY`        | bring an archived project back                                                                                                       |
-| `project rm KEY --purge`     | delete an archived project with its tasks, comments and activity for good                                                            |
+| Command                                 | Does                                                                                                                                                  |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `projects [--archived] [--workspace W]` | list projects (`--workspace personal` or `work` for one workspace)                                                                                    |
+| `project show KEY`                      | one project                                                                                                                                           |
+| `project add NAME [options]`            | create a project: `--key`, `--desc`, `--color`, `--icon`, `--status`, `--due`, `--lead`, `--repo OWNER/NAME` (its GitHub repo), `--workspace personal | work` (default personal) |
+| `project set KEY [options]`             | change `--name`, `--desc`, `--color`, `--icon`, `--status`, `--due`, `--lead`, `--repo` (`none` unlinks it) or `--workspace`; the key never changes   |
+| `project rm KEY`                        | archive the project, keeping its tasks                                                                                                                |
+| `project restore KEY`                   | bring an archived project back                                                                                                                        |
+| `project rm KEY --purge`                | delete an archived project with its tasks, comments and activity for good                                                                             |
 
 Project status is `planning`, `active`, `risk`, `hold` or `complete`. Colours are `indigo`, `blue`, `violet`, `teal`, `rose`, `amber`, `green` and `slate`.
 

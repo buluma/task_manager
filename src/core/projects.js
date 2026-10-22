@@ -38,7 +38,7 @@ export function repoName(text) {
 }
 
 /* A new project, first in the sidebar, with you and its lead as members. Its tasks are numbered from 1. */
-export function addProject(data, { key, name, icon, color, status, team, lead, due, start, desc, repo = null }, ctx) {
+export function addProject(data, { key, name, icon, color, status, team, lead, due, start, desc, repo = null, workspace = 'personal' }, ctx) {
   let id;
   do id = ctx.newId('p');
   while (data.projects.some(p => p.id === id));
@@ -58,6 +58,7 @@ export function addProject(data, { key, name, icon, color, status, team, lead, d
     members: [...new Set([data.me, lead])],
     desc,
     repo,
+    workspace,
     milestones: [],
     last: 0,
   };

@@ -122,6 +122,10 @@ test('GET lists tasks with filters and hides archived ones', async () => {
   assert.deepEqual(await titles('?cycle=none'), ['beta']);
   assert.deepEqual(await titles('?q=ALP'), ['alpha']);
   assert.deepEqual(await titles('?priority=high'), ['beta']);
+  await call('PATCH', '/api/projects/web', { workspace: 'work' });
+  assert.deepEqual(await titles('?workspace=work'), ['beta']);
+  assert.deepEqual(await titles('?workspace=personal'), ['alpha', 'gamma']);
+  assert.equal((await call('GET', '/api/tasks?workspace=mars')).status, 400);
   await call('DELETE', '/api/tasks/GR-1');
   assert.deepEqual(await titles(''), ['beta', 'gamma']);
   assert.deepEqual(await titles('?archived=1'), ['alpha', 'beta', 'gamma']);

@@ -9,6 +9,7 @@ import { scaleOf } from '../src/core/priorities.js';
 import { RECUR_DAYS } from '../src/core/recur.js';
 import { markdownToHtml } from '../src/core/markdown.js';
 import { tasksWithPr } from '../src/core/pr-links.js';
+import { WORKSPACES, inWorkspace, isWorkspace } from '../src/core/workspaces.js';
 import { addTask, changeTask } from '../src/core/tasks.js';
 
 export class ApiError extends Error {
@@ -183,6 +184,8 @@ export function listTasks(data, prefs, query, today) {
   if (q.priority && !prioName(data, q.priority)) throw bad('unknown priority');
   if (q.pr && q.pr !== 'yes' && q.pr !== 'no') throw bad('pr must be yes or no');
   const withPr = q.pr ? tasksWithPr(data.comments) : null;
+  if (q.workspace && !isWorkspace(q.workspace)) throw bad(`workspace must be one of: ${WORKSPACES.map(w => w.id).join(', ')}`);
+  const inWs = q.workspace ? new Set(data.projects.filter(p => inWorkspace(p, q.workspace)).map(p => p.id)) : null;
   const proj = q.project ? projectOf(data, q.project) : null;
   if (q.project && !proj) throw bad(`unknown project: ${q.project}`);
   let cycle = q.cycle;
@@ -196,6 +199,7 @@ export function listTasks(data, prefs, query, today) {
       (!q.assignee || t.assignee === q.assignee) &&
       (!cycle || (cycle === 'none' ? !t.cycle : t.cycle === cycle)) &&
       (!withPr || withPr.has(t.id) === (q.pr === 'yes')) &&
+      (!inWs || inWs.has(t.project)) &&
       (!q.q || t.title.toLowerCase().includes(q.q.toLowerCase()) || t.key.toLowerCase() === q.q.toLowerCase()),
   );
 }

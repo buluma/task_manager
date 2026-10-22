@@ -49,6 +49,7 @@ test('addProject keys the project, starts its task counter at 0, puts it first a
       members: ['m1', 'm2'],
       desc: '',
       repo: null,
+      workspace: 'personal',
       milestones: [],
       last: 0,
     },

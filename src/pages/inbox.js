@@ -2,17 +2,17 @@
 import { MOD, ago, esc } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { inboxCats } from '../core/inbox.js';
-import { D, S, commentsOf, mem, pColor, proj, task } from '../core/store.js';
+import { D, S, commentsOf, mem, notifsHere, pColor, proj, task } from '../core/store.js';
 import { av, empty, fmtSnippet } from '../ui/helpers.js';
 import { cellAssignee, cellDue, cellPrio, cellStatus } from '../components/task-list.js';
 import { commentHtml } from '../overlays/drawer.js';
 
 export function pageInbox() {
-  const cats = inboxCats(D().members, D().notifs);
+  const cats = inboxCats(D().members, notifsHere());
   // The remembered tab may have been hidden since (it only shows once there is someone to mention).
   const cat = cats.some(([k]) => k === S.ui.inboxCat) ? S.ui.inboxCat : 'all';
-  let ns = D()
-    .notifs.slice()
+  let ns = notifsHere()
+    .slice()
     .sort((a, b) => b.at - a.at);
   const count = k => ns.filter(n => (k === 'all' || n.type === k) && !n.read).length;
   ns = ns.filter(n => cat === 'all' || n.type === cat);

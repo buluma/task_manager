@@ -13,7 +13,7 @@ const BASE = (process.env.GR8R_URL || 'http://127.0.0.1:8787').replace(/\/$/, ''
 const TIMEOUT_MS = Number(process.env.GR8R_TIMEOUT_MS) || 10000;
 const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http://127.0.0.1:8787; token: $GR8R_TOKEN)
 
-  list [--status S] [--priority P] [--project KEY] [--cycle current|none|DATE] [--query TEXT] [--pr yes|no] [--archived]
+  list [--status S] [--priority P] [--project KEY] [--cycle current|none|DATE] [--query TEXT] [--pr yes|no] [--workspace personal|work] [--archived]
   show KEY
   add TITLE [--project KEY] [--status S] [--priority P] [--due DATE] [--start DATE] [--cycle current|DATE]
             [--label L ...] [--desc TEXT [--markdown]] [--estimate E] [--completed DATE (done tasks)]
@@ -30,10 +30,10 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
   comment edit KEY COMMENT_ID TEXT   replace a comment's text (keeps its author and date)
   comment rm KEY COMMENT_ID
   pr link KEY URL                record a GitHub PR on a task (a comment; linking twice is a no-op)
-  projects [--archived]
+  projects [--archived] [--workspace personal|work]
   project show KEY
-  project add NAME [--key KEY] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE] [--lead MEMBER] [--repo OWNER/NAME]
-  project set KEY [--name N] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE|none] [--lead MEMBER] [--repo OWNER/NAME|none]
+  project add NAME [--key KEY] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE] [--lead MEMBER] [--repo OWNER/NAME] [--workspace personal|work]
+  project set KEY [--name N] [--desc TEXT] [--color C] [--icon I] [--status S] [--due DATE|none] [--lead MEMBER] [--repo OWNER/NAME|none] [--workspace personal|work]
   project rm KEY      archive          project restore KEY    bring it back
   project rm KEY --purge    delete an archived project and its tasks for good
   notify TEXT [--task KEY] [--snippet TEXT] [--type needs|comment|update|mention|assign]   raise an Inbox item (use with --as; needs = asking for you)
@@ -87,6 +87,7 @@ const OPTIONS = {
   icon: { type: 'string' },
   lead: { type: 'string' },
   repo: { type: 'string' },
+  workspace: { type: 'string' },
   weight: { type: 'string' },
   id: { type: 'string' },
   replace: { type: 'string' },
@@ -192,6 +193,7 @@ async function main(argv) {
         ['cycle', 'cycle'],
         ['query', 'q'],
         ['pr', 'pr'],
+        ['workspace', 'workspace'],
       ])
         if (v[flag]) q.set(name, v[flag]);
       if (v.archived) q.set('archived', '1');
@@ -326,7 +328,10 @@ async function main(argv) {
       throw new CliError(`agent needs: add NAME | list\n\n${HELP}`);
     }
     case 'projects': {
-      const { projects } = await api('GET', `/api/projects${v.archived ? '?archived=1' : ''}`);
+      const pq = new URLSearchParams();
+      if (v.archived) pq.set('archived', '1');
+      if (v.workspace) pq.set('workspace', v.workspace);
+      const { projects } = await api('GET', `/api/projects${pq.toString() ? `?${pq}` : ''}`);
       return out(projects, projects.map(projectRow).join('\n'));
     }
     case 'project': {
@@ -335,13 +340,20 @@ async function main(argv) {
         if (args.length !== 1) throw new CliError(`project ${sub} needs exactly one project key`);
         return encodeURIComponent(args[0]);
       };
-      const body = () => fields(v, ['name', 'desc', 'status', 'color', 'icon', 'due', 'lead', 'repo']);
+      const body = () => fields(v, ['name', 'desc', 'status', 'color', 'icon', 'due', 'lead', 'repo', 'workspace']);
       switch (sub) {
         case 'show': {
           const { project } = await api('GET', `/api/projects/${one()}`);
           return out(
             project,
-            [projectRow(project), project.repo && `repo      ${project.repo}`, project.desc && `\n${project.desc}`].filter(Boolean).join('\n'),
+            [
+              projectRow(project),
+              `workspace ${project.workspace || 'personal'}`,
+              project.repo && `repo      ${project.repo}`,
+              project.desc && `\n${project.desc}`,
+            ]
+              .filter(Boolean)
+              .join('\n'),
           );
         }
         case 'add': {

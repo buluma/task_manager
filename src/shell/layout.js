@@ -2,7 +2,8 @@
 import { MOD, TODAY, diffD, esc, parse } from '../core/utils.js';
 import { ic, wsLogo } from '../core/icons.js';
 import { PSTAT } from '../core/constants.js';
-import { D, S, allTasks, isOpen, mem, pColor, proj, team, teamsList, visibleProjects } from '../core/store.js';
+import { D, S, allTasks, isOpen, mem, notifsHere, pColor, proj, team, teamsList, visibleProjects } from '../core/store.js';
+import { WORKSPACES } from '../core/workspaces.js';
 import { av } from '../ui/helpers.js';
 import { ROUTE_NAMES } from './render.js';
 import { pageHome } from '../pages/home.js';
@@ -82,7 +83,7 @@ export function renderSidebar() {
       <div class="row" style="gap:2px">
         <button class="ws grow" data-a="pop" data-pop="ws" aria-haspopup="menu" aria-label="Workspace menu">
           ${wsLogo(d.ws, 22)}
-          <span class="ws-name trunc">${esc(d.ws.name)}</span>
+          <span class="ws-name trunc">${esc(d.ws.name)}${u.workspace !== 'all' ? `<span class="faint"> · ${esc(WORKSPACES.find(w => w.id === u.workspace)?.name || '')}</span>` : ''}</span>
           <span class="chev-d faint">${ic('chevrons-up-down', 13)}</span>
         </button>
         ${u.collapsed ? '' : `<button class="ibtn ibtn-sm hide-m" data-a="toggleSide" data-tip="Collapse sidebar  [" aria-label="Collapse sidebar">${ic('panel-left', 15)}</button>`}
@@ -187,14 +188,14 @@ export function renderTopbar() {
     <nav class="crumbs trunc" aria-label="Breadcrumb">${crumbs()}</nav>
     <span class="sp"></span>
     <button class="topsearch" data-a="openPalette" aria-label="Search and commands">${ic('search', 14)}<span class="lbltxt">Search or jump to…</span><span class="kbd">${MOD}K</span></button>
-    <button class="ibtn" data-a="go" data-r="inbox" data-tip="Inbox" aria-label="Inbox">${ic('bell', 16)}${D().notifs.some(n => !n.read) ? '<span style="position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--surface)"></span>' : ''}</button>
+    <button class="ibtn" data-a="go" data-r="inbox" data-tip="Inbox" aria-label="Inbox">${ic('bell', 16)}${notifsHere().some(n => !n.read) ? '<span style="position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--surface)"></span>' : ''}</button>
     <button class="btn btn-secondary btn-sm" data-a="pop" data-pop="create" aria-haspopup="menu" aria-label="Create new">${ic('plus', 14)}<span class="hide-m">New</span>${ic('chevron-down', 12, 'hide-m')}</button>
     <button class="ibtn hide-m" data-a="pop" data-pop="user" aria-label="Account menu" style="width:auto;padding:0 2px">${av(D().me, 'md', false)}</button>
   </header>`;
 }
 export function renderBottomNav() {
   const r = S.ui.route;
-  const unread = D().notifs.some(n => !n.read && n.type !== 'update');
+  const unread = notifsHere().some(n => !n.read && n.type !== 'update');
   const b = (route, label, icon, extra = '') =>
     `<button class="${r === route ? 'on' : ''}" data-a="go" data-r="${route}">${ic(icon, 19)}<span>${label}</span>${extra}</button>`;
   return `<nav class="bottomnav" aria-label="Primary">
