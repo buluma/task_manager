@@ -79,7 +79,7 @@ test('/api/rev and /api/state stay open so the app keeps syncing', async () => {
   await start('s3cret');
   assert.equal((await call('GET', '/api/rev')).status, 200);
   assert.equal((await call('GET', '/api/state')).status, 200);
-  const put = await call('PUT', '/api/state', { body: { baseRev: 1, state: { data: { tasks: [] } } } });
+  const put = await call('PUT', '/api/state', { body: { baseRev: 1, state: fixture() } });
   assert.equal(put.status, 200);
 });
 

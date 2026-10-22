@@ -192,7 +192,7 @@ test('DELETE ?purge=1 permanently removes an archived project with its tasks and
   const s = stored();
   const doomed = s.state.data.projects.find(p => p.key === 'DM');
   const inDoomed = s.state.data.tasks.find(t => t.project === doomed.id);
-  s.state.data.comments = [{ id: 'c1', task: inDoomed.id }];
+  s.state.data.comments = [{ id: 'c1', text: 'Comment', task: inDoomed.id }];
   fs.writeFileSync(dataFile, JSON.stringify(s));
   await server.close();
   server = createApp({ dataFile, distDir: dir, now: () => new Date(2026, 9, 17, 12, 0, 0) });

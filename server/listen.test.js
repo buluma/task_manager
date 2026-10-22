@@ -16,7 +16,8 @@ test('hostList reads one address or a comma-separated list, defaulting to loopba
 test('listenAll serves one app on every address, so a write through one is read through the other', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gr8r-listen-'));
   const dataFile = path.join(dir, 'state.json');
-  fs.writeFileSync(dataFile, JSON.stringify({ rev: 1, state: { data: { tasks: [] }, prefs: {} } }));
+  const state = { data: { me: 'm1', members: [{ id: 'm1', name: 'Me' }], projects: [], tasks: [] }, prefs: {} };
+  fs.writeFileSync(dataFile, JSON.stringify({ rev: 1, state }));
   // The IPv4 and IPv6 loopbacks stand in for the Tailscale IP and 127.0.0.1.
   const servers = await listenAll(createApp({ dataFile, distDir: dir }), 0, ['127.0.0.1', '::1']);
   try {
@@ -25,7 +26,7 @@ test('listenAll serves one app on every address, so a write through one is read 
     const put = await fetch(`${a}/api/state`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ baseRev: 1, state: { data: { tasks: [] }, prefs: {} } }),
+      body: JSON.stringify({ baseRev: 1, state }),
     });
     assert.equal(put.status, 200);
     assert.equal((await (await fetch(`${b}/api/rev`)).json()).rev, 2);

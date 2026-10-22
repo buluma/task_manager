@@ -12,3 +12,9 @@ GR8R_HOST=$(tailscale ip -4) npm start     # http://<tailnet-ip>:8787, data in ~
 The HTTP routes are listed in [api.md](api.md).
 
 The command-line client is documented in [cli.md](cli.md).
+
+## Workspace validation and format versions
+
+The server validates whole-workspace saves before accepting them: collection shapes, unique record IDs and task/project keys, task statuses and priorities, calendar dates, and active task/project/member/dependency references. Invalid input returns HTTP 400 with a field-specific error and leaves the stored state and revision unchanged. Historical activity and Inbox references may point to deleted records.
+
+Saved workspaces carry `schemaVersion: 1`. Unversioned saves are migrated in memory by adding collections and defaults introduced after the first release; missing core task/project/member collections and workspace identity are rejected. Unsupported future versions are refused. Startup applies the same validation and migrations, trying the backup if the primary file is corrupt. Reading a legacy file does not rewrite it; its next successful save stores the migrated format.
