@@ -50,3 +50,9 @@ Dependencies point downward:
 ## Offline saves
 
 The workspace cache is written synchronously on each save. `gr8r.sync.v1` keeps the last synced revision and baseline plus a pending snapshot. A reload restores pending work before reading remote state; reconnecting sends it with its original revision, using the same three-way merge as concurrent online edits. Successful writes clear the pending snapshot. Network requests have timeouts and retry while the tab stays open. Browser storage must be available to preserve offline work across browser restarts.
+
+## Shared and device settings
+
+Profile and calendar preferences (including `name`, `title` and `weekStart`) and `views` configurations sync with workspace `data`. Idle polling and conflict merges use the same adoption function before another edit can save. Missing shared preferences receive application defaults.
+
+Appearance (`theme`, `accent`, `side`, `density`, `motion`), date formatting (`dateFmt`), navigation defaults (`home`, `openTasks`), sidebar collapse and the selected Personal/Work/All workspace remain local to each device. They stay in the browser cache and are omitted from new server snapshots. Existing server snapshots remain readable: legacy device preferences initialize a new device, but later remote adoption cannot change its local choices.

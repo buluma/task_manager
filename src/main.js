@@ -5,8 +5,6 @@
 import './styles/index.css';
 import './core/utils.js';
 import './core/icons.js';
-import { adoptPriorities } from './core/priorities.js';
-import { adoptLabels } from './core/labels.js';
 import './data/seed.js';
 import './core/store.js';
 import './ui/helpers.js';
@@ -53,7 +51,7 @@ import './actions/archive.js';
 import './actions/priorities.js';
 import './actions/labels.js';
 import { rollNow } from './actions/cycles.js';
-import { S, D, cache, canSee, proj } from './core/store.js';
+import { S, D, adoptState, canSee, proj } from './core/store.js';
 import { resolveLink } from './core/links.js';
 import { watchRemote } from './core/sync.js';
 import { A } from './actions/actions.js';
@@ -96,22 +94,14 @@ const idle = () => !S.ui.modals.length && !S.ui.composer && !S.ui.editCell && !S
 
 // Adopt changes made elsewhere (CLI, another device) unless the user is mid-edit.
 watchRemote(state => {
-  S.data = state.data;
-  adoptPriorities(S.data);
-  adoptLabels(S.data);
-  cache();
+  adoptState(state);
   render();
 }, idle);
 
 // A save lost the race and sync.js merged it with the other write. Adopt the result now, even mid-edit, or the
 // next save would undo the other write; only the redraw waits for idle. Say so only where theirs won a clash.
 window.addEventListener('gr8r:merged', ({ detail: { state, conflicts } }) => {
-  S.data = state.data;
-  S.prefs = state.prefs;
-  S.views = state.views;
-  adoptPriorities(S.data);
-  adoptLabels(S.data);
-  cache();
+  adoptState(state);
   if (idle()) render();
   if (!conflicts.length) return;
   const keys = [...new Set(conflicts.filter(c => c[0] === 'data' && c[1] === 'tasks').map(c => S.data.tasks.find(t => t.id === c[2])?.key))].filter(Boolean);
