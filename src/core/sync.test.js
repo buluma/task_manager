@@ -182,3 +182,20 @@ test('a tab first opened offline can save when the server returns without a relo
     delete globalThis.localStorage;
   }
 });
+
+test('a first offline save without a baseline retains new records when reconnecting to an existing workspace', async () => {
+  const sync = await fresh();
+  const mine = ws();
+  mine.data.tasks = [{ id: 'offline-task', key: 'GR-1', project: 'p1', title: 'new offline task', status: 'todo' }];
+  server = { rev: 3, state: ws() };
+  const seen = events();
+  try {
+    await sync.push(mine);
+    assert.equal(server.state.data.tasks.length, 3);
+    assert.equal(server.state.data.tasks.find(t => t.id === 'offline-task').title, 'new offline task');
+    assert.notEqual(server.state.data.tasks.find(t => t.id === 'offline-task').key, 'GR-1');
+    assert.equal(server.state.data.tasks.find(t => t.id === 't1').title, 'one');
+  } finally {
+    seen.stop();
+  }
+});

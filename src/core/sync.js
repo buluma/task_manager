@@ -116,7 +116,7 @@ export async function push(state) {
           window.dispatchEvent(new Event('gr8r:conflict'));
           break;
         }
-        const { state, conflicts } = mergeState(base, pending ?? sent, now.state);
+        const { state, conflicts } = mergeState(base ?? undefined, pending ?? sent, now.state);
         rev = now.rev;
         base = now.state;
         pending = state;
