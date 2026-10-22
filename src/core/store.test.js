@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 Object.defineProperty(globalThis, 'document', { value: { querySelectorAll: () => [] }, configurable: true });
 Object.defineProperty(globalThis, 'localStorage', { value: { getItem: () => null, setItem() {} }, configurable: true });
 globalThis.fetch = () => Promise.reject(new Error('offline'));
-const { S, allTasks, canSee } = await import('./store.js');
+const { S, allTasks, canSee, save } = await import('./store.js');
 
 test('canSee: a missing project is not visible instead of throwing', () => {
   assert.equal(canSee(undefined), false);
@@ -22,5 +22,19 @@ test('allTasks skips a task whose project is gone', () => {
     assert.deepEqual(allTasks(), []);
   } finally {
     S.data.tasks = tasks;
+  }
+});
+
+test('save caches and stages the edit before the debounce timer runs', async () => {
+  const writes = new Map();
+  localStorage.setItem = (key, value) => writes.set(key, JSON.parse(value));
+  const { SYNC_KEY } = await import('./sync.js');
+  try {
+    save();
+    clearTimeout((await import('./store.js'))._saveT);
+    assert.deepEqual(writes.get('gr8r.v2').data, S.data);
+    assert.deepEqual(writes.get(SYNC_KEY).pending.data, S.data);
+  } finally {
+    localStorage.setItem = () => {};
   }
 });
