@@ -311,14 +311,16 @@ test('syncProjectPrs links PRs that name a task in the project repo, moves a tas
   }
 });
 
-test('GitHub failing raises one Inbox item per outage and logs when it answers again', async t => {
+test('GitHub failing is logged at once, raised in the Inbox once it has lasted 15 minutes, and its end is logged', async t => {
   let reply = { ok: false, status: 401, json: async () => ({ message: 'Bad credentials' }) };
+  let clock = new Date(2026, 9, 22, 9, 0).getTime();
   const errors = t.mock.method(console, 'error', () => {});
   const logs = t.mock.method(console, 'log', () => {});
-  const app = createApp({ dataFile, distDir: path.join(dir, 'dist'), githubFetch: async () => reply });
+  const app = createApp({ dataFile, distDir: path.join(dir, 'dist'), githubFetch: async () => reply, now: () => new Date(clock) });
   await new Promise(r => app.listen(0, '127.0.0.1', r));
   const at = `http://127.0.0.1:${app.address().port}`;
   const inbox = async () => (await (await fetch(`${at}/api/state`)).json()).state.data.notifs;
+  const minutes = n => (clock += n * 60e3);
   try {
     const data = {
       me: 'u1',
@@ -336,16 +338,27 @@ test('GitHub failing raises one Inbox item per outage and logs when it answers a
     });
     await app.syncProjectPrs();
     await app.closeMergedReviews();
+    assert.equal((await inbox()).length, 0, 'a blip is only logged');
+    assert.equal(errors.mock.callCount(), 1);
+    assert.match(errors.mock.calls[0].arguments[0], /GitHub: 401 Bad credentials/);
+    minutes(10);
+    await app.syncProjectPrs();
+    assert.equal((await inbox()).length, 0);
+    minutes(10);
+    await app.syncProjectPrs();
+    await app.syncProjectPrs();
     let n = await inbox();
-    assert.equal(n.length, 1, 'once, though both lookups failed');
+    assert.equal(n.length, 1, 'raised once the outage has lasted 15 minutes, and only once');
     assert.equal(n[0].text, 'GitHub is refusing requests');
     assert.match(n[0].snippet, /401 Bad credentials.*GR8R_GITHUB_TOKEN/);
     assert.equal(n[0].task, undefined);
-    assert.match(errors.mock.calls[0].arguments[0], /GitHub: 401 Bad credentials/);
+    assert.equal(errors.mock.callCount(), 1, 'logged once per outage');
     reply = { ok: true, status: 200, json: async () => [] };
     await app.syncProjectPrs();
     assert.ok(logs.mock.calls.some(c => /GitHub is answering again/.test(c.arguments[0])));
     reply = { ok: false, status: 503, json: async () => ({}) };
+    await app.syncProjectPrs();
+    minutes(16);
     await app.syncProjectPrs();
     n = await inbox();
     assert.equal(n.length, 2, 'a new outage raises a new item');
