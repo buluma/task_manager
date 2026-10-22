@@ -151,8 +151,9 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
       return json(res, 400, { error: 'expected { baseRev: integer, state: { data: { tasks } } }' });
     const rev = current?.rev ?? 0;
     if (body.baseRev !== rev) return json(res, 409, { rev });
-    current = { rev: rev + 1, state: body.state };
-    writeStored(dataFile, current);
+    const next = { rev: rev + 1, state: body.state };
+    writeStored(dataFile, next);
+    current = next;
     return json(res, 200, { rev: current.rev });
   }
 
