@@ -169,8 +169,14 @@
   background: color-mix(in srgb, var(--c) 26%, transparent);
   z-index: -1;
 }
-.bar.done {
+/* done is faded; cancelled is also struck through, as on the board and list */
+.bar.done,
+.bar.cancelled {
   opacity: 0.6;
+}
+.bar.cancelled .trunc,
+.bar-lbl.cancelled {
+  text-decoration: line-through;
 }
 .bar.dragging {
   cursor: grabbing;
