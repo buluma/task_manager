@@ -16,7 +16,7 @@ npm run lint && npm run format:check # both run in CI, along with test and build
 npx prettier --write <files>         # printWidth 160; run it on what you touched
 ```
 
-CI (`.github/workflows/ci.yml`) runs lint, `format:check`, test and build. Node 18 is the floor (`.nvmrc` pins 22), so avoid newer APIs such as `process.loadEnvFile`. Check `npm run lint` by its exit code, not by the last line of output.
+CI (`.github/workflows/ci.yml`) runs lint, `format:check`, test and build. Node 18 is the floor for the app, server and CLI (`.nvmrc` pins 22), so avoid newer APIs such as `process.loadEnvFile` there. The tests need Node 22.15+: `server/app-harness.js` loads the app's code under Node with `module.registerHooks`. Check `npm run lint` by its exit code, not by the last line of output.
 
 ## Architecture
 
