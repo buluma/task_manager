@@ -5,7 +5,7 @@ import { teamsOf } from './teams.js';
 import { adoptPriorities } from './priorities.js';
 import { adoptLabels } from './labels.js';
 import { emptyWorkspace } from '../data/seed.js';
-import { pull, push, syncing } from './sync.js';
+import { hasPending, initialize, needsSeed, push, stage } from './sync.js';
 import { cycleStart } from './cycles.js';
 import { inWorkspace, isWorkspace } from './workspaces.js';
 
@@ -46,8 +46,7 @@ export function load() {
   return null;
 }
 /* The server copy wins when there is one; localStorage is the cache and the offline fallback. */
-const remote = await pull();
-export const saved = remote || load();
+export const saved = await initialize(load());
 export const S = {
   data: saved?.data || emptyWorkspace(),
   prefs: Object.assign({}, DEFAULT_PREFS, saved?.prefs || {}),
@@ -105,15 +104,15 @@ export function cache() {
 }
 export let _saveT;
 export function save() {
+  cache();
+  const state = structuredClone(snapshot());
+  stage(state);
   clearTimeout(_saveT);
-  _saveT = setTimeout(() => {
-    cache();
-    push(JSON.parse(JSON.stringify(snapshot())));
-  }, 150);
+  _saveT = setTimeout(() => push(state), 150);
 }
 
 // First run against a server with nothing saved: seed it with what this browser already has.
-if (syncing() && !remote) save();
+if (hasPending() || needsSeed()) save();
 
 /* ---------- lookups ---------- */
 export const currentCycle = () => cycleStart(iso(new Date()), +S.prefs.weekStart);

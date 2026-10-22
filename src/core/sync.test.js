@@ -114,3 +114,71 @@ test('a server that keeps moving gets a few merge attempts, then sync stops as b
   assert.ok(writes <= 4, `bounded: ${writes} writes`);
   assert.notEqual(server.state.data.tasks[0].title, 'never lands');
 });
+
+function memoryStorage() {
+  const values = new Map();
+  return { getItem: k => values.get(k) ?? null, setItem: (k, v) => values.set(k, v) };
+}
+
+test('offline edits survive a reload and merge with server changes using the saved baseline', async () => {
+  globalThis.localStorage = memoryStorage();
+  const originalFetch = globalThis.fetch;
+  const baseline = ws();
+  try {
+    server = { rev: 1, state: structuredClone(baseline) };
+    const first = await fresh();
+    await first.initialize(baseline);
+    globalThis.fetch = async () => {
+      throw new Error('offline');
+    };
+    const offline = await fresh();
+    const mine = await offline.initialize(baseline);
+    mine.data.tasks[0].title = 'edited offline';
+    offline.stage(mine);
+    server.state.data.tasks[1].status = 'done';
+    server.rev = 2;
+    const reloaded = await fresh();
+    const recovered = await reloaded.initialize(baseline);
+    assert.equal(recovered.data.tasks[0].title, 'edited offline');
+    globalThis.fetch = originalFetch;
+    const seen = events();
+    try {
+      await reloaded.push(recovered);
+      assert.equal(server.state.data.tasks[0].title, 'edited offline');
+      assert.equal(server.state.data.tasks[1].status, 'done');
+      assert.equal(seen.merged.length, 1);
+      assert.equal(reloaded.hasPending(), false);
+      assert.equal(JSON.parse(localStorage.getItem(reloaded.SYNC_KEY)).pending, null);
+    } finally {
+      seen.stop();
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete globalThis.localStorage;
+  }
+});
+
+test('a tab first opened offline can save when the server returns without a reload', async () => {
+  globalThis.localStorage = memoryStorage();
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => {
+      throw new Error('offline');
+    };
+    const sync = await fresh();
+    const mine = ws();
+    assert.deepEqual(await sync.initialize(mine), mine);
+    mine.data.tasks[0].title = 'first offline edit';
+    sync.stage(mine);
+    assert.equal(sync.hasPending(), true);
+    globalThis.fetch = originalFetch;
+    server = { rev: 0, state: null };
+    await sync.push(mine);
+    assert.equal(server.rev, 1);
+    assert.equal(server.state.data.tasks[0].title, 'first offline edit');
+    assert.ok(sync.syncing());
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete globalThis.localStorage;
+  }
+});

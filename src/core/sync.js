@@ -1,66 +1,99 @@
-/* ---------- sync with the personal server (server/app.js) ----------
-   Optional: when /api/state is unreachable (static hosting, server stopped) the app keeps
-   working from localStorage alone. */
+/* Optional personal-server sync. The durable outbox survives offline starts and reloads. */
 import { mergeState } from './merge.js';
 
 const URL_STATE = '/api/state';
 const RETRY_MS = 5000;
 const POLL_MS = 5000;
-const MAX_MERGES = 3; // per save: a server that keeps moving gets the old stop-and-reload behaviour
+const MAX_MERGES = 3;
+export const SYNC_KEY = 'gr8r.sync.v1';
 
-let rev = null; // null: no server, or syncing halted after a conflict
+let rev = 0;
 let busy = false;
 let pending = null;
-let base = null; // the state as of `rev`, which a merge after a 409 starts from
+let base = null;
+let available = false;
+let halted = false;
+let retry = null;
 
-/* Returns the server's saved state, or null when it has none yet or can't be reached. */
+function remember() {
+  try {
+    localStorage.setItem(SYNC_KEY, JSON.stringify({ rev, base, pending }));
+  } catch {
+    // store.js also caches the displayed state; unavailable storage leaves this session in memory.
+  }
+}
+
+/* Restore the outbox before reading the server, so a reload cannot replace unsent work. */
+export async function initialize(local) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SYNC_KEY));
+    if (Number.isInteger(saved?.rev) && saved.rev >= 0) {
+      rev = saved.rev;
+      base = saved.base;
+      pending = saved.pending;
+    }
+  } catch {
+    // An older installation, blocked storage or corrupt metadata can still use its workspace cache.
+  }
+  if (pending) return structuredClone(pending);
+  return (await pull()) || local;
+}
+
+export const hasPending = () => !!pending;
+export const needsSeed = () => available && base === null;
+export const syncing = () => available && !halted;
+
+/* Stage synchronously, before the network debounce, so closing the tab cannot lose the last edit. */
+export function stage(state) {
+  pending = structuredClone(state);
+  remember();
+}
+
+async function latest() {
+  const r = await fetch(URL_STATE, { cache: 'no-store', signal: AbortSignal.timeout(3000) });
+  if (r.status === 404) return { rev: 0, state: null };
+  if (!r.ok) throw new Error(`sync failed: ${r.status}`);
+  return r.json();
+}
+
 export async function pull() {
   try {
-    const r = await fetch(URL_STATE, { cache: 'no-store', signal: AbortSignal.timeout(3000) });
-    if (r.status === 404) {
-      rev = 0;
-      return null;
-    }
-    if (!r.ok) return null;
-    const j = await r.json();
+    const j = await latest();
+    available = true;
     rev = j.rev;
     base = structuredClone(j.state);
+    remember();
     return j.state;
   } catch {
+    available = false;
     return null;
   }
 }
 
-export const syncing = () => rev !== null;
-
-/* Other writers (the gr8r CLI, another device) bump the server revision. When this tab has nothing
-   in flight and `idle()` says the user isn't mid-edit, adopt their state instead of waiting for a 409. */
+/* Polling also reconnects a tab opened while the server was unavailable. */
 export function watchRemote(apply, idle) {
   setInterval(async () => {
-    if (rev === null || busy || pending || document.hidden || !idle()) return;
+    if (halted || busy || document.hidden || !idle()) return;
+    if (pending) {
+      await push(pending);
+      return;
+    }
     try {
       const r = await fetch('/api/rev', { cache: 'no-store', signal: AbortSignal.timeout(3000) });
       if (!r.ok || (await r.json()).rev === rev) return;
       const state = await pull();
       if (state) apply(state);
     } catch {
-      /* server unreachable: try again next tick */
+      available = false;
     }
   }, POLL_MS);
 }
 
-async function latest() {
-  const r = await fetch(URL_STATE, { cache: 'no-store', signal: AbortSignal.timeout(3000) });
-  return r.ok ? r.json() : null;
-}
-
-/* Sends the latest state; saves arriving mid-flight collapse into one follow-up request. When another writer
-   saved first, merges with what it wrote and saves that instead, and hands the result to the app
-   (gr8r:merged) so later saves build on it. */
+/* Other writers lose no unrelated fields: a stale revision is merged against the durable baseline. */
 export async function push(state) {
-  if (rev === null) return;
-  pending = state;
-  if (busy) return;
+  stage(state);
+  if (halted || busy) return;
+  clearTimeout(retry);
   busy = true;
   let sent = null;
   let merges = 0;
@@ -68,30 +101,40 @@ export async function push(state) {
     while (pending) {
       sent = pending;
       pending = null;
-      const r = await fetch(URL_STATE, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRev: rev, state: sent }) });
+      const r = await fetch(URL_STATE, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ baseRev: rev, state: sent }),
+        signal: AbortSignal.timeout(5000),
+      });
       if (r.status === 409) {
         const now = merges++ < MAX_MERGES ? await latest() : null;
         if (!now) {
-          // Can't merge: stop writing so the other save isn't clobbered; the user reloads to pick it up.
-          rev = null;
+          halted = true;
+          pending ??= sent;
+          remember();
           window.dispatchEvent(new Event('gr8r:conflict'));
-          continue;
+          break;
         }
-        // A save made while we waited is newer than `sent` and already contains it.
         const { state, conflicts } = mergeState(base, pending ?? sent, now.state);
         rev = now.rev;
         base = now.state;
         pending = state;
+        remember();
         window.dispatchEvent(new CustomEvent('gr8r:merged', { detail: { state: structuredClone(state), conflicts } }));
       } else if (r.ok) {
         rev = (await r.json()).rev;
         base = sent;
+        available = true;
+        remember();
       } else throw new Error(`sync failed: ${r.status}`);
     }
   } catch {
-    // Server unreachable: localStorage still has the change. Retry with whatever is newest.
+    available = false;
     pending ??= sent;
-    setTimeout(() => pending && push(pending), RETRY_MS);
+    remember();
+    retry = setTimeout(() => pending && push(pending), RETRY_MS);
+    retry?.unref?.();
   } finally {
     busy = false;
   }

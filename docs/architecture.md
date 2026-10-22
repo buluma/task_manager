@@ -46,3 +46,7 @@ Dependencies point downward:
 - **Layout:** every page edge uses `var(--gutter)`, so the breadcrumb, page header, toolbar, list, table and board start on the same line.
 - **Dropdowns:** write a normal `<select class="select">`. `ui/select.js` renders it as the design-system menu and keeps the native element as the source of truth.
 - **Icons:** call `ic('name')` with any [Lucide](https://lucide.dev) icon name. The `virtual:icons` plugin bundles only the icons the source uses.
+
+## Offline saves
+
+The workspace cache is written synchronously on each save. `gr8r.sync.v1` keeps the last synced revision and baseline plus a pending snapshot. A reload restores pending work before reading remote state; reconnecting sends it with its original revision, using the same three-way merge as concurrent online edits. Successful writes clear the pending snapshot. Network requests have timeouts and retry while the tab stays open. Browser storage must be available to preserve offline work across browser restarts.
