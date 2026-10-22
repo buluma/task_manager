@@ -188,9 +188,16 @@ test('closeMergedReviews moves Review tasks whose PR merged to Done, once, and t
       d.tasks.map(t => t.status),
       ['done', 'review', 'progress'],
     );
-    assert.equal(d.notifs.length, 1);
+    assert.equal(d.notifs.length, 1, 'one Inbox item, naming the PR');
     assert.equal(d.notifs[0].task, 't1');
     assert.match(d.notifs[0].snippet, /o\/r#1 merged/);
+    const gh = d.members.filter(m => m.agent && m.name === 'GitHub');
+    assert.equal(gh.length, 1, 'registered as an agent');
+    assert.equal(d.notifs[0].by, gh[0].id);
+    assert.deepEqual(
+      d.activity.map(a => [a.by, a.task]),
+      [[gh[0].id, 't1']],
+    );
     assert.deepEqual(asked, [['o/r#1', 'o/r#2']]);
     const rev = (await (await fetch(`${at}/api/rev`)).json()).rev;
 
@@ -279,6 +286,15 @@ test('syncProjectPrs links PRs that name a task in the project repo, moves a tas
     assert.deepEqual(
       d.tasks.map(t => t.status),
       ['progress', 'review', 'done', 'review'],
+    );
+    assert.deepEqual(
+      d.members.filter(m => m.agent).map(m => m.id),
+      ['agent-github'],
+      'registered once',
+    );
+    assert.ok(
+      [...d.comments, ...d.notifs, ...d.activity].every(x => x.by === 'agent-github'),
+      'links, moves and Inbox items are GitHub’s',
     );
     assert.deepEqual(d.notifs.map(n => [n.task, n.text, n.snippet]).sort(), [
       ['t1', 'PR closed without merging', 'o/r#1'],
