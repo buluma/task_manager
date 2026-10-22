@@ -55,19 +55,34 @@ const ghHeaders = token => ({
   'x-github-api-version': '2022-11-28',
   ...(token && { authorization: `Bearer ${token}` }),
 });
+/* One GET to the GitHub API: the JSON, or null when GitHub would not say. `report` hears why: { status, message } when
+   GitHub refuses (401 bad token, 403/429 forbidden or rate limited, 5xx) or can't be reached (status 0), null when it
+   answers. A 404 (no such PR, or no access to it) is an answer about that PR, not a problem with GitHub. */
+async function getJson(fetch, url, token, report) {
+  let r;
+  try {
+    r = await fetch(url, { headers: ghHeaders(token), signal: AbortSignal.timeout(8000) });
+  } catch (e) {
+    report({ status: 0, message: e.message });
+    return null;
+  }
+  if (r.ok) {
+    report(null);
+    return r.json();
+  }
+  if (r.status !== 404) report({ status: r.status, message: (await r.json().catch(() => ({}))).message || '' });
+  return null;
+}
 const stateOfPull = pr => (pr.merged_at ? 'merged' : pr.state === 'closed' ? 'closed' : pr.draft ? 'draft' : 'open');
 
 /* Returns `pulls(repo)`: the repo's 50 most recently updated PRs as { ref, url, title, body, branch, state }, or null
    when GitHub would not say. One call per repo, for the PR finder (syncProjectPrs in app.js). */
-export function createPullLister({ token, fetch = globalThis.fetch } = {}) {
+export function createPullLister({ token, fetch = globalThis.fetch, report = () => {} } = {}) {
   return async function pulls(repo) {
     try {
-      const r = await fetch(`https://api.github.com/repos/${repo}/pulls?state=all&sort=updated&direction=desc&per_page=50`, {
-        headers: ghHeaders(token),
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!r.ok) return null;
-      return (await r.json()).map(pr => ({
+      const list = await getJson(fetch, `https://api.github.com/repos/${repo}/pulls?state=all&sort=updated&direction=desc&per_page=50`, token, report);
+      if (!list) return null;
+      return list.map(pr => ({
         ref: `${repo}#${pr.number}`,
         url: pr.html_url,
         title: pr.title || '',
@@ -83,15 +98,14 @@ export function createPullLister({ token, fetch = globalThis.fetch } = {}) {
 
 /* Returns `states(refs)`, resolving to { ref: 'open' | 'draft' | 'merged' | 'closed' | null }, null when GitHub
    would not say (not found, no access, rate limited or unreachable). */
-export function createPrStates({ token, fetch = globalThis.fetch, now = Date.now } = {}) {
+export function createPrStates({ token, fetch = globalThis.fetch, now = Date.now, report = () => {} } = {}) {
   const cache = new Map(); // ref -> { state, until } or { pending }
 
   async function lookup(ref) {
     const [repo, number] = ref.split('#');
     try {
-      const r = await fetch(`https://api.github.com/repos/${repo}/pulls/${number}`, { headers: ghHeaders(token), signal: AbortSignal.timeout(8000) });
-      if (!r.ok) return null;
-      return stateOfPull(await r.json());
+      const pr = await getJson(fetch, `https://api.github.com/repos/${repo}/pulls/${number}`, token, report);
+      return pr ? stateOfPull(pr) : null;
     } catch {
       return null;
     }
