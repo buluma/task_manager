@@ -108,7 +108,7 @@ export function save() {
   const state = structuredClone(snapshot());
   stage(state);
   clearTimeout(_saveT);
-  _saveT = setTimeout(() => push(state), 150);
+  _saveT = setTimeout(() => push(), 150);
 }
 
 // First run against a server with nothing saved: seed it with what this browser already has.
