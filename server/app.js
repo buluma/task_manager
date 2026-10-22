@@ -11,6 +11,7 @@ import { addComment, deleteComment, editComment, listComments } from './comments
 import { addComment as postComment } from '../src/core/comments.js';
 import { createNotification, listNotifications, setRead } from './notifications.js';
 import { addAgent, findAgent, listAgents } from './agents.js';
+import { changeTask } from '../src/core/tasks.js';
 import { createPrStates, createPullLister, linkedPrRefs, prEvent, prKeysIn, reviewPrs } from './github.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
 import { changeLabel, createLabel, deleteLabel, listLabels } from './labels.js';
@@ -77,11 +78,11 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
     console.error(`GitHub: ${why}`);
     if (!current) return;
     const hint = problem.status === 401 ? 'check GR8R_GITHUB_TOKEN' : 'it will be retried';
-    mutateAs(undefined, (d, p, today, t) =>
+    asGitHub((d, p, today, t) =>
       (d.notifs ??= []).push({
         id: 'n' + rand(),
         type: 'update',
-        by: d.me,
+        by: d.actor,
         text: problem.status ? 'GitHub is refusing requests' : 'GitHub can’t be reached',
         snippet: `${why}: ${hint}. PR states, the PR finder and the merge check are paused until it answers.`,
         at: t,
@@ -163,6 +164,22 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
     writeStored(dataFile, next);
     current = next;
     return result;
+  }
+  /* A change the server makes on GitHub's account (the PR finder, the merge check, GitHub failures): it runs as the
+     GitHub agent, registered the first time it is needed, so its links, moves and Inbox items are not taken for the
+     owner's. (A human member already called GitHub keeps the name; the change is then the owner's.) */
+  function asGitHub(change) {
+    return mutateAs(undefined, (d, ...rest) => {
+      const agent = d.members.find(m => m.agent && m.id === 'agent-github');
+      if (agent) d.actor = agent.id;
+      else
+        try {
+          d.actor = addAgent(d, { name: 'GitHub' }).id;
+        } catch {
+          d.actor = d.me;
+        }
+      return change(d, ...rest);
+    });
   }
   const needState = () => {
     if (!current) throw new ApiError(409, 'no workspace yet: open the app once so it can save its starting state');
@@ -397,13 +414,18 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
     // read again after the wait: the state may have moved on while GitHub answered
     const merged = reviewPrs(current.state.data).filter(w => unseen(w) && states[w.ref] === 'merged');
     if (!merged.length) return [];
-    const keys = mutateAs(undefined, (d, p, today, t) =>
+    const keys = asGitHub((d, p, today, t) =>
       merged.map(w => {
-        patchTask(d, p, today, w.key, { status: 'done' }, t);
+        changeTask(
+          d,
+          d.tasks.find(x => x.id === w.id),
+          { status: 'done' },
+          changeCtx(d, t),
+        );
         (d.notifs ??= []).push({
           id: 'n' + rand(),
           type: 'update',
-          by: d.me,
+          by: d.actor,
           task: w.id,
           text: 'moved to Done',
           snippet: `${w.ref} merged`,
@@ -458,19 +480,19 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
       seen.repos[repo] = Object.fromEntries(list.map(pr => [pr.ref, pr.state]));
     }
     const done = work.length
-      ? mutateAs(undefined, (d, p, today, t) =>
+      ? asGitHub((d, p, today, t) =>
           work.flatMap(w => {
             const lines = [];
             const task = d.tasks.find(x => x.id === w.id);
             const notify = (text, snippet) =>
-              (d.notifs ??= []).push({ id: 'n' + rand(), type: 'update', by: d.me, task: w.id, text, snippet, at: t, read: false });
+              (d.notifs ??= []).push({ id: 'n' + rand(), type: 'update', by: d.actor, task: w.id, text, snippet, at: t, read: false });
             if (w.link) {
               postComment(d, task, `PR: ${w.pr.url}`, changeCtx(d, t));
               lines.push(`linked ${w.key} to ${w.pr.ref}`);
             }
             if (w.event === 'opened') {
               const move = ['backlog', 'todo', 'progress'].includes(task.status);
-              if (move) patchTask(d, p, today, w.key, { status: 'review' }, t);
+              if (move) changeTask(d, task, { status: 'review' }, changeCtx(d, t));
               notify(move ? 'moved to Review' : 'PR opened', `${w.pr.ref} opened`);
               lines.push(`${w.key}: ${w.pr.ref} opened${move ? ', moved to Review' : ''}`);
             }
