@@ -14,7 +14,7 @@ Gr8r Studio is a personal task manager. One server holds the whole workspace; th
 - Data: `~/.gr8r/state.json` (one JSON file, revision-numbered). Never edit it by hand while the server runs; go through the API or CLI.
 - Config: the repo's gitignored `.env` holds `GR8R_TOKEN` and `GR8R_URL`. The CLI and server load it themselves, so `gr8r ...` works from any directory with nothing exported. **Never print, log, paste or commit the token.** Use `grep '^GR8R_TOKEN=' .env | cut -d= -f2-` into a variable if you need it for curl, and never echo it.
 - CLI: `gr8r` (npm-linked from the repo's `bin/gr8r.js`). `gr8r help` prints the full usage.
-- Backups: a launchd job (`com.buluma.gr8r-backup`) snapshots daily at 03:30 into `~/.gr8r/backups/` (keeps 14).
+- Backups: a launchd job (`com.buluma.gr8r-backup`, script `~/.gr8r/backup.sh`) snapshots `state.json` and `pr-seen.json` (the GitHub sync's record) daily at 03:30 into `~/.gr8r/backups/` (keeps 14 of each) and pushes them to a private backup repo.
 
 ## Ground rules
 
