@@ -3,7 +3,7 @@
    global listeners or add handlers to the action table when they load), then boot.
    ===================================================================== */
 import './styles/index.css';
-import './core/utils.js';
+import { refreshToday } from './core/utils.js';
 import './core/icons.js';
 import { adoptPriorities } from './core/priorities.js';
 import { adoptLabels } from './core/labels.js';
@@ -83,9 +83,15 @@ import { toast } from './ui/toast.js';
 })();
 
 // Leave the app open past midnight Sunday and the new cycle still starts: re-check when the tab regains focus and hourly.
-const rollIfNewCycle = () => rollNow() && render();
-document.addEventListener('visibilitychange', () => !document.hidden && rollIfNewCycle());
-setInterval(rollIfNewCycle, 36e5);
+const refreshDay = () => {
+  const changedDay = refreshToday();
+  const changedCycle = rollNow();
+  if (changedDay || changedCycle) render();
+};
+document.addEventListener('visibilitychange', () => !document.hidden && refreshDay());
+window.addEventListener('focus', refreshDay);
+// A minute bounds the midnight delay, including when the local timezone changes.
+setInterval(refreshDay, 60e3);
 
 // Another device saved first; sync is paused so its changes aren't overwritten.
 window.addEventListener('gr8r:conflict', () =>
