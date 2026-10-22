@@ -58,17 +58,39 @@ const CSP = [
 /* `token` (GR8R_TOKEN) guards the task, project and priority APIs. /api/rev and /api/state stay open because
    the browser app syncs through them without credentials, so the token stops casual API use, not a determined
    write to the whole state; keep the server on a private interface. `githubToken` is for PR states (github.js);
-   `prStates` and `pulls` replace the GitHub lookups in tests. */
-export function createApp({
-  dataFile,
-  distDir,
-  now = () => new Date(),
-  token,
-  githubToken,
-  prStates = createPrStates({ token: githubToken }),
-  pulls = createPullLister({ token: githubToken }),
-}) {
+   `prStates` and `pulls` replace the GitHub lookups in tests, or `githubFetch` the network under them. */
+export function createApp({ dataFile, distDir, now = () => new Date(), token, githubToken, githubFetch = globalThis.fetch, prStates, pulls }) {
   let current = readStored(dataFile);
+
+  /* GitHub refusing or unreachable (github.js) is logged and raised in the Inbox once per outage, since PR states,
+     the PR finder and the merge check all stop on it; GitHub answering again ends the outage. */
+  let githubDown = false;
+  function reportGitHub(problem) {
+    if (!problem) {
+      if (githubDown) console.log('GitHub is answering again');
+      githubDown = false;
+      return;
+    }
+    if (githubDown) return;
+    githubDown = true;
+    const why = `${problem.status || 'unreachable'}${problem.message ? ` ${problem.message}` : ''}`;
+    console.error(`GitHub: ${why}`);
+    if (!current) return;
+    const hint = problem.status === 401 ? 'check GR8R_GITHUB_TOKEN' : 'it will be retried';
+    mutateAs(undefined, (d, p, today, t) =>
+      (d.notifs ??= []).push({
+        id: 'n' + rand(),
+        type: 'update',
+        by: d.me,
+        text: problem.status ? 'GitHub is refusing requests' : 'GitHub can’t be reached',
+        snippet: `${why}: ${hint}. PR states, the PR finder and the merge check are paused until it answers.`,
+        at: t,
+        read: false,
+      }),
+    );
+  }
+  prStates ??= createPrStates({ token: githubToken, fetch: githubFetch, report: reportGitHub });
+  pulls ??= createPullLister({ token: githubToken, fetch: githubFetch, report: reportGitHub });
   const digest = s => crypto.createHash('sha256').update(s).digest();
   const expected = token ? digest(`Bearer ${token}`) : null;
   function authorize(req, res) {

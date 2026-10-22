@@ -182,3 +182,32 @@ test("createPullLister lists a repo's recently updated PRs with their state, and
     null,
   );
 });
+
+test('GitHub refusing or unreachable is reported, a missing PR is not, and an answer reports all clear', async () => {
+  const reports = [];
+  const report = p => reports.push(p);
+  let reply;
+  const fetch = async () => {
+    if (reply instanceof Error) throw reply;
+    return reply;
+  };
+  const res = (status, body = {}) => ({ ok: status < 300, status, json: async () => body });
+  const pulls = createPullLister({ fetch, report });
+  const states = createPrStates({ fetch, report });
+  reply = res(401, { message: 'Bad credentials' });
+  assert.equal(await pulls('o/r'), null);
+  reply = res(403, { message: 'API rate limit exceeded' });
+  assert.deepEqual(await states(['o/r#1']), { 'o/r#1': null });
+  reply = new Error('getaddrinfo ENOTFOUND api.github.com');
+  assert.equal(await pulls('o/r'), null);
+  reply = res(404, { message: 'Not Found' });
+  assert.equal(await pulls('o/gone'), null);
+  reply = res(200, []);
+  assert.deepEqual(await pulls('o/r'), []);
+  assert.deepEqual(reports, [
+    { status: 401, message: 'Bad credentials' },
+    { status: 403, message: 'API rate limit exceeded' },
+    { status: 0, message: 'getaddrinfo ENOTFOUND api.github.com' },
+    null,
+  ]);
+});

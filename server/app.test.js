@@ -294,3 +294,47 @@ test('syncProjectPrs links PRs that name a task in the project repo, moves a tas
     await new Promise(r => app.close(r));
   }
 });
+
+test('GitHub failing raises one Inbox item per outage and logs when it answers again', async t => {
+  let reply = { ok: false, status: 401, json: async () => ({ message: 'Bad credentials' }) };
+  const errors = t.mock.method(console, 'error', () => {});
+  const logs = t.mock.method(console, 'log', () => {});
+  const app = createApp({ dataFile, distDir: path.join(dir, 'dist'), githubFetch: async () => reply });
+  await new Promise(r => app.listen(0, '127.0.0.1', r));
+  const at = `http://127.0.0.1:${app.address().port}`;
+  const inbox = async () => (await (await fetch(`${at}/api/state`)).json()).state.data.notifs;
+  try {
+    const data = {
+      me: 'u1',
+      members: [{ id: 'u1', name: 'Me' }],
+      projects: [{ id: 'p1', key: 'A', name: 'A', repo: 'o/r' }],
+      tasks: [{ id: 't1', key: 'A-1', title: 'x', status: 'review', project: 'p1', labels: [], subtasks: [], order: 1, created: 1, updated: 1 }],
+      comments: [{ id: 'c1', task: 't1', at: 1, text: 'PR: https://github.com/o/r/pull/1' }],
+      activity: [],
+      notifs: [],
+    };
+    await fetch(`${at}/api/state`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ baseRev: 0, state: { data, prefs: {} } }),
+    });
+    await app.syncProjectPrs();
+    await app.closeMergedReviews();
+    let n = await inbox();
+    assert.equal(n.length, 1, 'once, though both lookups failed');
+    assert.equal(n[0].text, 'GitHub is refusing requests');
+    assert.match(n[0].snippet, /401 Bad credentials.*GR8R_GITHUB_TOKEN/);
+    assert.equal(n[0].task, undefined);
+    assert.match(errors.mock.calls[0].arguments[0], /GitHub: 401 Bad credentials/);
+    reply = { ok: true, status: 200, json: async () => [] };
+    await app.syncProjectPrs();
+    assert.ok(logs.mock.calls.some(c => /GitHub is answering again/.test(c.arguments[0])));
+    reply = { ok: false, status: 503, json: async () => ({}) };
+    await app.syncProjectPrs();
+    n = await inbox();
+    assert.equal(n.length, 2, 'a new outage raises a new item');
+    assert.match(n[1].snippet, /^503/);
+  } finally {
+    await new Promise(r => app.close(r));
+  }
+});
