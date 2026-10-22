@@ -1,6 +1,7 @@
 /* Personal sync server: stores the whole app state as one JSON file and serves the built app.
    Revision numbers stop a stale tab or device from silently overwriting newer data. */
 import http from 'node:http';
+import { normalizeState } from './state.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -147,11 +148,17 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
       return json(res, 405, { error: 'method not allowed' });
     }
     const body = await readJson(req, 'state');
-    if (!Number.isInteger(body?.baseRev) || !body?.state?.data?.tasks)
+    if (!Number.isInteger(body?.baseRev) || body.baseRev < 0 || !body?.state?.data)
       return json(res, 400, { error: 'expected { baseRev: integer, state: { data: { tasks } } }' });
     const rev = current?.rev ?? 0;
     if (body.baseRev !== rev) return json(res, 409, { rev });
-    const next = { rev: rev + 1, state: body.state };
+    let state;
+    try {
+      state = normalizeState(body.state);
+    } catch (e) {
+      throw new ApiError(400, e.message);
+    }
+    const next = { rev: rev + 1, state };
     writeStored(dataFile, next);
     current = next;
     return json(res, 200, { rev: current.rev });
@@ -551,7 +558,8 @@ function readStored(file) {
   for (const f of [file, `${file}.bak`]) {
     try {
       const j = JSON.parse(fs.readFileSync(f, 'utf8'));
-      if (Number.isInteger(j?.rev) && j?.state?.data?.tasks) return j;
+      if (!Number.isInteger(j?.rev) || j.rev < 0) throw new Error('invalid stored revision');
+      return { ...j, state: normalizeState(j.state) };
     } catch (e) {
       if (e.code !== 'ENOENT') console.error(`ignoring unreadable ${f}: ${e.message}`);
     }

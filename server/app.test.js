@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createApp } from './app.js';
+import { normalizeState } from './state.js';
 
 let dir, server, base, dataFile;
 
@@ -29,7 +30,9 @@ const put = (body, headers = {}) =>
     headers: { 'content-type': 'application/json', ...headers },
     body: typeof body === 'string' ? body : JSON.stringify(body),
   });
-const state = { data: { tasks: [{ id: 't1' }] }, prefs: {} };
+const workspace = tasks =>
+  normalizeState({ data: { me: 'm1', members: [{ id: 'm1', name: 'Me' }], projects: [{ id: 'p1', key: 'GR', name: 'Tasks' }], tasks }, prefs: {} });
+const state = workspace([{ id: 't1', key: 'GR-1', title: 'Task', status: 'todo', project: 'p1' }]);
 
 test('GET before any save is 404', async () => {
   const r = await fetch(`${base}/api/state`);
@@ -48,7 +51,7 @@ test('PUT then GET round-trips state and bumps rev', async () => {
 
 test('PUT with a stale baseRev is 409 and leaves data untouched', async () => {
   await put({ baseRev: 0, state });
-  const r = await put({ baseRev: 0, state: { data: { tasks: [] } } });
+  const r = await put({ baseRev: 0, state: workspace([]) });
   assert.equal(r.status, 409);
   assert.deepEqual(await r.json(), { rev: 1 });
   assert.deepEqual((await (await fetch(`${base}/api/state`)).json()).state, state);
@@ -56,7 +59,7 @@ test('PUT with a stale baseRev is 409 and leaves data untouched', async () => {
 
 test('state survives a restart and the previous revision is kept as a backup', async () => {
   await put({ baseRev: 0, state });
-  await put({ baseRev: 1, state: { data: { tasks: [] } } });
+  await put({ baseRev: 1, state: workspace([]) });
   assert.ok(fs.existsSync(`${dataFile}.bak`));
   const again = createApp({ dataFile, distDir: path.join(dir, 'dist') });
   await new Promise(r => again.listen(0, '127.0.0.1', r));
@@ -139,7 +142,8 @@ test('GET /api/prs answers, without the token, only for PRs linked in a comment'
   const at = `http://127.0.0.1:${app.address().port}`;
   try {
     assert.equal((await fetch(`${at}/api/prs?ref=a/b%231`)).status, 409);
-    const linked = { data: { tasks: [{ id: 't1' }], comments: [{ task: 't1', text: 'PR: https://github.com/a/b/pull/1' }] }, prefs: {} };
+    const linked = structuredClone(state);
+    linked.data.comments = [{ id: 'c1', task: 't1', text: 'PR: https://github.com/a/b/pull/1' }];
     await fetch(`${at}/api/state`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRev: 0, state: linked }) });
     const r = await fetch(`${at}/api/prs?ref=a/b%231&ref=x/private%239`);
     assert.equal(r.status, 200);
@@ -412,13 +416,57 @@ test('the merge check remembers the tasks it moved across a restart, beside the 
   }
 });
 
+test('invalid workspace data is refused without changing memory, disk or revision', async () => {
+  await put({ baseRev: 0, state });
+  const disk = fs.readFileSync(dataFile, 'utf8');
+  for (const change of [
+    s => {
+      s.data.tasks = 'bad';
+    },
+    s => {
+      s.data.tasks[0].project = 'missing';
+    },
+    s => {
+      delete s.data.members;
+    },
+    s => {
+      s.data.tasks.push(structuredClone(s.data.tasks[0]));
+    },
+  ]) {
+    const invalid = structuredClone(state);
+    change(invalid);
+    const result = await put({ baseRev: 1, state: invalid });
+    assert.equal(result.status, 400);
+    assert.equal(typeof (await result.json()).error, 'string');
+    assert.deepEqual(await (await fetch(`${base}/api/state`)).json(), { rev: 1, state });
+    assert.equal(fs.readFileSync(dataFile, 'utf8'), disk);
+  }
+});
+
+test('startup rejects corrupt state shapes and recovers from a valid backup', async () => {
+  await put({ baseRev: 0, state });
+  await put({ baseRev: 1, state: workspace([]) });
+  await new Promise(r => server.close(r));
+  fs.writeFileSync(dataFile, JSON.stringify({ rev: 8, state: { data: { tasks: 'bad' } } }));
+  const error = mock.method(console, 'error', () => {});
+  try {
+    server = createApp({ dataFile, distDir: dir });
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    base = `http://127.0.0.1:${server.address().port}`;
+    assert.deepEqual(await (await fetch(`${base}/api/state`)).json(), { rev: 1, state });
+    assert.match(error.mock.calls[0].arguments[0], /ignoring unreadable/);
+  } finally {
+    error.mock.restore();
+  }
+});
+
 test('a failed state write leaves the published revision and state unchanged, and can be retried', async () => {
   await put({ baseRev: 0, state });
   const before = fs.readFileSync(dataFile, 'utf8');
   fs.mkdirSync(`${dataFile}.tmp`); // opening the temporary file must fail
   const error = mock.method(console, 'error', () => {});
   try {
-    const next = { data: { tasks: [{ id: 't2' }] }, prefs: {} };
+    const next = workspace([{ id: 't2', key: 'GR-2', title: 'Next', status: 'todo', project: 'p1' }]);
     assert.equal((await put({ baseRev: 1, state: next })).status, 500);
     assert.deepEqual(await (await fetch(`${base}/api/state`)).json(), { rev: 1, state });
     assert.equal(fs.readFileSync(dataFile, 'utf8'), before);
