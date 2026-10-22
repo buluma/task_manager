@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
 /* A stand-in for /api/state with the server's revision rule, and a fresh copy of sync.js per test
@@ -180,6 +180,111 @@ test('a tab first opened offline can save when the server returns without a relo
   } finally {
     globalThis.fetch = originalFetch;
     delete globalThis.localStorage;
+  }
+});
+
+const deferred = () => {
+  let resolve;
+  const promise = new Promise(r => {
+    resolve = r;
+  });
+  return { promise, resolve };
+};
+
+test('an edit during a remote state read is preserved and still merges against the original baseline', async () => {
+  const sync = await fresh();
+  server = { rev: 1, state: ws() };
+  const mine = await sync.pull();
+  server.rev = 2;
+  server.state.data.tasks[1].status = 'done';
+  const originalFetch = globalThis.fetch;
+  const started = deferred(),
+    response = deferred();
+  let tick,
+    applied = 0,
+    gets = 0;
+  const interval = mock.method(globalThis, 'setInterval', fn => {
+    tick = fn;
+  });
+  globalThis.document = { hidden: false };
+  globalThis.fetch = async (url, options) => {
+    if (url === '/api/rev') return { ok: true, json: async () => ({ rev: 2 }) };
+    if (!options?.method) {
+      gets++;
+      const snapshot = structuredClone(server);
+      started.resolve();
+      await response.promise;
+      return { ok: true, status: 200, json: async () => snapshot };
+    }
+    return originalFetch(url, options);
+  };
+  try {
+    sync.watchRemote(
+      () => {
+        applied++;
+      },
+      () => true,
+    );
+    const poll = tick();
+    await started.promise;
+    await tick();
+    assert.equal(gets, 1, 'overlapping poll is skipped');
+    mine.data.tasks[0].title = 'local edit during GET';
+    sync.stage(mine);
+    response.resolve();
+    await poll;
+    assert.equal(applied, 0);
+    globalThis.fetch = originalFetch;
+    await sync.push();
+    assert.equal(server.state.data.tasks[0].title, 'local edit during GET');
+    assert.equal(server.state.data.tasks[1].status, 'done', 'stale read did not advance the merge baseline');
+  } finally {
+    interval.mock.restore();
+    globalThis.fetch = originalFetch;
+    delete globalThis.document;
+  }
+});
+
+test('starting to type while a remote read is in flight defers adoption until idle', async () => {
+  const sync = await fresh();
+  server = { rev: 1, state: ws() };
+  await sync.pull();
+  const originalFetch = globalThis.fetch;
+  const started = deferred(),
+    response = deferred();
+  let tick,
+    idle = true,
+    applied = 0;
+  const interval = mock.method(globalThis, 'setInterval', fn => {
+    tick = fn;
+  });
+  globalThis.document = { hidden: false };
+  globalThis.fetch = async url => {
+    if (url === '/api/rev') return { ok: true, json: async () => ({ rev: 2 }) };
+    started.resolve();
+    await response.promise;
+    return { ok: true, status: 200, json: async () => ({ rev: 2, state: ws() }) };
+  };
+  try {
+    sync.watchRemote(
+      () => {
+        applied++;
+      },
+      () => idle,
+    );
+    const poll = tick();
+    await started.promise;
+    idle = false;
+    response.resolve();
+    await poll;
+    assert.equal(applied, 0);
+    idle = true;
+    await tick();
+    assert.equal(applied, 1, 'the discarded read did not consume the revision');
+  } finally {
+    interval.mock.restore();
+    globalThis.fetch = originalFetch;
+    delete globalThis.document;
   }
 });
 

@@ -14,6 +14,8 @@ let base = null;
 let available = false;
 let halted = false;
 let retry = null;
+let edits = 0;
+let polling = false;
 
 function remember() {
   try {
@@ -45,6 +47,7 @@ export const syncing = () => available && !halted;
 
 /* Stage synchronously, before the network debounce, so closing the tab cannot lose the last edit. */
 export function stage(state) {
+  edits++;
   pending = structuredClone(state);
   remember();
 }
@@ -56,9 +59,10 @@ async function latest() {
   return r.json();
 }
 
-export async function pull() {
+export async function pull(isCurrent = () => true) {
   try {
     const j = await latest();
+    if (!isCurrent()) return null;
     available = true;
     rev = j.rev;
     base = structuredClone(j.state);
@@ -73,25 +77,30 @@ export async function pull() {
 /* Polling also reconnects a tab opened while the server was unavailable. */
 export function watchRemote(apply, idle) {
   setInterval(async () => {
-    if (halted || busy || document.hidden || !idle()) return;
+    if (halted || busy || polling || document.hidden || !idle()) return;
     if (pending) {
-      await push(pending);
+      await push();
       return;
     }
+    const generation = edits;
+    const isCurrent = () => !halted && !busy && !pending && edits === generation && !document.hidden && idle();
+    polling = true;
     try {
       const r = await fetch('/api/rev', { cache: 'no-store', signal: AbortSignal.timeout(3000) });
-      if (!r.ok || (await r.json()).rev === rev) return;
-      const state = await pull();
+      if (!r.ok || (await r.json()).rev === rev || !isCurrent()) return;
+      const state = await pull(isCurrent);
       if (state) apply(state);
     } catch {
       available = false;
+    } finally {
+      polling = false;
     }
   }, POLL_MS);
 }
 
 /* Other writers lose no unrelated fields: a stale revision is merged against the durable baseline. */
 export async function push(state) {
-  stage(state);
+  if (state !== undefined) stage(state);
   if (halted || busy) return;
   clearTimeout(retry);
   busy = true;
@@ -133,7 +142,7 @@ export async function push(state) {
     available = false;
     pending ??= sent;
     remember();
-    retry = setTimeout(() => pending && push(pending), RETRY_MS);
+    retry = setTimeout(() => pending && push(), RETRY_MS);
     retry?.unref?.();
   } finally {
     busy = false;
