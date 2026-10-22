@@ -63,29 +63,34 @@ const CSP = [
 export function createApp({ dataFile, distDir, now = () => new Date(), token, githubToken, githubFetch = globalThis.fetch, prStates, pulls }) {
   let current = readStored(dataFile);
 
-  /* GitHub refusing or unreachable (github.js) is logged and raised in the Inbox once per outage, since PR states,
-     the PR finder and the merge check all stop on it; GitHub answering again ends the outage. */
-  let githubDown = false;
+  /* GitHub refusing or unreachable (github.js) stops PR states, the PR finder and the merge check. The first failure
+     of an outage is logged at once; it is raised in the Inbox only if GitHub is still failing 15 minutes later, so a
+     timeout that clears on the next call stays quiet. GitHub answering again ends the outage, and is logged. */
+  const RAISE_AFTER = 15 * 60e3;
+  let outage = null; // { since, raised }
   function reportGitHub(problem) {
     if (!problem) {
-      if (githubDown) console.log('GitHub is answering again');
-      githubDown = false;
+      if (outage) console.log('GitHub is answering again');
+      outage = null;
       return;
     }
-    if (githubDown) return;
-    githubDown = true;
     const why = `${problem.status || 'unreachable'}${problem.message ? ` ${problem.message}` : ''}`;
-    console.error(`GitHub: ${why}`);
-    if (!current) return;
+    const t = now().getTime();
+    if (!outage) {
+      outage = { since: t, raised: false };
+      console.error(`GitHub: ${why}`);
+    }
+    if (outage.raised || t - outage.since < RAISE_AFTER || !current) return;
+    outage.raised = true;
     const hint = problem.status === 401 ? 'check GR8R_GITHUB_TOKEN' : 'it will be retried';
-    asGitHub((d, p, today, t) =>
+    asGitHub((d, p, today, at) =>
       (d.notifs ??= []).push({
         id: 'n' + rand(),
         type: 'update',
         by: d.actor,
         text: problem.status ? 'GitHub is refusing requests' : 'GitHub can’t be reached',
         snippet: `${why}: ${hint}. PR states, the PR finder and the merge check are paused until it answers.`,
-        at: t,
+        at,
         read: false,
       }),
     );
