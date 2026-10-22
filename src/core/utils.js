@@ -20,7 +20,14 @@ export const sod = d => {
   x.setHours(0, 0, 0, 0);
   return x;
 };
-export const TODAY = sod(new Date());
+export let TODAY = sod(new Date());
+/* Keep the live export current: every existing date helper and importer sees the new local day. */
+export function refreshToday(now = new Date()) {
+  const day = sod(now);
+  if (day.getTime() === TODAY.getTime()) return false;
+  TODAY = day;
+  return true;
+}
 export const iso = d => {
   const x = new Date(d);
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
