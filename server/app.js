@@ -400,13 +400,26 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
     fs.createReadStream(file).pipe(res);
   }
 
+  /* What the GitHub sync has seen, in pr-seen.json beside the data file: the state each PR of a project repo was in at
+     the PR finder's last look (`repos`), and the "<task id> <PR ref>" pairs the merge check has moved (`moved`). An
+     unreadable file starts over, which only relinks. */
+  const seenFile = path.join(path.dirname(dataFile), 'pr-seen.json');
+  const readSeen = () => {
+    try {
+      return { repos: {}, ...JSON.parse(fs.readFileSync(seenFile, 'utf8')) };
+    } catch {
+      return { repos: {} };
+    }
+  };
+  const writeSeen = seen => fs.writeFileSync(seenFile, JSON.stringify(seen));
+
   /* Moves each task in Review whose linked PR has merged to Done, with an Inbox item naming the PR, and returns their
-     keys. index.js runs it every 10 minutes. A task is moved once per PR while the server runs, so one put back in
-     Review by hand stays there. Writes only when something moves. */
-  const closed = new Set();
+     keys. index.js runs it every 10 minutes. A task is moved once per PR, remembered in pr-seen.json, so one put back
+     in Review by hand stays there, across restarts too. Writes only when something moves. */
   async function closeMergedReviews() {
     if (!current) return [];
-    const unseen = w => !closed.has(`${w.id} ${w.ref}`);
+    let moved = new Set(readSeen().moved);
+    const unseen = w => !moved.has(`${w.id} ${w.ref}`);
     const refs = [
       ...new Set(
         reviewPrs(current.state.data)
@@ -417,6 +430,7 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
     if (!refs.length) return [];
     const states = await prStates(refs);
     // read again after the wait: the state may have moved on while GitHub answered
+    moved = new Set(readSeen().moved);
     const merged = reviewPrs(current.state.data).filter(w => unseen(w) && states[w.ref] === 'merged');
     if (!merged.length) return [];
     const keys = asGitHub((d, p, today, t) =>
@@ -440,7 +454,9 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
         return w.key;
       }),
     );
-    for (const w of merged) closed.add(`${w.id} ${w.ref}`);
+    const seen = readSeen();
+    seen.moved = [...new Set([...(seen.moved || []), ...merged.map(w => `${w.id} ${w.ref}`)])];
+    writeSeen(seen);
     return keys;
   }
 
@@ -449,7 +465,6 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
      repo in pr-seen.json beside the data file, a PR that opens moves its open tasks to Review and one closed unmerged
      is reported, each with an Inbox item (a merge is closeMergedReviews). The first look at a repo only links, so its
      old PRs move nothing. Returns what it did, one line each; writes the state only when something changed. */
-  const seenFile = path.join(path.dirname(dataFile), 'pr-seen.json');
   async function syncProjectPrs() {
     if (!current) return [];
     const repos = new Map();
@@ -461,12 +476,7 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
       if (list) listed.push({ repo, keys, list });
     }
     if (!listed.length) return [];
-    let seen;
-    try {
-      seen = JSON.parse(fs.readFileSync(seenFile, 'utf8'));
-    } catch {
-      seen = { repos: {} };
-    }
+    const seen = readSeen();
     // read the state now, after the waits, and change it without another one
     const data = current.state.data;
     const work = [];
@@ -509,7 +519,7 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
           }),
         )
       : [];
-    fs.writeFileSync(seenFile, JSON.stringify(seen));
+    writeSeen(seen);
     return done;
   }
 

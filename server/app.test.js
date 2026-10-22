@@ -367,3 +367,47 @@ test('GitHub failing is logged at once, raised in the Inbox once it has lasted 1
     await new Promise(r => app.close(r));
   }
 });
+
+test('the merge check remembers the tasks it moved across a restart, beside the PR finder’s record', async () => {
+  const prStates = async refs => Object.fromEntries(refs.map(r => [r, 'merged']));
+  const start = async () => {
+    const app = createApp({ dataFile, distDir: path.join(dir, 'dist'), prStates, pulls: async () => null });
+    await new Promise(r => app.listen(0, '127.0.0.1', r));
+    return app;
+  };
+  let app = await start();
+  const at = () => `http://127.0.0.1:${app.address().port}`;
+  const state = async () => (await (await fetch(`${at()}/api/state`)).json()).state;
+  try {
+    const task = { id: 't1', key: 'A-1', title: 'x', status: 'review', project: 'p1', labels: [], subtasks: [], order: 1, created: 1, updated: 1 };
+    const data = {
+      me: 'u1',
+      members: [{ id: 'u1', name: 'Me' }],
+      projects: [{ id: 'p1', key: 'A', name: 'A' }],
+      tasks: [task],
+      comments: [{ id: 'c1', task: 't1', at: 1, text: 'PR: https://github.com/o/r/pull/1' }],
+      activity: [],
+      notifs: [],
+    };
+    await fetch(`${at()}/api/state`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ baseRev: 0, state: { data, prefs: {} } }),
+    });
+    fs.writeFileSync(path.join(path.dirname(dataFile), 'pr-seen.json'), JSON.stringify({ repos: { 'o/r': { 'o/r#1': 'open' } } }));
+    assert.deepEqual(await app.closeMergedReviews(), ['A-1']);
+    // put back in Review by hand, then the server restarts
+    const s = await state();
+    s.data.tasks[0].status = 'review';
+    const rev = (await (await fetch(`${at()}/api/rev`)).json()).rev;
+    await fetch(`${at()}/api/state`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ baseRev: rev, state: s }) });
+    await new Promise(r => app.close(r));
+    app = await start();
+    assert.deepEqual(await app.closeMergedReviews(), [], 'not moved again');
+    assert.equal((await state()).data.tasks[0].status, 'review');
+    const seen = JSON.parse(fs.readFileSync(path.join(path.dirname(dataFile), 'pr-seen.json'), 'utf8'));
+    assert.deepEqual(seen, { repos: { 'o/r': { 'o/r#1': 'open' } }, moved: ['t1 o/r#1'] }, 'kept beside the PR finder’s record');
+  } finally {
+    await new Promise(r => app.close(r));
+  }
+});
