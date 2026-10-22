@@ -391,6 +391,24 @@ projectCase(
   d => Object.assign(d.members[1], { team: 'product' }),
 );
 projectCase(
+  'creating a project in the Work workspace',
+  () =>
+    dialog(undefined, { icon: 'server', color: 'teal', team: 'product', lead: 'm2', due: '2026-12-01', tmpl: 'blank', workspace: 'work' }, 'Portal', 'Client'),
+  d => createProject(d, dOff(0), { name: 'Portal', icon: 'server', color: 'teal', lead: 'm2', due: '2026-12-01', desc: 'Client', workspace: 'work' }, NOW),
+  d => Object.assign(d.members[1], { team: 'product' }),
+);
+projectCase(
+  'moving a project to the Work workspace in its settings',
+  () => {
+    app.A.editProject({ dataset: { id: 'p2' } });
+    const p = S.data.projects.find(x => x.id === 'p2');
+    S.ui.pform.workspace = 'work';
+    Object.assign(fields, { '#p-name': { value: p.name }, '#p-desc': { value: p.desc }, '#p-repo': { value: '' } });
+    app.A.submitProject();
+  },
+  d => patchProject(d, 'OPS', { workspace: 'work' }, NOW),
+);
+projectCase(
   'creating a project linked to a repo',
   () =>
     dialog(

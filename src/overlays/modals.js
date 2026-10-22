@@ -3,6 +3,7 @@ import { $$, MOD, esc, fmtDate } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { PCOLORS, PICONS } from '../core/constants.js';
 import { D, S, mem, pColor, proj, task, teamsList } from '../core/store.js';
+import { WORKSPACES } from '../core/workspaces.js';
 import { av, lbl, prPill, stPill } from '../ui/helpers.js';
 import { focusKey, render } from '../shell/render.js';
 import { teamModal } from '../features/teams.js';
@@ -160,6 +161,7 @@ export function projectModal(m, H) {
         .join('')}</div></div>
     </div>
     <div class="row" style="gap:12px;flex-wrap:wrap">
+      <div class="field" style="flex:1;min-width:150px"><label class="label" for="p-ws">Workspace</label><select class="select" id="p-ws" data-in="pform" data-f="workspace">${WORKSPACES.map(w => `<option value="${w.id}" ${f.workspace === w.id ? 'selected' : ''}>${w.name}</option>`).join('')}</select></div>
       <div class="field" style="flex:1;min-width:150px"><label class="label" for="p-team">Team</label><select class="select" id="p-team" data-in="pform" data-f="team">${teamsList()
         .map(t => `<option value="${t.id}" ${f.team === t.id ? 'selected' : ''}>${esc(t.name)}</option>`)
         .join('')}</select></div>

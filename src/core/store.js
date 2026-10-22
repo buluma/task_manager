@@ -7,8 +7,19 @@ import { adoptLabels } from './labels.js';
 import { emptyWorkspace } from '../data/seed.js';
 import { pull, push, syncing } from './sync.js';
 import { cycleStart } from './cycles.js';
+import { inWorkspace, isWorkspace } from './workspaces.js';
 
 export const STORE_KEY = 'gr8r.v2';
+/* The workspace this device shows (personal, work or all), kept apart from the synced state so each device has its own. */
+export const WS_KEY = 'gr8r.workspace';
+function savedWorkspace() {
+  try {
+    const v = localStorage.getItem(WS_KEY);
+    return isWorkspace(v) ? v : 'all';
+  } catch {
+    return 'all';
+  }
+}
 export const DEFAULT_PREFS = {
   theme: 'system',
   accent: 'indigo',
@@ -77,6 +88,7 @@ export const S = {
     myView: 'list',
     membersTab: 'members',
     collapsedCols: {},
+    workspace: savedWorkspace(),
     errors: {},
     drafts: {},
   },
@@ -111,15 +123,23 @@ export const mem = id => D().members.find(m => m.id === id);
 export const proj = id => D().projects.find(p => p.id === id);
 export const task = id => D().tasks.find(t => t.id === id);
 export const pColor = p => PCOLORS[p?.color] || PCOLORS.slate;
+/* Whether `p` is in the workspace this device shows (all of them under 'all'). */
+export const inView = p => inWorkspace(p, S.ui.workspace);
 export const visibleProjects = () =>
   D()
     .projOrder.map(proj)
     .filter(Boolean)
-    .filter(p => !p.archived);
+    .filter(p => !p.archived && inView(p));
 // A task or activity row can outlive its project (purge, a hand-made state); treat that as not visible.
 export const canSee = p => !!p && (!p.private || p.members.includes(D().me));
 export const tasksOf = pid => D().tasks.filter(t => t.project === pid && !t.archived);
-export const allTasks = () => D().tasks.filter(t => !t.archived && canSee(proj(t.project)));
+export const allTasks = () =>
+  D().tasks.filter(t => {
+    const p = proj(t.project);
+    return !t.archived && canSee(p) && inView(p);
+  });
+/* Inbox items for the workspace shown: those about a task in it, and those about no task. */
+export const notifsHere = () => D().notifs.filter(n => !n.task || inView(proj(task(n.task)?.project)));
 /* Done and cancelled are the two finished states; everything else is still open. */
 export const isOpen = t => t.status !== 'done' && t.status !== 'cancelled';
 export const isOver = t => t.due && isOpen(t) && diffD(parse(t.due), TODAY) < 0;

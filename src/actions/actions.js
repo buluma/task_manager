@@ -10,9 +10,10 @@ import { addComment, removeComment } from '../core/comments.js';
 import { linkTo } from '../core/links.js';
 import { addTask, changeTask, nextKey } from '../core/tasks.js';
 import { addProject, changeProject, repoName } from '../core/projects.js';
+import { isWorkspace, workspaceOf } from '../core/workspaces.js';
 import { addMembers, removeMember } from '../core/members.js';
 import { addSub, removeSub, setSubDone } from '../core/subtasks.js';
-import { D, S, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
+import { D, S, WS_KEY, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
 import { effectiveDark } from '../core/theme.js';
 import { mutate, toast } from '../ui/toast.js';
 import { autosize, focusKey, fxSet, go, render } from '../shell/render.js';
@@ -1039,8 +1040,30 @@ A.clearProjFilters = () => {
   S.ui.projStatus = 'all';
   render();
 };
+/* Which workspace this device shows: personal, work or all. Kept per device (WS_KEY), not in the synced state. */
+A.setWorkspace = el => {
+  S.ui.workspace = isWorkspace(el.dataset.v) ? el.dataset.v : 'all';
+  try {
+    localStorage.setItem(WS_KEY, S.ui.workspace);
+  } catch {
+    /* storage blocked: the choice lasts until reload */
+  }
+  S.ui.pop = null;
+  render();
+};
 A.newProject = () => {
-  S.ui.pform = { name: '', desc: '', repo: '', icon: 'folder', color: 'indigo', team: me().team, lead: D().me, due: dOff(30), tmpl: 'blank' };
+  S.ui.pform = {
+    name: '',
+    desc: '',
+    repo: '',
+    workspace: isWorkspace(S.ui.workspace) ? S.ui.workspace : 'personal',
+    icon: 'folder',
+    color: 'indigo',
+    team: me().team,
+    lead: D().me,
+    due: dOff(30),
+    tmpl: 'blank',
+  };
   S.ui.errors = {};
   S.ui.pop = null;
   openModal({ type: 'project' });
@@ -1048,7 +1071,18 @@ A.newProject = () => {
 A.editProject = el => {
   const p = proj(el.dataset.id);
   S.ui.pop = null;
-  S.ui.pform = { name: p.name, desc: p.desc, repo: p.repo || '', icon: p.icon, color: p.color, team: p.team, lead: p.lead, due: p.due, tmpl: 'blank' };
+  S.ui.pform = {
+    name: p.name,
+    desc: p.desc,
+    repo: p.repo || '',
+    workspace: workspaceOf(p),
+    icon: p.icon,
+    color: p.color,
+    team: p.team,
+    lead: p.lead,
+    due: p.due,
+    tmpl: 'blank',
+  };
   S.ui.errors = {};
   openModal({ type: 'project', edit: p.id });
 };
@@ -1070,7 +1104,7 @@ A.pformSet = el => {
 /* The app's defaults for a new project: planning, due in a month, starting today. */
 export function createProject(f, tmplId) {
   const fields = { name: f.name, icon: f.icon, color: f.color, status: 'planning', team: f.team, lead: f.lead, due: f.due || dOff(30), start: dOff(0) };
-  const p = addProject(D(), { ...fields, desc: f.desc || 'No description yet.', repo: repoName(f.repo) ?? null }, asMe());
+  const p = addProject(D(), { ...fields, desc: f.desc || 'No description yet.', repo: repoName(f.repo) ?? null, workspace: f.workspace || 'personal' }, asMe());
   const tm = TEMPLATES.find(t => t.id === tmplId);
   (tm?.tasks || []).forEach((title, i) =>
     createTask({
@@ -1107,9 +1141,10 @@ A.submitProject = () => {
   S.ui.errors.prepo = null;
   if (m.edit) {
     const p = proj(m.edit);
-    const patch = { name: f.name, desc: f.desc, icon: f.icon, color: f.color, team: f.team, lead: f.lead, due: f.due, repo };
-    // a project made before repos were linked has no field until one is set
+    const patch = { name: f.name, desc: f.desc, icon: f.icon, color: f.color, team: f.team, lead: f.lead, due: f.due, repo, workspace: f.workspace };
+    // a project made before repos or workspaces has no field until one is set
     if (repo === null && p.repo === undefined) delete patch.repo;
+    if (f.workspace === workspaceOf(p) && p.workspace === undefined) delete patch.workspace;
     if (mutate(() => changeProject(D(), p, patch, asMe()))) {
       S.ui.modals.pop();
       render();

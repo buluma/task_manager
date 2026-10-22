@@ -4,10 +4,11 @@
 import { archiveProject as archive, removeProject } from '../src/core/archive.js';
 import { addProject, changeProject, repoName } from '../src/core/projects.js';
 import { PCOLORS, PSTAT } from '../src/core/constants.js';
+import { WORKSPACES, inWorkspace, isWorkspace } from '../src/core/workspaces.js';
 import { ApiError, bad, changeCtx, isDate } from './tasks.js';
 
-const CREATE = ['name', 'key', 'desc', 'color', 'icon', 'status', 'due', 'lead', 'repo'];
-const EDITABLE = ['name', 'desc', 'color', 'icon', 'status', 'due', 'lead', 'repo', 'archived'];
+const CREATE = ['name', 'key', 'desc', 'color', 'icon', 'status', 'due', 'lead', 'repo', 'workspace'];
+const EDITABLE = ['name', 'desc', 'color', 'icon', 'status', 'due', 'lead', 'repo', 'workspace', 'archived'];
 
 export function findProject(data, ref) {
   const r = String(ref).toLowerCase();
@@ -16,7 +17,16 @@ export function findProject(data, ref) {
   return p;
 }
 
-export const listProjects = (data, query) => data.projects.filter(p => query.get('archived') || !p.archived).map(p => ({ ...p }));
+/* `workspace` (personal or work) narrows the list to that workspace. */
+export const workspaceParam = query => {
+  const ws = query.get('workspace');
+  if (ws && !isWorkspace(ws)) throw bad(`workspace must be one of: ${WORKSPACES.map(w => w.id).join(', ')}`);
+  return ws;
+};
+export function listProjects(data, query) {
+  const ws = workspaceParam(query);
+  return data.projects.filter(p => (query.get('archived') || !p.archived) && inWorkspace(p, ws)).map(p => ({ ...p }));
+}
 
 function clean(data, input, allowed) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw bad('body must be a JSON object');
@@ -64,6 +74,10 @@ function clean(data, input, allowed) {
         if (v !== null && (typeof v !== 'string' || !repoName(v))) throw bad('repo must be a GitHub repo as OWNER/NAME (or its github.com URL), or null');
         out.repo = v === null ? null : repoName(v);
         break;
+      case 'workspace':
+        if (!isWorkspace(v)) throw bad(`workspace must be one of: ${WORKSPACES.map(w => w.id).join(', ')}`);
+        out.workspace = v;
+        break;
       case 'archived':
         if (typeof v !== 'boolean') throw bad('archived must be true or false');
         out.archived = v;
@@ -92,6 +106,7 @@ export function createProject(data, today, input, now) {
       start: today,
       desc: f.desc || '',
       repo: f.repo ?? null,
+      workspace: f.workspace || 'personal',
     },
     changeCtx(data, now),
   );
