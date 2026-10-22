@@ -411,3 +411,33 @@ test('the merge check remembers the tasks it moved across a restart, beside the 
     await new Promise(r => app.close(r));
   }
 });
+
+test('a failed state write leaves the published revision and state unchanged, and can be retried', async () => {
+  await put({ baseRev: 0, state });
+  const before = fs.readFileSync(dataFile, 'utf8');
+  fs.mkdirSync(`${dataFile}.tmp`); // opening the temporary file must fail
+  const error = mock.method(console, 'error', () => {});
+  try {
+    const next = { data: { tasks: [{ id: 't2' }] }, prefs: {} };
+    assert.equal((await put({ baseRev: 1, state: next })).status, 500);
+    assert.deepEqual(await (await fetch(`${base}/api/state`)).json(), { rev: 1, state });
+    assert.equal(fs.readFileSync(dataFile, 'utf8'), before);
+    fs.rmdirSync(`${dataFile}.tmp`);
+    assert.equal((await put({ baseRev: 1, state: next })).status, 200);
+    assert.deepEqual(await (await fetch(`${base}/api/state`)).json(), { rev: 2, state: next });
+  } finally {
+    error.mock.restore();
+  }
+});
+
+test('a failed first write does not publish a workspace', async () => {
+  fs.mkdirSync(`${dataFile}.tmp`, { recursive: true });
+  const error = mock.method(console, 'error', () => {});
+  try {
+    assert.equal((await put({ baseRev: 0, state })).status, 500);
+    assert.equal((await fetch(`${base}/api/state`)).status, 404);
+    assert.equal(fs.existsSync(dataFile), false);
+  } finally {
+    error.mock.restore();
+  }
+});
