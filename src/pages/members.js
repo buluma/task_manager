@@ -2,7 +2,7 @@
 import { ago, esc, minsAgo } from '../core/utils.js';
 import { ic } from '../core/icons.js';
 import { ROLES } from '../core/constants.js';
-import { D, S, TM, allTasks, canSee, isOpen, isOver, me, mem, progressOf, team, teamsList, visibleProjects } from '../core/store.js';
+import { D, S, TM, activityHere, allTasks, canSee, isOpen, isOver, me, mem, progressOf, team, teamsList, visibleProjects } from '../core/store.js';
 import { av, avStack, empty, pIcon, pStatus, progBar } from '../ui/helpers.js';
 import { sortTasks } from '../shell/view-engine.js';
 import { actHtml, miniRow } from '../components/task-list.js';
@@ -117,8 +117,8 @@ export function pageMember() {
   const open = ts.filter(t => isOpen(t));
   const done = ts.filter(t => !isOpen(t));
   const ps = visibleProjects().filter(p => p.members.includes(m.id) && p.status !== 'complete' && canSee(p));
-  const acts = D()
-    .activity.filter(a => a.by === m.id)
+  const acts = activityHere()
+    .filter(a => a.by === m.id)
     .slice(0, 8);
   const tab = S.ui.memTab || 'assigned';
   return `<div class="page">

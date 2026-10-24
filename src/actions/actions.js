@@ -13,7 +13,25 @@ import { addProject, changeProject, repoName } from '../core/projects.js';
 import { isWorkspace, workspaceOf } from '../core/workspaces.js';
 import { addMembers, removeMember } from '../core/members.js';
 import { addSub, removeSub, setSubDone } from '../core/subtasks.js';
-import { D, S, WS_KEY, allTasks, canSee, commentsOf, isOpen, logAct, me, mem, proj, save, task, tasksOf, visibleProjects } from '../core/store.js';
+import {
+  D,
+  S,
+  WS_KEY,
+  allTasks,
+  canSee,
+  commentsOf,
+  isOpen,
+  logAct,
+  notifsHere,
+  projectHere,
+  me,
+  mem,
+  proj,
+  save,
+  task,
+  tasksOf,
+  visibleProjects,
+} from '../core/store.js';
 import { effectiveDark } from '../core/theme.js';
 import { mutate, toast } from '../ui/toast.js';
 import { autosize, focusKey, fxSet, go, render } from '../shell/render.js';
@@ -1049,7 +1067,13 @@ A.setWorkspace = el => {
     /* storage blocked: the choice lasts until reload */
   }
   S.ui.pop = null;
-  render();
+  S.ui.drawer = null;
+  S.ui.inboxSel = null;
+  S.ui.composer = null;
+  S.ui.modals = [];
+  S.ui.palette = null;
+  if (S.ui.route === 'project' && !projectHere(proj(S.ui.params.id))) go('home');
+  else render();
 };
 A.newProject = () => {
   S.ui.pform = {
@@ -1363,8 +1387,8 @@ A.toggleRead = el => {
   render();
 };
 A.markAllRead = () => {
-  const n = D().notifs.filter(x => !x.read).length;
-  D().notifs.forEach(x => (x.read = true));
+  const n = notifsHere().filter(x => !x.read).length;
+  notifsHere().forEach(x => (x.read = true));
   save();
   render();
   if (n) toast("You're all caught up.");

@@ -148,3 +148,54 @@ test('the New task dialog fills in today and three days out, and drops them if t
   const picked = create('backlog', { due: '2030-01-01' });
   assert.deepEqual([picked.start, picked.due], [null, '2030-01-01']);
 });
+
+test('mark all read leaves the other workspace unread', () => {
+  S.data = emptyWorkspace();
+  S.data.projects.push({ id: 'work', workspace: 'work', members: [] });
+  S.data.tasks = [
+    { id: 'personal', project: S.data.projects[0].id },
+    { id: 'work', project: 'work' },
+  ];
+  S.data.notifs = [
+    { id: 'p', task: 'personal', read: false },
+    { id: 'w', task: 'work', read: false },
+  ];
+  const previous = S.ui.workspace;
+  try {
+    S.ui.workspace = 'personal';
+    app.A.markAllRead();
+    assert.deepEqual(
+      S.data.notifs.map(n => n.read),
+      [true, false],
+    );
+  } finally {
+    S.ui.workspace = previous;
+  }
+});
+
+test('comment search follows the selected workspace and excludes archived tasks', async () => {
+  const { searchAll } = await import('../src/pages/search.js');
+  S.data = emptyWorkspace();
+  S.data.projects.push({ id: 'work', workspace: 'work', members: [] });
+  S.data.tasks = [
+    { id: 'personal', project: S.data.projects[0].id, title: 'x', desc: '' },
+    { id: 'work', project: 'work', title: 'x', desc: '' },
+    { id: 'archived', project: S.data.projects[0].id, archived: true, title: 'x', desc: '' },
+  ];
+  S.data.comments = S.data.tasks.map(t => ({ id: t.id, task: t.id, text: 'needle' }));
+  const previous = S.ui.workspace;
+  try {
+    S.ui.workspace = 'personal';
+    assert.deepEqual(
+      searchAll('needle').comments.map(c => c.id),
+      ['personal'],
+    );
+    S.ui.workspace = 'work';
+    assert.deepEqual(
+      searchAll('needle').comments.map(c => c.id),
+      ['work'],
+    );
+  } finally {
+    S.ui.workspace = previous;
+  }
+});

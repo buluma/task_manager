@@ -2,7 +2,21 @@
 import { MOD, TODAY, diffD, esc, parse } from '../core/utils.js';
 import { ic, wsLogo } from '../core/icons.js';
 import { PSTAT } from '../core/constants.js';
-import { D, S, allTasks, isOpen, mem, notifsHere, pColor, proj, team, teamsList, visibleProjects } from '../core/store.js';
+import {
+  D,
+  S,
+  allTasks,
+  archivedProjectsHere,
+  archivedTasksHere,
+  isOpen,
+  mem,
+  notifsHere,
+  pColor,
+  proj,
+  team,
+  teamsList,
+  visibleProjects,
+} from '../core/store.js';
 import { WORKSPACES } from '../core/workspaces.js';
 import { av } from '../ui/helpers.js';
 import { ROUTE_NAMES } from './render.js';
@@ -136,7 +150,7 @@ export function renderSidebar() {
           </div>`;
           })
           .join('')}
-        ${sItem('archive', 'Archive', 'archive', { ct: D().tasks.filter(t => t.archived).length + D().projects.filter(p => p.archived).length || '' })}
+        ${sItem('archive', 'Archive', 'archive', { ct: archivedTasksHere().length + archivedProjectsHere().length || '' })}
       </div>
       <div class="sgroup">
         <div class="sgroup-h"><span>Teams</span><span class="sp"></span><button class="ibtn ibtn-xs" data-a="newTeam" data-tip="New team" aria-label="New team">${ic('plus', 14)}</button></div>
