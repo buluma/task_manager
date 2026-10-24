@@ -8,7 +8,7 @@ import { av, pIcon, prIcon } from '../ui/helpers.js';
 import { LABEL_COLORS, PRIOS, sameLabel } from '../core/constants.js';
 import { labelList } from '../core/labels.js';
 import { MAX_WEIGHT } from '../core/priorities.js';
-import { permsTable, teamsGrid } from './members.js';
+import { accessPanel, teamsGrid } from './members.js';
 import { page404 } from './errors.js';
 import { SHORTCUTS } from '../overlays/modals.js';
 
@@ -29,7 +29,7 @@ export const SET_NAV = [
       ['projects', 'Projects', 'folder-kanban'],
       ['priorities', 'Priorities', 'signal-high'],
       ['labels', 'Labels', 'tag'],
-      ['permissions', 'Permissions', 'shield'],
+      ['permissions', 'Access & automations', 'shield'],
     ],
   ],
   [
@@ -228,7 +228,7 @@ export function settingsBody(sec, title) {
       );
     }
     case 'permissions':
-      return H('What each role can do.') + `<div class="sblock"><h2>Role permissions</h2><div style="margin-top:12px">${permsTable()}</div></div>`;
+      return H('Who works in this workspace and how automation acts.') + `<div class="sblock"><div style="margin-top:12px">${accessPanel()}</div></div>`;
     case 'profile': {
       const err = S.ui.errors.pname2;
       return (
