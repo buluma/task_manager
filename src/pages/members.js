@@ -20,7 +20,7 @@ export function pageMembers() {
     <div class="tabs" style="margin-bottom:14px">${[
       ['members', 'Members'],
       ['teams', 'Teams'],
-      ['roles', 'Roles & permissions'],
+      ['roles', 'Access & automations'],
     ]
       .map(([k, n]) => `<button class="tab ${tab === k ? 'on' : ''}" data-a="set" data-k="membersTab" data-v="${k}">${n}</button>`)
       .join('')}</div>
@@ -28,7 +28,7 @@ export function pageMembers() {
       tab === 'teams'
         ? `<div class="row" style="margin-bottom:12px"><span class="muted" style="font-size:13px">${teamsList().length} teams</span><span class="sp"></span><button class="btn btn-secondary btn-sm" data-a="newTeam">${ic('plus', 13)}New team</button></div>${teamsGrid()}`
         : tab === 'roles'
-          ? permsTable()
+          ? accessPanel()
           : `
     <div class="row" style="margin-bottom:12px;gap:8px;flex-wrap:wrap"><div class="inwrap">${ic('search', 13)}<input class="input search-sm" id="mem-q" data-in="memQ" placeholder="Search by name or email" value="${esc(u.memQ || '')}" aria-label="Search members"></div>
       <div class="seg">${['all', ...ROLES].map(r => `<button class="${role === r ? 'on' : ''}" data-a="set" data-k="memRole" data-v="${r}">${r === 'all' ? 'All' : r}</button>`).join('')}</div></div>
@@ -53,29 +53,22 @@ export function pageMembers() {
     }
   </div>`;
 }
-export function permsTable() {
-  const rows = [
-    ['View projects & tasks', 1, 1, 1, 1],
-    ['Comment on tasks', 1, 1, 1, 1],
-    ['Create and edit tasks', 1, 1, 1, 0],
-    ['Create projects', 1, 1, 1, 0],
-    ['Add members', 1, 1, 0, 0],
-    ['Manage roles', 1, 1, 0, 0],
-    ['Workspace settings', 1, 1, 0, 0],
-    ['Delete workspace', 1, 0, 0, 0],
-  ];
-  return `<div class="panel" style="overflow-x:auto"><table class="perm-t" style="min-width:560px"><thead><tr><th style="padding-left:14px">Permission</th>${ROLES.map(r => `<th>${r}</th>`).join('')}</tr></thead><tbody>${rows
-    .map(
-      r =>
-        `<tr><td style="padding-left:14px">${r[0]}</td>${r
-          .slice(1)
-          .map(
-            v =>
-              `<td>${v ? `<span style="color:var(--green);display:inline-flex" aria-label="Allowed">${ic('check', 15)}</span>` : `<span class="faint" style="display:inline-flex" aria-label="Not allowed">${ic('minus', 15)}</span>`}</td>`,
-          )
-          .join('')}</tr>`,
-    )
-    .join('')}</tbody></table></div>`;
+export function accessPanel() {
+  const owner = D().members.find(m => m.role === 'Owner');
+  const agents = D().members.filter(m => m.agent && m.id !== 'agent-github');
+  const github = D().members.find(m => m.agent && m.id === 'agent-github');
+  const people = list =>
+    list.length
+      ? list.map(m => `<span class="badge">${av(m.id, 'sm', false)}${esc(m.name)}</span>`).join(' ')
+      : '<span class="faint">None registered</span>';
+  const card = (icon, title, body, detail) =>
+    `<article class="pcard" style="cursor:default"><div class="row">${ic(icon, 17)}<b style="font-weight:600;font-size:14px">${title}</b></div><div class="desc">${body}</div><div class="foot">${detail}</div></article>`;
+
+  return `<div class="pgrid">
+    ${card('crown', 'Owner', 'The workspace owner and primary human account.', owner ? people([owner]) : '<span class="faint">No owner found</span>')}
+    ${card('bot', 'Agents', 'Registered automations work through the Gr8r API. Their names attribute writes; API access uses the shared token.', people(agents))}
+    ${card('github', 'GitHub automation', 'For linked project repos, the server links matching pull requests to tasks, moves tasks to Review when a PR opens, and moves Review tasks to Done when it merges.', github ? `<span class="badge">${av(github.id, 'sm', false)}GitHub agent registered</span>` : '<span class="faint">Agent identity is created on first GitHub sync</span>')}
+  </div>`;
 }
 export function teamsGrid() {
   return `<div class="pgrid">${teamsList()
