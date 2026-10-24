@@ -64,7 +64,8 @@ Add `--json` to any command for machine-readable output. Values:
 - status: `backlog todo progress review done cancelled` (done and cancelled are the two closed states: neither is overdue, open or carried to the next cycle, and cancelled tasks are left out of project progress)
 - priority: ids from `gr8r priorities` (default `urgent high medium low none`; the scale is editable, so check)
 - project status: `planning active risk hold complete`; project colors: indigo blue violet teal rose amber green slate
-- dates: `YYYY-MM-DD`; `none` clears due, start, cycle, estimate, completed, recur
+- assignee: a member id, email or name (any case), stored as the id, e.g. `--assignee Codex` or `--assignee m1`; `--assignee none` unassigns
+- dates: `YYYY-MM-DD`; `none` clears due, start, cycle, estimate, completed, recur, assignee
 - cycles: weekly, named by the date of their first day. Open tasks left in a past cycle roll into the current one (`carried` counts how often, `past` lists where they were). The app does it while open and the server does it on the first API call after the week turns, so `--cycle current` is right with no tab open.
 - a new task made in todo, progress or review starts today and is due three days later unless `--start`/`--due` are given (`--due none` for no due date); backlog tasks (the default for `gr8r add`) and tasks added as done or cancelled get no dates
 - `--cycle current` means this week's cycle (weeks start on the day set in the app's prefs)
