@@ -171,6 +171,13 @@ export function notifyOwner(data, t, type, text, snippet, now) {
   (data.notifs ??= []).push({ id: 'n' + rand(), type, by: data.actor, task: t.id, text, snippet, at: now, read: false });
 }
 
+/* An agent writing to a task joins that task's project the first time, so its work shows up there. */
+export function joinProject(data, p) {
+  if (!data.actor || data.actor === data.me) return;
+  p.members ??= [];
+  if (!p.members.includes(data.actor)) p.members.push(data.actor);
+}
+
 export function findTask(data, key) {
   const k = String(key).toLowerCase();
   const t = data.tasks.find(t => t.key.toLowerCase() === k);
@@ -210,8 +217,9 @@ export function createTask(data, prefs, today, input, now) {
   if (completed) needDone(fields.status);
   const p = fields.project ? data.projects.find(p => p.id === fields.project) : data.projects.find(p => !p.archived);
   if (!p) throw bad('no project to add the task to');
-  // The API's defaults for a new task: the backlog, assigned to the owner (also for agent writes).
-  const t = addTask(data, p, { status: 'backlog', assignee: data.me, cycle: null, ...fields }, changeCtx(data, now));
+  // The API's defaults for a new task: the backlog, assigned to whoever creates it (an agent owns its own tasks).
+  const t = addTask(data, p, { status: 'backlog', assignee: actorOf(data), cycle: null, ...fields }, changeCtx(data, now));
+  joinProject(data, p);
   if (completed) t.completedAt = completedStamp(completed);
   return t;
 }
@@ -223,6 +231,10 @@ export function patchTask(data, prefs, today, key, input, now) {
   if (!Object.keys(fields).length && completed === undefined) throw bad('no fields to update');
   if (completed) needDone(fields.status ?? t.status);
   const { changed, next } = changeTask(data, t, fields, changeCtx(data, now));
+  joinProject(
+    data,
+    data.projects.find(p => p.id === t.project),
+  );
   const status = changed.find(c => c.field === 'status');
   if (status) {
     const move = `${STATUS_NAMES[status.from]} → ${STATUS_NAMES[t.status]}`;
