@@ -135,3 +135,21 @@ test('workspace feeds and archives isolate Personal, Work, private and orphan re
     S.ui.workspace = workspace;
   }
 });
+
+test('visibleProjects lists favorited projects first, each group in sidebar order', async () => {
+  const { visibleProjects } = await import('./store.js');
+  const original = S.data;
+  try {
+    S.data = {
+      ...original,
+      projects: ['a', 'b', 'c', 'd'].map(id => ({ id, fav: id === 'b' || id === 'd', members: [] })),
+      projOrder: ['a', 'b', 'c', 'd'],
+    };
+    assert.deepEqual(
+      visibleProjects().map(p => p.id),
+      ['b', 'd', 'a', 'c'],
+    );
+  } finally {
+    S.data = original;
+  }
+});

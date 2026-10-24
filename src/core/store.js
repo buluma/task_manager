@@ -137,11 +137,13 @@ export const task = id => D().tasks.find(t => t.id === id);
 export const pColor = p => PCOLORS[p?.color] || PCOLORS.slate;
 /* Whether `p` is in the workspace this device shows (all of them under 'all'). */
 export const inView = p => inWorkspace(p, S.ui.workspace);
+// Favorited projects come first; within each group the sidebar order (projOrder) holds.
 export const visibleProjects = () =>
   D()
     .projOrder.map(proj)
     .filter(Boolean)
-    .filter(p => !p.archived && inView(p));
+    .filter(p => !p.archived && inView(p))
+    .sort((a, b) => !!b.fav - !!a.fav);
 // A task or activity row can outlive its project (purge, a hand-made state); treat that as not visible.
 export const canSee = p => !!p && (!p.private || p.members.includes(D().me));
 export const tasksOf = pid => D().tasks.filter(t => t.project === pid && !t.archived);
