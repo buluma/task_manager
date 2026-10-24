@@ -82,10 +82,10 @@ test('a write carrying X-Gr8r-Agent is attributed to that agent, by id or by nam
   );
 });
 
-test('an agent can create and change tasks; the work is logged to the agent, the task stays assigned to me', async () => {
+test('an agent can create and change tasks; the work is logged to the agent, and it owns what it creates', async () => {
   await call('POST', '/api/agents', { name: 'Claude' });
   const t = (await call('POST', '/api/tasks', { title: 'from an agent' }, 'Claude')).body.task;
-  assert.equal(t.assignee, 'm1');
+  assert.equal(t.assignee, 'agent-claude');
   await call('PATCH', '/api/tasks/GR-1', { status: 'review' }, 'Claude');
   const acts = stored().state.data.activity;
   assert.deepEqual(
@@ -95,6 +95,32 @@ test('an agent can create and change tasks; the work is logged to the agent, the
       ['created', 'agent-claude'],
     ],
   );
+});
+
+test('an explicit assignee wins over the agent, and the owner keeps the tasks they create', async () => {
+  await call('POST', '/api/agents', { name: 'Claude' });
+  assert.equal((await call('POST', '/api/tasks', { title: 'for me', assignee: 'm1' }, 'Claude')).body.task.assignee, 'm1');
+  assert.equal((await call('POST', '/api/tasks', { title: 'mine' })).body.task.assignee, 'm1');
+});
+
+test('an agent joins a project the first time it creates or moves a task there', async () => {
+  await call('POST', '/api/agents', { name: 'Claude' });
+  await call('POST', '/api/agents', { name: 'GitHub' });
+  await call('POST', '/api/tasks', { title: 'a' });
+  assert.deepEqual(stored().state.data.projects[0].members, ['m1']);
+  await call('POST', '/api/tasks', { title: 'b' }, 'Claude');
+  await call('POST', '/api/tasks', { title: 'c' }, 'Claude');
+  assert.deepEqual(stored().state.data.projects[0].members, ['m1', 'agent-claude']);
+  await call('PATCH', '/api/tasks/GR-1', { status: 'review' }, 'GitHub');
+  assert.deepEqual(stored().state.data.projects[0].members, ['m1', 'agent-claude', 'agent-github']);
+  assert.equal(stored().state.data.tasks[0].assignee, 'm1', 'moving a task does not take it over');
+});
+
+test('an agent that creates a project is one of its members', async () => {
+  await call('POST', '/api/agents', { name: 'Claude' });
+  const p = (await call('POST', '/api/projects', { name: 'Agent work' }, 'Claude')).body.project;
+  assert.deepEqual(p.members, ['m1', 'agent-claude']);
+  assert.equal(p.lead, 'm1');
 });
 
 test('the actor is never stored in the state', async () => {

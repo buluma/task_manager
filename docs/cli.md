@@ -104,7 +104,7 @@ Put a label on a task with `add`/`set --label ID`. A label's id is the name it w
 
 ## Agents and the Inbox
 
-Register an agent once with `gr8r agent add NAME`, then put `--as NAME` on any command (or export `GR8R_AGENT=NAME`) to log that write to the agent in comments and activity instead of you. This is attribution, not authentication: the one shared token still applies, and an unknown name is refused. Tasks an agent creates stay assigned to you.
+Register an agent once with `gr8r agent add NAME`, then put `--as NAME` on any command (or export `GR8R_AGENT=NAME`) to log that write to the agent in comments and activity instead of you. This is attribution, not authentication: the one shared token still applies, and an unknown name is refused. Tasks an agent creates are assigned to that agent unless `--assignee` says otherwise, and an agent joins a project's members the first time it creates or changes a task there or creates the project.
 
 | Command                                                   | Does                                                                                                                  |
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |

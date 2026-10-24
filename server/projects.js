@@ -5,7 +5,7 @@ import { archiveProject as archive, removeProject } from '../src/core/archive.js
 import { addProject, changeProject, repoName } from '../src/core/projects.js';
 import { PCOLORS, PSTAT } from '../src/core/constants.js';
 import { WORKSPACES, inWorkspace, isWorkspace } from '../src/core/workspaces.js';
-import { ApiError, bad, changeCtx, isDate } from './tasks.js';
+import { ApiError, bad, changeCtx, isDate, joinProject } from './tasks.js';
 
 const CREATE = ['name', 'key', 'desc', 'color', 'icon', 'status', 'due', 'lead', 'repo', 'workspace'];
 const EDITABLE = ['name', 'desc', 'color', 'icon', 'status', 'due', 'lead', 'repo', 'workspace', 'archived'];
@@ -92,7 +92,7 @@ export function createProject(data, today, input, now) {
   if (!f.name) throw bad('name is required');
   const lead = f.lead || data.me;
   // The API's defaults: a folder in indigo, planning, no due date, in the lead's team.
-  return addProject(
+  const p = addProject(
     data,
     {
       key: f.key,
@@ -110,6 +110,8 @@ export function createProject(data, today, input, now) {
     },
     changeCtx(data, now),
   );
+  joinProject(data, p);
+  return p;
 }
 
 export function patchProject(data, ref, input, now) {
