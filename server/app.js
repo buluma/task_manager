@@ -13,6 +13,7 @@ import { addComment as postComment } from '../src/core/comments.js';
 import { createNotification, listNotifications, setRead } from './notifications.js';
 import { addAgent, findAgent, listAgents } from './agents.js';
 import { changeTask } from '../src/core/tasks.js';
+import { cycleStart, rollCycles } from '../src/core/cycles.js';
 import { createPrStates, createPullLister, linkedPrRefs, prEvent, prKeysIn, reviewPrs } from './github.js';
 import { addPriority, deletePriority, listPriorities, patchPriority } from './priorities.js';
 import { changeLabel, createLabel, deleteLabel, listLabels } from './labels.js';
@@ -194,6 +195,15 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
       return change(d, ...rest);
     });
   }
+  /* The app rolls unfinished work into the new cycle while a tab is open; this does the same for API callers when
+     none is, so `--cycle current` is right on Monday morning. Both sides roll to the same values, so a tab that
+     rolled too merges cleanly. Nothing is written when nothing moves. */
+  function rollDue() {
+    if (!current) return;
+    const cur = cycleStart(localIso(now()), +(current.state.prefs?.weekStart ?? 1));
+    if (!rollCycles(structuredClone(current.state.data.tasks), cur)) return;
+    mutateAs(undefined, d => rollCycles(d.tasks, cur));
+  }
   const needState = () => {
     if (!current) throw new ApiError(409, 'no workspace yet: open the app once so it can save its starting state');
     return current.state;
@@ -223,6 +233,7 @@ export function createApp({ dataFile, distDir, now = () => new Date(), token, gi
       return json(res, 200, { prs: Object.fromEntries(refs.map(r => [r, found[r] ?? null])) });
     }
     authorize(req, res);
+    rollDue();
     // X-Gr8r-Agent attributes a write to a registered agent; it is not authentication (see agents.js).
     const named = req.headers['x-gr8r-agent'];
     const actor = named === undefined ? undefined : findAgent(needState().data, named).id;

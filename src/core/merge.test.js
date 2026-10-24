@@ -134,3 +134,17 @@ test('the inputs are left untouched', () => {
   state.data.tasks[0].title = 'mutated';
   assert.deepEqual([base, mine, theirs], before);
 });
+
+test('a cycle roll made by both the tab and the server is counted once', async () => {
+  const { rollCycles } = await import('./cycles.js');
+  const base = ws([task('t1', { cycle: '2026-10-05' }), task('t2')]);
+  const mine = copy(base);
+  const theirs = copy(base);
+  rollCycles(mine.data.tasks, '2026-10-12');
+  mine.data.tasks[1].title = 'edited in the tab';
+  rollCycles(theirs.data.tasks, '2026-10-12');
+  const { state } = mergeState(base, mine, theirs);
+  const t = state.data.tasks[0];
+  assert.deepEqual([t.cycle, t.carried, t.past], ['2026-10-12', 1, ['2026-10-05']]);
+  assert.equal(state.data.tasks[1].title, 'edited in the tab');
+});
