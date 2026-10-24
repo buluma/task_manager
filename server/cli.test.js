@@ -392,3 +392,10 @@ test('--assignee sets a task to a member by id or name, none unassigns, and show
   assert.notEqual(bad.code, 0);
   assert.match(bad.stderr, /assignee/);
 });
+
+test('show prints the start date above the due date, and - when unset', async () => {
+  await run(['add', 'alpha', '--start', '2026-10-19', '--due', '2026-10-21']);
+  assert.match((await run(['show', 'GR-1'])).stdout, /start {5}2026-10-19\ndue {7}2026-10-21/);
+  await run(['add', 'beta']);
+  assert.match((await run(['show', 'GR-2'])).stdout, /start {5}-\ndue {7}-/);
+});

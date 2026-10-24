@@ -164,6 +164,7 @@ function detail(t) {
     `status    ${t.status}`,
     `priority  ${t.priority}`,
     `assignee  ${t.assignee || '-'}`,
+    `start     ${t.start || '-'}`,
     `due       ${t.due || '-'}`,
     `cycle     ${t.cycle || '-'}${t.carried ? `  (carried over ${t.carried}x)` : ''}`,
     `labels    ${t.labels.length ? t.labels.join(', ') : '-'}`,
