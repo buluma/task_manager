@@ -31,6 +31,8 @@ export function ctxMenu(p) {
   if (p.ctx === 'project') {
     const pr = proj(p.id);
     if (!pr) return '';
+    const vis = visibleProjects();
+    const i = vis.indexOf(pr);
     return (
       I('openProject', 'arrow-up-right', 'Open') +
       I('toggleFavProj', 'star', pr.fav ? 'Remove from favorites' : 'Add to favorites') +
@@ -39,8 +41,9 @@ export function ctxMenu(p) {
       I('copyLink', 'link', 'Copy link') +
       I('dupProject', 'copy', 'Duplicate') +
       sep +
-      (visibleProjects().indexOf(pr) > 0 ? I('projUp', 'arrow-up', 'Move up in sidebar') : '') +
-      (visibleProjects().indexOf(pr) < visibleProjects().length - 1 ? I('projDown', 'arrow-down', 'Move down in sidebar') : '') +
+      // Favorites stay on top, so a project only moves among those with the same favorite state.
+      (vis[i - 1] && !!vis[i - 1].fav === !!pr.fav ? I('projUp', 'arrow-up', 'Move up in sidebar') : '') +
+      (vis[i + 1] && !!vis[i + 1].fav === !!pr.fav ? I('projDown', 'arrow-down', 'Move down in sidebar') : '') +
       sep +
       I('archiveProject', 'archive', pr.status === 'complete' ? 'Archive' : 'Archive project') +
       I('delProject', 'trash-2', 'Delete project', 'danger')
