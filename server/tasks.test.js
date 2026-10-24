@@ -410,3 +410,18 @@ test('descFormat "markdown" renders the description as safe HTML; the default st
   assert.equal((await post({ title: 'x', desc: 'a', descFormat: 'html' })).status, 400);
   assert.equal((await post({ title: 'x', descFormat: 'markdown' })).status, 400, 'a format without a description');
 });
+
+test('the server rolls unfinished tasks from past cycles into the current one, once, without the app', async () => {
+  await post({ title: 'finished', status: 'done', cycle: '2026-10-05' });
+  await post({ title: 'open', status: 'todo', cycle: '2026-10-05' });
+  const rev = stored().rev;
+  const { tasks } = (await call('GET', '/api/tasks?cycle=current')).body;
+  assert.deepEqual(
+    tasks.map(t => [t.title, t.cycle, t.carried, t.past]),
+    [['open', CUR, 1, ['2026-10-05']]],
+  );
+  assert.equal(stored().rev, rev + 1, 'the roll is saved');
+  await call('GET', '/api/tasks');
+  assert.equal(stored().rev, rev + 1, 'nothing left to roll, nothing written');
+  assert.equal(stored().state.data.tasks[0].cycle, '2026-10-05', 'a done task stays in its cycle');
+});
