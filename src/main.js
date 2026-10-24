@@ -50,6 +50,7 @@ import './actions/subtasks.js';
 import './actions/archive.js';
 import './actions/priorities.js';
 import './actions/labels.js';
+import './actions/milestones.js';
 import { rollNow } from './actions/cycles.js';
 import { S, D, adoptState, canSee, proj } from './core/store.js';
 import { resolveLink } from './core/links.js';

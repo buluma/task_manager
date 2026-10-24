@@ -4,7 +4,7 @@
    Every function validates before it mutates, so a rejected request leaves the state untouched. */
 import { archiveTask as archive, removeTasks } from '../src/core/archive.js';
 import { STATUSES } from '../src/core/constants.js';
-import { cycleStart } from '../src/core/cycles.js';
+import { cycleStart, isDate } from '../src/core/cycles.js';
 import { scaleOf } from '../src/core/priorities.js';
 import { RECUR_DAYS } from '../src/core/recur.js';
 import { markdownToHtml } from '../src/core/markdown.js';
@@ -50,12 +50,7 @@ export const rand = () => Math.random().toString(36).slice(2, 8);
 const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 export const localIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-export const isDate = s => {
-  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  const [y, m, d] = s.split('-').map(Number);
-  const t = new Date(Date.UTC(y, m - 1, d));
-  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
-};
+export { isDate };
 
 function projectOf(data, ref) {
   const r = String(ref).toLowerCase();

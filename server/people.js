@@ -5,8 +5,9 @@
 import { PCOLORS, TEAMS_SEED } from '../src/core/constants.js';
 import { addMembers, removeMember } from '../src/core/members.js';
 import { addTeam, removeTeam, setTeamMembers, teamsOf } from '../src/core/teams.js';
+import { MilestoneError, addMilestone as addTo, changeMilestone, removeMilestone } from '../src/core/milestones.js';
 import { findProject } from './projects.js';
-import { ApiError, bad, isDate, rand } from './tasks.js';
+import { ApiError, bad, rand } from './tasks.js';
 
 const ROLES = ['Admin', 'Member', 'Guest'];
 const EMAIL = /^\S+@\S+\.\S+$/;
@@ -153,48 +154,15 @@ export function deleteTeam(data, ref) {
 
 /* ---------- milestones ---------- */
 
-export const listMilestones = (data, key) => findProject(data, key).milestones || [];
-
-const findMilestone = (p, name) => {
-  const n = String(name).toLowerCase();
-  const m = (p.milestones || []).find(m => m.name.toLowerCase() === n);
-  if (!m) throw new ApiError(404, `no milestone ${name} on ${p.key}`);
-  return m;
+/* The rules live in src/core/milestones.js, shared with the app; its errors become ApiErrors here. */
+const api = fn => {
+  try {
+    return fn();
+  } catch (e) {
+    throw e instanceof MilestoneError ? new ApiError(e.status, e.message) : e;
+  }
 };
-function milestoneFields(p, f, self) {
-  const out = {};
-  if ('name' in f) {
-    out.name = text(f.name, 'name');
-    if ((p.milestones || []).some(m => m !== self && m.name.toLowerCase() === out.name.toLowerCase()))
-      throw bad(`${p.key} already has a milestone called ${out.name}`);
-  }
-  if ('date' in f) {
-    if (!isDate(f.date)) throw bad('date must be YYYY-MM-DD');
-    out.date = f.date;
-  }
-  return out;
-}
-
-export function addMilestone(data, key, input) {
-  const f = body(input, ['name', 'date']);
-  if (f.name === undefined || f.date === undefined) throw bad('name and date are required');
-  const p = findProject(data, key);
-  const m = milestoneFields(p, f);
-  (p.milestones ??= []).push(m);
-  return m;
-}
-
-export function patchMilestone(data, key, name, input) {
-  const f = body(input, ['name', 'date']);
-  if (!Object.keys(f).length) throw bad('no fields to update');
-  const p = findProject(data, key);
-  const m = findMilestone(p, name);
-  return Object.assign(m, milestoneFields(p, f, m));
-}
-
-export function deleteMilestone(data, key, name) {
-  const p = findProject(data, key);
-  const m = findMilestone(p, name);
-  p.milestones = p.milestones.filter(x => x !== m);
-  return m;
-}
+export const listMilestones = (data, key) => findProject(data, key).milestones || [];
+export const addMilestone = (data, key, input) => api(() => addTo(findProject(data, key), input));
+export const patchMilestone = (data, key, name, input) => api(() => changeMilestone(findProject(data, key), name, input));
+export const deleteMilestone = (data, key, name) => api(() => removeMilestone(findProject(data, key), name));
