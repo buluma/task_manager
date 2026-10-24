@@ -75,8 +75,8 @@ export function drawerHtml(t) {
         ${prop('circle-dot', 'Status', cellStatus(t))}
         ${prop('signal-high', 'Priority', cellPrio(t))}
         ${prop('user', 'Assignee', cellAssignee(t))}
-        ${prop('calendar', 'Due date', cellDue(t))}
         ${prop('calendar-arrow-up', 'Start date', `<button class="pillbtn ${t.start ? '' : 'empty'}" data-a="pop" data-pop="date" data-field="start" data-id="${t.id}">${ic('calendar', 13)}${t.start ? fmtDate(t.start) : 'Set date'}</button>`)}
+        ${prop('calendar', 'Due date', cellDue(t))}
         ${prop('folder', 'Project', cellProject(t))}
         ${prop('tag', 'Labels', `<button class="pillbtn ${t.labels.length ? '' : 'empty'}" data-a="pop" data-pop="labels" data-id="${t.id}" style="flex-wrap:wrap;height:auto;min-height:26px;padding:3px 7px">${t.labels.length ? t.labels.map(lbl).join('') : ic('tag', 13) + 'Add labels'}</button>`)}
         ${prop('repeat', 'Repeat', `<button class="pillbtn ${t.recur ? '' : 'empty'}" data-a="pop" data-pop="recur" data-id="${t.id}">${ic('repeat', 13)}${t.recur || 'Does not repeat'}</button>`)}
