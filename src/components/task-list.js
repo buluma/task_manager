@@ -80,13 +80,13 @@ export function taskRow(t, cols, tpl, opt = {}) {
       ${cc ? `<span class="meta-mini">${ic('message-square', 11)}${cc}</span>` : ''}
     </div>
     ${cols.map(c => `<div class="c-meta c-${c === 'labels' ? 'lbl' : c}">${CELL[c](t)}</div>`).join('')}
-    <div class="c-more"><button class="ibtn ibtn-sm" data-a="ctxBtn" data-ctx="task" data-id="${t.id}" aria-label="More actions">${ic('ellipsis', 15)}</button></div>
+    <div class="c-more" style="display:flex;justify-content:center"><button class="ibtn ibtn-sm" data-a="ctxBtn" data-ctx="task" data-id="${t.id}" aria-label="More actions">${ic('ellipsis', 15)}</button></div>
   </div>
   ${open ? `<div class="subrows">${t.subtasks.map(s => `<div class="subrow ${s.done ? 'done' : ''}"><input type="checkbox" class="check" ${s.done ? 'checked' : ''} data-a="toggleSub" data-id="${t.id}" data-sid="${s.id}" aria-label="Complete subtask"><span>${esc(s.title)}</span></div>`).join('')}</div>` : ''}`;
 }
 export function listHtml(groups, key, opt = {}) {
   const cols = opt.cols || ['status', 'assignee', 'priority', 'due', 'labels'];
-  const tpl = `18px 30px minmax(220px,1fr) ${cols.map(c => LCOLS[c][1]).join(' ')} 40px`;
+  const tpl = `18px 30px minmax(220px,1fr) ${cols.map(c => LCOLS[c][1]).join(' ')} 64px`;
   const all = groups.flatMap(g => g.tasks.map(t => t.id));
   const nSel = all.filter(id => S.ui.sel.has(id)).length;
   const total = all.length;
@@ -107,7 +107,7 @@ export function listHtml(groups, key, opt = {}) {
       <div>${opt.complete ? '' : `<input type="checkbox" class="check" data-a="selAll" data-key="${key}" ${nSel && nSel === total ? 'checked' : ''} ${nSel && nSel < total ? 'data-indet="1"' : ''} aria-label="Select all">`}</div>
       <div data-a="sortBy" data-key="${key}" data-f="title" style="cursor:pointer">Task ${v?.sort.f === 'title' ? ic(v.sort.dir > 0 ? 'arrow-up' : 'arrow-down', 11) : ''}</div>
       ${cols.map(c => `<div data-a="sortBy" data-key="${key}" data-f="${c === 'labels' ? 'manual' : c}" style="cursor:pointer">${LCOLS[c][0]} ${v?.sort.f === c ? ic(v.sort.dir > 0 ? 'arrow-up' : 'arrow-down', 11) : ''}</div>`).join('')}
-      <div></div>
+      <div style="text-align:center">Actions</div>
     </div>
     ${groups
       .map(g => {
