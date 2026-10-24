@@ -97,6 +97,14 @@ test('POST rejects bad input without changing anything', async () => {
   assert.equal(stored().rev, 1);
 });
 
+test('assignee is stored as a member id, given an id, email or name in any case', async () => {
+  const ada = (await call('POST', '/api/members', { emails: ['ada@example.com'] })).body.members[0];
+  await call('PATCH', `/api/members/${ada.id}`, { name: 'Ada Lovelace' });
+  for (const ref of [ada.id, ada.id.toUpperCase(), 'ADA@example.com', 'ada lovelace'])
+    assert.equal((await post({ title: 'x', assignee: ref })).body.task.assignee, ada.id, ref);
+  assert.equal((await post({ title: 'x', assignee: null })).body.task.assignee, null);
+});
+
 test('POST before the app has ever saved is a 409 with a hint', async () => {
   fs.rmSync(dataFile);
   const fresh = createApp({ dataFile: path.join(dir, 'none.json'), distDir: dir, now: () => NOW });

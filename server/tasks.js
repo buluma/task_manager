@@ -115,10 +115,14 @@ function clean(data, prefs, today, input, allowed) {
         if (!Array.isArray(v) || v.some(l => typeof l !== 'string')) throw bad('labels must be an array of strings');
         out.labels = v;
         break;
-      case 'assignee':
-        if (v !== null && !data.members.some(m => m.id === v)) throw bad('assignee must be a member id or null');
-        out.assignee = v;
+      case 'assignee': {
+        // A member by id, email or name, ignoring case, stored as its id.
+        const r = typeof v === 'string' ? v.toLowerCase() : v;
+        const m = data.members.find(m => [m.id, m.email, m.name].some(x => x && x.toLowerCase() === r));
+        if (v !== null && !m) throw bad('assignee must be a member id, email or name, or null');
+        out.assignee = v === null ? null : m.id;
         break;
+      }
       case 'recur':
         if (v !== null && !Object.hasOwn(RECUR_DAYS, v)) throw bad(`recur must be one of: ${Object.keys(RECUR_DAYS).join(', ')}, or null`);
         out.recur = v;

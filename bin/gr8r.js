@@ -15,10 +15,10 @@ const HELP = `usage: gr8r <command> [options]   (server: $GR8R_URL, default http
 
   list [--status S] [--priority P] [--project KEY] [--cycle current|none|DATE] [--query TEXT] [--pr yes|no] [--workspace personal|work] [--archived]
   show KEY
-  add TITLE [--project KEY] [--status S] [--priority P] [--due DATE] [--start DATE] [--cycle current|DATE]
+  add TITLE [--project KEY] [--status S] [--priority P] [--assignee M] [--due DATE] [--start DATE] [--cycle current|DATE]
             [--label L ...] [--desc TEXT [--markdown]] [--estimate E] [--completed DATE (done tasks)]
             [--recur Daily|Weekly|"Every 2 weeks"|Monthly]
-  set KEY [--title T] [--project KEY] [--status S] [--priority P] [--due DATE|none] [--start DATE|none] [--cycle current|DATE|none]
+  set KEY [--title T] [--project KEY] [--status S] [--priority P] [--assignee M|none] [--due DATE|none] [--start DATE|none] [--cycle current|DATE|none]
           [--label L ... | --label none] [--desc TEXT [--markdown]] [--estimate E|none] [--completed DATE|none] [--recur ...|none]
   done KEY            mark complete
   rm KEY              archive            restore KEY    bring an archived task back
@@ -73,6 +73,7 @@ const OPTIONS = {
   label: { type: 'string', multiple: true },
   desc: { type: 'string' },
   estimate: { type: 'string' },
+  assignee: { type: 'string' },
   completed: { type: 'string' },
   recur: { type: 'string' },
   at: { type: 'string' },
@@ -126,7 +127,7 @@ async function api(method, route, body) {
 }
 
 /* "none" clears the fields that can be empty; for priority it is a real value. */
-const CLEARABLE = ['due', 'start', 'cycle', 'estimate', 'completed', 'recur', 'repo'];
+const CLEARABLE = ['due', 'start', 'cycle', 'estimate', 'completed', 'recur', 'repo', 'assignee'];
 function fields(v, keys) {
   const out = {};
   for (const k of keys) if (v[k] !== undefined) out[k] = CLEARABLE.includes(k) && v[k] === 'none' ? null : v[k];
@@ -162,6 +163,7 @@ function detail(t) {
     `${t.key}  ${t.title}`,
     `status    ${t.status}`,
     `priority  ${t.priority}`,
+    `assignee  ${t.assignee || '-'}`,
     `due       ${t.due || '-'}`,
     `cycle     ${t.cycle || '-'}${t.carried ? `  (carried over ${t.carried}x)` : ''}`,
     `labels    ${t.labels.length ? t.labels.join(', ') : '-'}`,
@@ -208,13 +210,13 @@ async function main(argv) {
       if (rest.length < 1) throw new CliError('add needs a title');
       const body = {
         title: rest.join(' '),
-        ...fields(v, ['project', 'status', 'priority', 'due', 'start', 'cycle', 'desc', 'estimate', 'completed', 'recur']),
+        ...fields(v, ['project', 'status', 'priority', 'assignee', 'due', 'start', 'cycle', 'desc', 'estimate', 'completed', 'recur']),
       };
       const { task } = await api('POST', '/api/tasks', body);
       return out(task, `created ${task.key}  ${task.title}`);
     }
     case 'set': {
-      const body = fields(v, ['title', 'project', 'status', 'priority', 'due', 'start', 'cycle', 'desc', 'estimate', 'completed', 'recur']);
+      const body = fields(v, ['title', 'project', 'status', 'priority', 'assignee', 'due', 'start', 'cycle', 'desc', 'estimate', 'completed', 'recur']);
       const { task } = await api('PATCH', `/api/tasks/${key()}`, body);
       return out(task, `updated ${task.key}  ${task.status}  ${task.title}`);
     }

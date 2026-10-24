@@ -31,9 +31,9 @@ Gr8r Studio is a personal task manager. One server holds the whole workspace; th
 ```
 gr8r list [--status S] [--priority P] [--project KEY] [--cycle current|none|DATE] [--query TEXT] [--pr yes|no] [--archived]
 gr8r show KEY
-gr8r add TITLE [--project KEY] [--status S] [--priority P] [--due DATE] [--start DATE] [--cycle current|DATE]
+gr8r add TITLE [--project KEY] [--status S] [--priority P] [--assignee M] [--due DATE] [--start DATE] [--cycle current|DATE]
          [--label L ...] [--desc TEXT [--markdown]] [--estimate E] [--completed DATE] [--recur Daily|Weekly|"Every 2 weeks"|Monthly]
-gr8r set KEY  [--title T] [--project KEY] [--status S] [--priority P] [--due DATE|none] [--start DATE|none]
+gr8r set KEY  [--title T] [--project KEY] [--status S] [--priority P] [--assignee M|none] [--due DATE|none] [--start DATE|none]
          [--cycle current|DATE|none] [--label L ... | --label none] [--desc TEXT [--markdown]] [--estimate E|none]
          [--completed DATE|none] [--recur ...|none]
 gr8r done KEY                 # prints the next occurrence if the task repeats

@@ -378,3 +378,17 @@ test('labels, label add, set and rm manage the workspace labels from the shell',
   assert.match((await run(['label', 'rm', 'tech debt'])).stdout, /removed the label from 1 task/);
   assert.notEqual((await run(['label', 'add', 'x', '--color', 'plaid'])).code, 0);
 });
+
+test('--assignee sets a task to a member by id or name, none unassigns, and show prints it', async () => {
+  assert.equal((await run(['agent', 'add', 'Claude'])).code, 0);
+  assert.equal((await run(['add', 'alpha', '--assignee', 'claude'])).code, 0);
+  assert.match((await run(['show', 'GR-1'])).stdout, /assignee {2}agent-claude/);
+  assert.equal((await run(['set', 'GR-1', '--assignee', 'm1'])).code, 0);
+  assert.equal(JSON.parse((await run(['show', 'GR-1', '--json'])).stdout).assignee, 'm1');
+  assert.equal((await run(['set', 'GR-1', '--assignee', 'none'])).code, 0);
+  assert.equal(JSON.parse((await run(['show', 'GR-1', '--json'])).stdout).assignee, null);
+  assert.match((await run(['show', 'GR-1'])).stdout, /assignee {2}-/);
+  const bad = await run(['set', 'GR-1', '--assignee', 'ghost']);
+  assert.notEqual(bad.code, 0);
+  assert.match(bad.stderr, /assignee/);
+});
