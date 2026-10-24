@@ -51,6 +51,13 @@ export function modalHtml(m) {
         'sm',
         `${H(m.title)}<form class="modal-b" data-submit="promptSubmit"><div class="field"><label class="label" for="prompt-in">${esc(m.label)}</label><input class="input" id="prompt-in" value="${esc(m.value || '')}" autofocus></div></form><div class="modal-f"><span class="sp"></span><button class="btn btn-secondary" data-a="closeModal">Cancel</button><button class="btn btn-primary" data-a="promptSubmit">${esc(m.ok || 'Save')}</button></div>`,
       );
+    case 'milestone': {
+      const ms = m.name ? (proj(m.project)?.milestones || []).find(x => x.name === m.name) : null;
+      return wrap(
+        'sm',
+        `${H(ms ? 'Edit milestone' : 'New milestone', esc(proj(m.project)?.name || ''))}<form class="modal-b" data-submit="milestoneSubmit"><div class="field"><label class="label" for="ms-name">Name</label><input class="input" id="ms-name" value="${esc(ms?.name || '')}" placeholder="e.g. Beta launch" autocomplete="off" autofocus></div><div class="field"><label class="label" for="ms-date">Date</label><input type="date" class="input" id="ms-date" value="${esc(ms?.date || '')}"></div></form><div class="modal-f">${ms ? `<button class="btn btn-danger-ghost" data-a="delMilestone">${ic('trash-2', 14)}Delete</button>` : ''}<span class="sp"></span><button class="btn btn-secondary" data-a="closeModal">Cancel</button><button class="btn btn-primary" data-a="milestoneSubmit">${ms ? 'Save' : 'Add milestone'}</button></div>`,
+      );
+    }
     case 'shortcuts':
       return wrap('lg', shortcutsModal(H));
     case 'team':

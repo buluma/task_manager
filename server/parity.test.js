@@ -9,7 +9,7 @@ import { archiveTask, createTask, patchTask, purgeTask } from './tasks.js';
 import { addComment, deleteComment } from './comments.js';
 import { archiveProject, createProject, patchProject, purgeProject } from './projects.js';
 import { addDep, addSubtask, deleteSubtask, patchSubtask, removeDep } from './relations.js';
-import { createMembers, createTeam, deleteMember, deleteTeam, patchTeam } from './people.js';
+import { addMilestone, createMembers, createTeam, deleteMember, deleteMilestone, deleteTeam, patchMilestone, patchTeam } from './people.js';
 import { changeLabel, createLabel, deleteLabel } from './labels.js';
 import { TEAMS_SEED } from '../src/core/constants.js';
 
@@ -473,4 +473,36 @@ labelCase(
     confirm();
   },
   d => deleteLabel(d, 'ops', NOW),
+);
+
+/* Milestones: the project overview's milestone dialog against the milestone routes. */
+const milestoneCase = (name, ...rest) => handlerCase(`milestone parity: ${name}`, ...rest);
+const beta = d => (d.projects.find(p => p.id === 'p1').milestones = [{ name: 'Beta', date: '2026-11-01' }]);
+milestoneCase(
+  'adding',
+  () => {
+    app.A.newMilestone({ dataset: { id: 'p1' } });
+    Object.assign(fields, { '#ms-name': { value: ' Launch ' }, '#ms-date': { value: '2026-12-01' } });
+    app.A.milestoneSubmit();
+  },
+  d => addMilestone(d, 'GR', { name: ' Launch ', date: '2026-12-01' }),
+);
+milestoneCase(
+  'renaming and moving one',
+  () => {
+    app.A.editMilestone({ dataset: { id: 'p1', name: 'Beta' } });
+    Object.assign(fields, { '#ms-name': { value: 'Public beta' }, '#ms-date': { value: '2026-11-08' } });
+    app.A.milestoneSubmit();
+  },
+  d => patchMilestone(d, 'GR', 'Beta', { name: 'Public beta', date: '2026-11-08' }),
+  beta,
+);
+milestoneCase(
+  'deleting one',
+  () => {
+    app.A.editMilestone({ dataset: { id: 'p1', name: 'Beta' } });
+    app.A.delMilestone();
+  },
+  d => deleteMilestone(d, 'GR', 'Beta'),
+  beta,
 );

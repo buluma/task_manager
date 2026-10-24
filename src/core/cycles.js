@@ -5,6 +5,14 @@ const DAY = 864e5;
 const toMs = s => Date.UTC(...s.split('-').map((n, i) => (i === 1 ? n - 1 : +n)));
 const toIso = ms => new Date(ms).toISOString().slice(0, 10);
 
+/* A real calendar date written YYYY-MM-DD (so 2026-02-30 is not one). */
+export const isDate = s => {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const [y, m, d] = s.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+};
+
 /* weekStart: 0 = Sunday … 6 = Saturday, same as the weekStart preference. */
 export function cycleStart(date, weekStart) {
   const ms = toMs(date);
