@@ -64,7 +64,8 @@ Add `--json` to any command for machine-readable output. Values:
 - status: `backlog todo progress review done cancelled` (done and cancelled are the two closed states: neither is overdue, open or carried to the next cycle, and cancelled tasks are left out of project progress)
 - priority: ids from `gr8r priorities` (default `urgent high medium low none`; the scale is editable, so check)
 - project status: `planning active risk hold complete`; project colors: indigo blue violet teal rose amber green slate
-- dates: `YYYY-MM-DD`; `none` clears due, start, cycle, estimate, completed, recur
+- assignee: a member id, email or name (any case), stored as the id, e.g. `--assignee Codex` or `--assignee m1`; `--assignee none` unassigns
+- dates: `YYYY-MM-DD`; `none` clears due, start, cycle, estimate, completed, recur, assignee
 - cycles: weekly, named by the date of their first day. Open tasks left in a past cycle roll into the current one (`carried` counts how often, `past` lists where they were). The app does it while open and the server does it on the first API call after the week turns, so `--cycle current` is right with no tab open.
 - a new task made in todo, progress or review starts today and is due three days later unless `--start`/`--due` are given (`--due none` for no due date); backlog tasks (the default for `gr8r add`) and tasks added as done or cancelled get no dates
 - `--cycle current` means this week's cycle (weeks start on the day set in the app's prefs)
@@ -84,9 +85,9 @@ Add `--json` to any command for machine-readable output. Values:
 - **Members and teams.** Roles you can give are `Admin`, `Member` and `Guest`; the owner keeps `Owner` and cannot be removed (409). Removing a member unassigns all their tasks and takes them off every project; ask the user first. A member is in at most one team: joining one leaves the old, and `team set --member ...` sets exactly who is in it. Deleting a team keeps its people and projects, teamless. None of this is logged in the activity feed (the app doesn't log it either).
 - **Labels.** Check `gr8r labels` before labelling, and reuse a label that fits (case doesn't matter: `bug` is `Bug`). You may create a label when none fits and the same kind of task will keep coming up: `gr8r label add NAME --color C --as Claude`, a short Title Case noun (`Chore`, `Tech debt`), not a one-off or a project name. Mention new labels in your report. Renaming or deleting a label the user already has changes their workspace: ask first. `--label X` on `add`/`set` takes a label id; one that doesn't exist yet becomes a gray label, so create it first if it should have a colour. Colours: violet blue teal amber rose red green orange gray.
 - **Estimates.** Give every task you create an estimate of the effort left, using only the app's picker values: `30m 1h 2h 4h 1d 2d 3d 5d 8d` (a day is a focused working day). Round up, and split anything bigger than `8d` into smaller tasks or subtasks. Re-estimate with `gr8r set KEY --estimate X --as Claude` when you learn the scope changed, and say so in your report. Leave estimates the user set alone unless asked. On a task you log after the fact (Done when created), record the effort it actually took. Estimates are a free-text field: the app shows and sorts them but does not total them yet.
-- **Milestones** are `{ name, date }` on a project, named uniquely within it. The app only shows them (overview, timeline); the CLI and API are the only way to change them.
+- **Milestones** are `{ name, date }` on a project, named uniquely within it (ignoring case). They show on the project overview, the Timeline and the workspace Overview. Change them with the CLI or API, or in the app from the project overview's Milestones panel (Add, or click one to rename, re-date or delete it).
 - **Links.** The app's Copy link gives `<the address you opened the app on>/#task/KEY` or `#project/key`, which open that task or project.
-- The `gr8r` project is planned to be renamed Cairn (tasks in project `CRN`), not done yet. Check `gr8r help` if a command or path has moved.
+- The app's own work is tracked in project `GR8R` (named `gr8r`; it was Cairn with key `CRN` until 2026-10-24, so older PRs and commits say `CRN-N` where the task is now `GR8R-N`). Check `gr8r help` if a command or path has moved.
 
 ## HTTP API, when the CLI is not enough
 
