@@ -58,9 +58,7 @@ export function accessPanel() {
   const agents = D().members.filter(m => m.agent && m.id !== 'agent-github');
   const github = D().members.find(m => m.agent && m.id === 'agent-github');
   const people = list =>
-    list.length
-      ? list.map(m => `<span class="badge">${av(m.id, 'sm', false)}${esc(m.name)}</span>`).join(' ')
-      : '<span class="faint">None registered</span>';
+    list.length ? list.map(m => `<span class="badge">${av(m.id, 'sm', false)}${esc(m.name)}</span>`).join(' ') : '<span class="faint">None registered</span>';
   const card = (icon, title, body, detail) =>
     `<article class="pcard" style="cursor:default"><div class="row">${ic(icon, 17)}<b style="font-weight:600;font-size:14px">${title}</b></div><div class="desc">${body}</div><div class="foot">${detail}</div></article>`;
 
