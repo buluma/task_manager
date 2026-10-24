@@ -3,7 +3,7 @@ import { $, MOD, MONL, TODAY, WD, addD, dOff, diffD, esc, fmtDate, iso, parse } 
 import { ic } from '../core/icons.js';
 import { PRIOS, PSTAT, STATUSES, labelOptions, sameLabel } from '../core/constants.js';
 import { RECUR_DAYS } from '../core/recur.js';
-import { D, S, allTasks, canSee, me, mem, pColor, proj, task, visibleProjects } from '../core/store.js';
+import { D, S, allTasks, canSee, eventsHere, me, mem, pColor, proj, task, visibleProjects } from '../core/store.js';
 import { WORKSPACES } from '../core/workspaces.js';
 import { av, avStack, prIcon, stIcon } from '../ui/helpers.js';
 import { focusKey, render } from '../shell/render.js';
@@ -325,7 +325,7 @@ export function popHtml(p) {
     }
     case 'daylist': {
       const ds = p.date;
-      const evs = D().events.filter(e => e.date === ds);
+      const evs = eventsHere().filter(e => e.date === ds);
       const ts = allTasks().filter(x => x.due === ds);
       inner =
         `<div class="mh">${fmtDate(ds, true)}</div>` +

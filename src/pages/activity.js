@@ -1,13 +1,13 @@
 /* ---------- ACTIVITY ---------- */
 import { dayBucket, esc } from '../core/utils.js';
-import { D, S, canSee, inView, proj } from '../core/store.js';
+import { D, S, activityHere } from '../core/store.js';
 import { empty } from '../ui/helpers.js';
 import { actHtml } from '../components/task-list.js';
 
 export function pageActivity() {
   const f = S.ui.actFilter || 'all';
   const who = S.ui.actWho || 'all';
-  let as = D().activity.filter(a => !a.project || (canSee(proj(a.project)) && inView(proj(a.project))));
+  let as = activityHere();
   if (f !== 'all')
     as = as.filter(a =>
       f === 'comments'

@@ -150,8 +150,14 @@ export const allTasks = () =>
     const p = proj(t.project);
     return !t.archived && canSee(p) && inView(p);
   });
-/* Inbox items for the workspace shown: those about a task in it, and those about no task. */
-export const notifsHere = () => D().notifs.filter(n => !n.task || inView(proj(task(n.task)?.project)));
+/* Shared project visibility for workspace feeds, events, Inbox and Archive. Unlinked items are app-wide. */
+export const projectHere = p => canSee(p) && inView(p);
+export const eventsHere = () => D().events.filter(e => !e.project || projectHere(proj(e.project)));
+export const activityHere = () =>
+  D().activity.filter(a => (a.project ? projectHere(proj(a.project)) : a.task ? projectHere(proj(task(a.task)?.project)) : true));
+export const notifsHere = () => D().notifs.filter(n => !n.task || projectHere(proj(task(n.task)?.project)));
+export const archivedTasksHere = () => D().tasks.filter(t => t.archived && projectHere(proj(t.project)) && !proj(t.project).archived);
+export const archivedProjectsHere = () => D().projects.filter(p => p.archived && projectHere(p));
 /* Done and cancelled are the two finished states; everything else is still open. */
 export const isOpen = t => t.status !== 'done' && t.status !== 'cancelled';
 export const isOver = t => t.due && isOpen(t) && diffD(parse(t.due), TODAY) < 0;

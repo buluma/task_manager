@@ -1,7 +1,7 @@
 /* ---------- HOME ---------- */
 import { DAY, MONL, TODAY, WDL, diffD, esc, fmtDate, parse } from '../core/utils.js';
 import { ic } from '../core/icons.js';
-import { D, S, allTasks, canSee, isOpen, isOver, pColor, progressOf, proj, visibleProjects } from '../core/store.js';
+import { D, S, activityHere, allTasks, canSee, isOpen, isOver, pColor, progressOf, proj, visibleProjects } from '../core/store.js';
 import { av, avStack, empty, pIcon, pStatus, prIcon, progBar } from '../ui/helpers.js';
 import { sortTasks } from '../shell/view-engine.js';
 import { actHtml, miniRow } from '../components/task-list.js';
@@ -100,8 +100,8 @@ export function pageHome() {
         </section>
         <section class="panel">
           <div class="panel-h"><h2>Recent activity</h2><div class="acts"><button class="btn btn-sm btn-ghost" data-a="go" data-r="activity">View all</button></div></div>
-          <div class="panel-b feed lined">${D()
-            .activity.slice(0, 7)
+          <div class="panel-b feed lined">${activityHere()
+            .slice(0, 7)
             .map(a => actHtml(a, { proj: true }))
             .join('')}</div>
         </section>

@@ -17,7 +17,7 @@ export function pageInbox() {
   const count = k => ns.filter(n => (k === 'all' || n.type === k) && !n.read).length;
   ns = ns.filter(n => cat === 'all' || n.type === cat);
   if (S.ui.inboxUnread) ns = ns.filter(n => !n.read);
-  const sel = D().notifs.find(n => n.id === S.ui.inboxSel) || null;
+  const sel = notifsHere().find(n => n.id === S.ui.inboxSel) || null;
   return `<div class="page flush">
     <div style="display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);flex:1;min-height:0" class="inbox-grid">
       <style>@media(max-width:900px){.inbox-grid{grid-template-columns:minmax(0,1fr)!important}.inbox-prev{display:${sel ? 'flex' : 'none'}!important;position:fixed;inset:0;z-index:48;background:var(--surface)}}</style>

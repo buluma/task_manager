@@ -76,3 +76,62 @@ test('remote adoption updates all shared settings and views while keeping device
     localStorage.setItem = () => {};
   }
 });
+
+test('workspace feeds and archives isolate Personal, Work, private and orphan records', async () => {
+  const { activityHere, notifsHere, archivedTasksHere, archivedProjectsHere, eventsHere } = await import('./store.js');
+  const original = S.data;
+  const workspace = S.ui.workspace;
+  try {
+    S.data = {
+      ...original,
+      projects: [
+        { id: 'personal', members: [] },
+        { id: 'work', workspace: 'work', members: [] },
+        { id: 'private', private: true, members: [] },
+        { id: 'archived', archived: true, members: [] },
+      ],
+      tasks: [
+        { id: 'tp', project: 'personal', archived: true },
+        { id: 'tw', project: 'work', archived: true },
+        { id: 'hidden', project: 'private', archived: true },
+        { id: 'orphan', project: 'missing', archived: true },
+      ],
+      activity: [
+        { id: 'ap', project: 'personal' },
+        { id: 'aw', project: 'work' },
+        { id: 'private', project: 'private' },
+        { id: 'orphan', project: 'missing' },
+        { id: 'fallback', task: 'tw' },
+        { id: 'global' },
+      ],
+      notifs: [
+        { id: 'np', task: 'tp' },
+        { id: 'nw', task: 'tw' },
+        { id: 'hidden', task: 'hidden' },
+        { id: 'orphan', task: 'orphan' },
+        { id: 'deleted', task: 'deleted' },
+        { id: 'global' },
+      ],
+    };
+    S.data.events = S.data.activity.filter(a => !a.task).map(a => ({ ...a }));
+    const ids = rows => rows.map(r => r.id);
+    S.ui.workspace = 'personal';
+    assert.deepEqual(ids(activityHere()), ['ap', 'global']);
+    assert.deepEqual(ids(eventsHere()), ['ap', 'global']);
+    assert.deepEqual(ids(notifsHere()), ['np', 'global']);
+    assert.deepEqual(ids(archivedTasksHere()), ['tp']);
+    assert.deepEqual(ids(archivedProjectsHere()), ['archived']);
+    S.ui.workspace = 'work';
+    assert.deepEqual(ids(activityHere()), ['aw', 'fallback', 'global']);
+    assert.deepEqual(ids(eventsHere()), ['aw', 'global']);
+    assert.deepEqual(ids(notifsHere()), ['nw', 'global']);
+    assert.deepEqual(ids(archivedTasksHere()), ['tw']);
+    assert.deepEqual(ids(archivedProjectsHere()), []);
+    S.ui.workspace = 'all';
+    assert.deepEqual(ids(activityHere()), ['ap', 'aw', 'fallback', 'global']);
+    assert.deepEqual(ids(notifsHere()), ['np', 'nw', 'global']);
+  } finally {
+    S.data = original;
+    S.ui.workspace = workspace;
+  }
+});
